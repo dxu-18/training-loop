@@ -487,7 +487,8 @@ def kron(a, b):
 
 
 def vander(x, N=None, increasing=False):
-    return Tensor._wrap(_np.vander(_arr(x), N, increasing=increasing))
+    a = _arr(x)
+    return Tensor._wrap(_np.vander(a, N, increasing=increasing).astype(a.dtype))
 
 
 def dstack(tensors):

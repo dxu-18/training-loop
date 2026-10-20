@@ -13,7 +13,8 @@ _SEQLOGP = ("def sequence_logprobs(logits, labels, mask):\n"
 def _logps(rng, B=None):
     B = B or rng.randint(3, 5)
     vals = {k: floats(rng, B, -30, -5, 1) for k in ("pi_chosen", "pi_rejected", "ref_chosen", "ref_rejected")}
-    setup = "\n".join(f"{k} = {ftt(v)}" for k, v in vals.items())
+    setup = "\n".join((f"{k} = torch.tensor({lit(v)}, requires_grad=True)" if k.startswith("pi") else f"{k} = {ftt(v)}")
+                      for k, v in vals.items())
     return B, setup
 
 
@@ -81,7 +82,6 @@ def reward_metrics(rng):
 def implicit_rewards(rng):
     B, setup = _logps(rng)
     beta = rng.choice([0.1, 0.5])
-    setup += "\npi_chosen.requires_grad_(True)"
     return P(f"{DESC}; `pi_chosen` requires grad. DPO's implicit reward of a response is `beta · (pi − ref)`, logged "
              f"**without** gradients. Return the chosen rewards with beta = {beta} as a tensor detached from the graph.",
              setup, f"result = {beta} * (pi_chosen - ref_chosen).detach()", post="(_, _.requires_grad)",

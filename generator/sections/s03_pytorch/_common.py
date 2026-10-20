@@ -98,3 +98,29 @@ def big_ints(var: str, s: int, lo: int, hi: int, n: int) -> str:
 def pick_theme(rng: random.Random, n: int) -> tuple[T.Theme, list[str]]:
     th = T.theme(rng, min_items=n)
     return th, T.items(rng, th, n)
+
+
+# ---------------------------------------------------------------- catalogs
+# A catalog template practises many related APIs: shared random (literal, so diff-testable) data, then ONE
+# item chosen with core.pick(). Item: (api, prompt, solution) or (api, prompt, solution, {options}); options
+# may add `setup` lines, `require` (default [api]), `tol`, `check_dtype`, `answer`, `post`.
+
+def catalog(rng: random.Random, items: list, setup: str, intro: str, tol: float = 1e-5, **kw) -> Problem:
+    from ...core import pick
+    item = pick(rng, items)
+    api, prompt, sol = item[:3]
+    opts = dict(item[3]) if len(item) > 3 else {}
+    req = opts.pop("require", [api] if api else [])
+    extra = opts.pop("setup", "")
+    opts.setdefault("tol", tol)
+    return P(f"{intro} {prompt}".strip(), (setup + ("\n" + extra if extra else "")).strip(), sol, require=req,
+             **{**kw, **opts})
+
+
+def fv(rng: random.Random, n: int, lo: float = -3, hi: float = 3, nd: int = 1, nonzero: bool = False) -> list[float]:
+    out = [round(rng.uniform(lo, hi), nd) for _ in range(n)]
+    return [v if v or not nonzero else 0.5 for v in out]
+
+
+def fm(rng: random.Random, r: int, c: int, lo: float = -3, hi: float = 3, nd: int = 1) -> list[list[float]]:
+    return [fv(rng, c, lo, hi, nd) for _ in range(r)]

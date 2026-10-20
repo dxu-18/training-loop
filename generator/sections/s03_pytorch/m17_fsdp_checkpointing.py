@@ -7,7 +7,7 @@ IMPORTS = ("from torch.utils.checkpoint import checkpoint, checkpoint_sequential
            "from torch.distributed.fsdp import fully_shard, MixedPrecisionPolicy, FSDPModule\n"
            "import torch.distributed.checkpoint as dcp\n"
            "from torch.distributed.checkpoint.state_dict import get_state_dict, set_state_dict, get_model_state_dict, StateDictOptions\n")
-INIT = "dist.init_process_group(backend='gloo', world_size=1, rank=0)"
+INIT = "dist.init_process_group(backend='gloo', init_method='tcp://127.0.0.1:29500', world_size=1, rank=0)"
 
 
 def D(prompt, setup, solution, **kw):

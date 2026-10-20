@@ -15,7 +15,7 @@ def D(prompt, setup, solution, **kw):
     return P(prompt, IMPORTS + setup, solution, **kw)
 
 
-INIT = "dist.init_process_group(backend='gloo', world_size=1, rank=0)"
+INIT = "dist.init_process_group(backend='gloo', init_method='tcp://127.0.0.1:29500', world_size=1, rank=0)"
 
 
 # ================================================================= lite

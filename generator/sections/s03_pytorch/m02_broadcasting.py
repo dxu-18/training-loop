@@ -37,8 +37,8 @@ def view_reshape(rng):
 @template(M, "lite")
 def squeeze_unsqueeze(rng):
     dims = [rng.choice([1, rng.randint(2, 5)]) for _ in range(4)]
-    dims[rng.randrange(4)] = 1
-    dims[rng.randrange(4)] = rng.randint(2, 5)
+    i, j = rng.sample(range(4), 2)  # at least one size-1 dim and one bigger dim
+    dims[i], dims[j] = 1, rng.randint(2, 5)
     setup = f"y = torch.zeros{shp(dims)}"
     task = rng.choice(["squeeze_d", "squeeze_all", "unsqueeze", "none_index"])
     ones = [i for i, d in enumerate(dims) if d == 1]

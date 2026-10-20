@@ -122,6 +122,22 @@ def available_tier(section: str, module: str, tier: str) -> str:
     raise LookupError(f"{section} {module} has no templates")
 
 
+# ---------------------------------------------------------------- catalogs
+# A catalog template practises many related APIs: it builds fresh random data, then picks ONE item
+# (one API) with pick(). tests/test_catalogs.py forces every index in turn so every item is graded.
+
+_FORCE_ITEM: list = [None]
+_PICKED: list = []
+
+
+def pick(rng: random.Random, items: list):
+    """Choose the catalog item for this problem (uniformly; tests can force an index)."""
+    _PICKED.append(len(items))
+    if _FORCE_ITEM[0] is not None:
+        return items[_FORCE_ITEM[0] % len(items)]
+    return items[rng.randrange(len(items))]
+
+
 def build(tpl: Template, seed: int) -> Problem:
     p = tpl.fn(random.Random(seed))
     p.section, p.module, p.tier, p.template, p.seed = tpl.section, tpl.module, tpl.tier, tpl.name, seed

@@ -1,5 +1,5 @@
 {
- "hash": "0727878ef714",
+ "hash": "93a4e119a104",
  "topics": {
   "numpy": {
    "title": "NumPy",
@@ -9,7 +9,7 @@
      "title": "Setup, printing & help",
      "live": true,
      "templates": {
-      "lite": 3,
+      "lite": 4,
       "easy": 3,
       "medium": 3,
       "hard": 2,
@@ -21,7 +21,7 @@
      "title": "Creating arrays",
      "live": true,
      "templates": {
-      "lite": 5,
+      "lite": 6,
       "easy": 4,
       "medium": 4,
       "hard": 3,
@@ -34,7 +34,7 @@
      "live": true,
      "templates": {
       "lite": 2,
-      "easy": 3,
+      "easy": 4,
       "medium": 4,
       "hard": 4,
       "challenge": 2
@@ -45,7 +45,7 @@
      "title": "Attributes, dtypes & casting",
      "live": true,
      "templates": {
-      "lite": 3,
+      "lite": 4,
       "easy": 3,
       "medium": 3,
       "hard": 3,
@@ -58,7 +58,7 @@
      "live": true,
      "templates": {
       "lite": 3,
-      "easy": 4,
+      "easy": 5,
       "medium": 6,
       "hard": 3,
       "challenge": 2
@@ -69,7 +69,7 @@
      "title": "Views, copies & memory layout",
      "live": true,
      "templates": {
-      "lite": 2,
+      "lite": 3,
       "easy": 3,
       "medium": 4,
       "hard": 3,
@@ -81,7 +81,7 @@
      "title": "Reshaping & moving axes",
      "live": true,
      "templates": {
-      "lite": 2,
+      "lite": 3,
       "easy": 3,
       "medium": 4,
       "hard": 3,
@@ -94,7 +94,7 @@
      "live": true,
      "templates": {
       "lite": 2,
-      "easy": 3,
+      "easy": 4,
       "medium": 4,
       "hard": 3,
       "challenge": 2
@@ -106,7 +106,7 @@
      "live": true,
      "templates": {
       "lite": 2,
-      "easy": 3,
+      "easy": 4,
       "medium": 4,
       "hard": 4,
       "challenge": 2
@@ -117,9 +117,9 @@
      "title": "Elementwise math & ufuncs",
      "live": true,
      "templates": {
-      "lite": 3,
-      "easy": 3,
-      "medium": 3,
+      "lite": 4,
+      "easy": 4,
+      "medium": 4,
       "hard": 3,
       "challenge": 2
      }
@@ -130,8 +130,8 @@
      "live": true,
      "templates": {
       "lite": 2,
-      "easy": 4,
-      "medium": 5,
+      "easy": 5,
+      "medium": 6,
       "hard": 3,
       "challenge": 2
      }
@@ -141,7 +141,7 @@
      "title": "Comparisons, logic & missing values",
      "live": true,
      "templates": {
-      "lite": 2,
+      "lite": 3,
       "easy": 4,
       "medium": 3,
       "hard": 3,
@@ -154,7 +154,7 @@
      "live": true,
      "templates": {
       "lite": 3,
-      "easy": 4,
+      "easy": 5,
       "medium": 5,
       "hard": 3,
       "challenge": 2
@@ -167,7 +167,7 @@
      "templates": {
       "lite": 2,
       "easy": 3,
-      "medium": 5,
+      "medium": 6,
       "hard": 4,
       "challenge": 2
      }
@@ -179,7 +179,7 @@
      "templates": {
       "lite": 3,
       "easy": 3,
-      "medium": 3,
+      "medium": 4,
       "hard": 4,
       "challenge": 2
      }
@@ -190,7 +190,7 @@
      "live": true,
      "templates": {
       "lite": 2,
-      "easy": 4,
+      "easy": 5,
       "medium": 4,
       "hard": 3,
       "challenge": 2
@@ -202,7 +202,7 @@
      "live": true,
      "templates": {
       "lite": 2,
-      "easy": 3,
+      "easy": 4,
       "medium": 4,
       "hard": 4,
       "challenge": 2
@@ -214,7 +214,7 @@
      "live": true,
      "templates": {
       "lite": 2,
-      "easy": 3,
+      "easy": 4,
       "medium": 5,
       "hard": 8,
       "challenge": 2
@@ -230,7 +230,7 @@
      "title": "Setup, options & core objects",
      "live": true,
      "templates": {
-      "lite": 3,
+      "lite": 4,
       "easy": 3,
       "medium": 3,
       "hard": 2,
@@ -242,7 +242,7 @@
      "title": "Creating DataFrames & dtypes",
      "live": true,
      "templates": {
-      "lite": 2,
+      "lite": 3,
       "easy": 3,
       "medium": 3,
       "hard": 2,
@@ -255,7 +255,7 @@
      "live": true,
      "templates": {
       "lite": 2,
-      "easy": 3,
+      "easy": 4,
       "medium": 4,
       "hard": 3,
       "challenge": 2
@@ -266,7 +266,7 @@
      "title": "Inspecting data",
      "live": true,
      "templates": {
-      "lite": 2,
+      "lite": 3,
       "easy": 3,
       "medium": 4,
       "hard": 3,
@@ -279,7 +279,7 @@
      "live": true,
      "templates": {
       "lite": 2,
-      "easy": 3,
+      "easy": 4,
       "medium": 3,
       "hard": 3,
       "challenge": 2
@@ -291,7 +291,7 @@
      "live": true,
      "templates": {
       "lite": 2,
-      "easy": 3,
+      "easy": 4,
       "medium": 4,
       "hard": 3,
       "challenge": 2
@@ -303,7 +303,7 @@
      "live": true,
      "templates": {
       "lite": 2,
-      "easy": 3,
+      "easy": 4,
       "medium": 3,
       "hard": 3,
       "challenge": 2
@@ -315,7 +315,7 @@
      "live": true,
      "templates": {
       "lite": 2,
-      "easy": 3,
+      "easy": 4,
       "medium": 4,
       "hard": 3,
       "challenge": 2
@@ -327,7 +327,7 @@
      "live": true,
      "templates": {
       "lite": 2,
-      "easy": 3,
+      "easy": 4,
       "medium": 4,
       "hard": 3,
       "challenge": 2
@@ -339,7 +339,7 @@
      "live": true,
      "templates": {
       "lite": 2,
-      "easy": 3,
+      "easy": 4,
       "medium": 4,
       "hard": 3,
       "challenge": 2
@@ -352,7 +352,7 @@
      "templates": {
       "lite": 2,
       "easy": 3,
-      "medium": 4,
+      "medium": 5,
       "hard": 3,
       "challenge": 2
      }
@@ -363,7 +363,7 @@
      "live": true,
      "templates": {
       "lite": 2,
-      "easy": 3,
+      "easy": 4,
       "medium": 4,
       "hard": 3,
       "challenge": 2
@@ -376,7 +376,7 @@
      "templates": {
       "lite": 2,
       "easy": 3,
-      "medium": 4,
+      "medium": 5,
       "hard": 3,
       "challenge": 2
      }
@@ -399,7 +399,7 @@
      "live": true,
      "templates": {
       "lite": 2,
-      "easy": 3,
+      "easy": 4,
       "medium": 4,
       "hard": 3,
       "challenge": 2
@@ -411,7 +411,7 @@
      "live": true,
      "templates": {
       "lite": 2,
-      "easy": 3,
+      "easy": 4,
       "medium": 4,
       "hard": 3,
       "challenge": 2
@@ -436,7 +436,7 @@
      "templates": {
       "lite": 2,
       "easy": 3,
-      "medium": 4,
+      "medium": 5,
       "hard": 3,
       "challenge": 2
      }
@@ -447,7 +447,7 @@
      "live": true,
      "templates": {
       "lite": 2,
-      "easy": 3,
+      "easy": 4,
       "medium": 4,
       "hard": 3,
       "challenge": 2
@@ -463,10 +463,10 @@
      "title": "Tensors",
      "live": true,
      "templates": {
-      "lite": 3,
-      "easy": 4,
-      "medium": 4,
-      "hard": 3,
+      "lite": 8,
+      "easy": 10,
+      "medium": 8,
+      "hard": 4,
       "challenge": 2
      }
     },
@@ -475,7 +475,7 @@
      "title": "Broadcasting & shape changes",
      "live": true,
      "templates": {
-      "lite": 2,
+      "lite": 3,
       "easy": 3,
       "medium": 3,
       "hard": 3,
@@ -488,9 +488,9 @@
      "live": true,
      "templates": {
       "lite": 2,
-      "easy": 3,
+      "easy": 4,
       "medium": 3,
-      "hard": 3,
+      "hard": 4,
       "challenge": 2
      }
     },
@@ -501,7 +501,7 @@
      "templates": {
       "lite": 2,
       "easy": 3,
-      "medium": 3,
+      "medium": 4,
       "hard": 3,
       "challenge": 2
      }
@@ -511,9 +511,9 @@
      "title": "MLP training: modules, losses, optimizers & the loop",
      "live": true,
      "templates": {
-      "lite": 3,
-      "easy": 3,
-      "medium": 4,
+      "lite": 4,
+      "easy": 6,
+      "medium": 9,
       "hard": 3,
       "challenge": 2
      }
@@ -526,7 +526,7 @@
       "lite": 2,
       "easy": 3,
       "medium": 3,
-      "hard": 3,
+      "hard": 4,
       "challenge": 2
      }
     },
@@ -535,7 +535,7 @@
      "title": "Memory, strides & contiguity",
      "live": true,
      "templates": {
-      "lite": 2,
+      "lite": 3,
       "easy": 3,
       "medium": 3,
       "hard": 3,
@@ -549,7 +549,7 @@
      "templates": {
       "lite": 2,
       "easy": 3,
-      "medium": 3,
+      "medium": 4,
       "hard": 3,
       "challenge": 2
      }
@@ -561,7 +561,7 @@
      "templates": {
       "lite": 2,
       "easy": 3,
-      "medium": 3,
+      "medium": 4,
       "hard": 3,
       "challenge": 2
      }
@@ -573,7 +573,7 @@
      "templates": {
       "lite": 2,
       "easy": 3,
-      "medium": 3,
+      "medium": 4,
       "hard": 3,
       "challenge": 2
      }
@@ -584,7 +584,7 @@
      "live": true,
      "templates": {
       "lite": 2,
-      "easy": 2,
+      "easy": 3,
       "medium": 3,
       "hard": 2,
       "challenge": 2
@@ -597,7 +597,7 @@
      "templates": {
       "lite": 2,
       "easy": 2,
-      "medium": 3,
+      "medium": 4,
       "hard": 2,
       "challenge": 2
      }
@@ -608,7 +608,7 @@
      "live": true,
      "templates": {
       "lite": 2,
-      "easy": 3,
+      "easy": 4,
       "medium": 3,
       "hard": 2,
       "challenge": 2
@@ -621,7 +621,7 @@
      "templates": {
       "lite": 2,
       "easy": 3,
-      "medium": 3,
+      "medium": 4,
       "hard": 2,
       "challenge": 2
      }
@@ -634,7 +634,7 @@
       "lite": 2,
       "easy": 2,
       "medium": 3,
-      "hard": 3,
+      "hard": 4,
       "challenge": 2
      }
     },
@@ -645,7 +645,7 @@
      "templates": {
       "lite": 2,
       "easy": 3,
-      "medium": 3,
+      "medium": 4,
       "hard": 3,
       "challenge": 2
      }
@@ -657,7 +657,7 @@
      "templates": {
       "lite": 2,
       "easy": 2,
-      "medium": 3,
+      "medium": 4,
       "hard": 2,
       "challenge": 2
      }
@@ -668,7 +668,7 @@
      "live": true,
      "templates": {
       "lite": 2,
-      "easy": 2,
+      "easy": 3,
       "medium": 3,
       "hard": 2,
       "challenge": 2

@@ -17,13 +17,13 @@ class _Ctx:
         self.saved_tensors = tensors
 
     def mark_non_differentiable(self, *tensors):
-        pass
+        self._non_diff = getattr(self, "_non_diff", set()) | {id(t) for t in tensors}
 
     def mark_dirty(self, *tensors):
-        pass
+        self._dirty = tensors
 
     def set_materialize_grads(self, value):
-        pass
+        self._materialize = bool(value)
 
 
 class Function:
@@ -51,7 +51,8 @@ class Function:
             def grads_for(g, k=k, cache=cache):
                 key = id(g)
                 if key not in cache:
-                    upstream = [Tensor._wrap(np.zeros_like(x._a)) if isinstance(x, Tensor) else None for x in outs]
+                    mat = getattr(ctx, "_materialize", True)
+                    upstream = [Tensor._wrap(np.zeros_like(x._a)) if isinstance(x, Tensor) and mat else None for x in outs]
                     upstream[k] = Tensor._wrap(np.asarray(g))
                     res = cls.backward(ctx, *upstream) if multi else cls.backward(ctx, upstream[0])
                     res = res if isinstance(res, tuple) else (res,)
@@ -77,6 +78,9 @@ class Function:
                 if isinstance(a, Tensor):
                     parents.append((a, lambda g, i=i, a=a, gf=grads_for: (
                         np.zeros_like(a._a) if gf(g)[i] is None else torch._unbroadcast(torch._arr(gf(g)[i]), a._a.shape))))
+            if id(o) in getattr(ctx, "_non_diff", ()):
+                results.append(Tensor._wrap(o._a))  # marked non-differentiable: no grad_fn, requires_grad False
+                continue
             results.append(_make(o._a, parents, o._bf16))
         return tuple(results) if multi else results[0]
 
