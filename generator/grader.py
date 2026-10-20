@@ -71,6 +71,21 @@ def _answer(problem: dict, ns: dict, last, stdout: str):
     return last
 
 
+def _reset_torch():
+    """Same RNG seed for the reference and the user's run; undo global modes user code may leave on."""
+    torch = sys.modules.get("torch")
+    if torch is None or not getattr(torch, "LITE", False):
+        return
+    torch.manual_seed(0)
+    torch._GRAD[0] = True
+    torch._AUTOCAST[0] = None
+    torch._PROF.clear()
+    torch.set_default_dtype(torch.float32)
+    torch.set_printoptions(profile="default")
+    torch.distributed.destroy_process_group()
+    torch.compiler.reset()
+
+
 @contextlib.contextmanager
 def _sandbox():
     """Run in a fresh temp directory; afterwards restore NumPy/pandas options and close figures."""
@@ -80,13 +95,19 @@ def _sandbox():
     except ImportError:
         np = saved = None
     old = os.getcwd()
+    env = dict(os.environ)
     tmp = tempfile.mkdtemp(prefix="tl-")
     os.chdir(tmp)
+    _reset_torch()
     try:
         yield
     finally:
         os.chdir(old)
+        if dict(os.environ) != env:  # e.g. RANK / WORLD_SIZE set by a distributed problem
+            os.environ.clear()
+            os.environ.update(env)
         shutil.rmtree(tmp, ignore_errors=True)
+        _reset_torch()
         if saved:
             np.set_printoptions(**saved[0])
             np.seterr(**saved[1])
@@ -173,10 +194,26 @@ def _plain(x):
     return x
 
 
+def _is_tensor(x) -> bool:
+    return type(x).__module__.split(".")[0] == "torch" and hasattr(x, "detach")
+
+
 def compare(exp, got, tol: float = 1e-6, check_dtype: bool = False, path: str = "answer"):
     """None if ``got`` matches ``exp``, else a short message saying what differs."""
     np = sys.modules.get("numpy")
     pd = sys.modules.get("pandas")
+
+    if _is_tensor(exp):
+        if not _is_tensor(got):
+            if exp.numel() == 1 and isinstance(_plain(got), (int, float)) and not isinstance(got, bool):
+                return compare(exp.item(), got, tol, False, path)
+            return f"{path} should be a torch.Tensor, got {type(got).__name__}"
+        if check_dtype and str(got.dtype) != str(exp.dtype):
+            return f"{path} has dtype {got.dtype}; expected dtype {exp.dtype}"
+        e, g = exp.detach().numpy(), got.detach().numpy()
+        if tuple(g.shape) != tuple(e.shape):
+            return f"{path} has shape {tuple(got.shape)}; expected shape {tuple(exp.shape)}"
+        return compare(e.reshape(-1), g.reshape(-1), tol, False, path) if e.ndim == 0 else compare(e, g, tol, False, path)
 
     if pd is not None:
         if isinstance(exp, pd.api.extensions.ExtensionArray):  # e.g. pd.array(..., dtype="Int64"), Categorical
@@ -296,6 +333,8 @@ def _names(tree) -> set[str]:
             out.add(node.attr)
         elif isinstance(node, ast.keyword) and node.arg:
             out.add(node.arg)
+        elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            out.add(node.name)
         elif isinstance(node, ast.alias):
             out.add(node.name.split(".")[-1])
             if node.asname:
@@ -310,7 +349,7 @@ def static_check(problem: dict, tree) -> str | None:
         if not any(a in names for a in alts):
             return "This problem asks you to use " + " or ".join(f"`{a}`" for a in alts) + "."
     if problem.get("no_loops") and any(isinstance(n, _LOOPS) for n in ast.walk(tree)):
-        return "Solve this one without Python loops or comprehensions: use vectorized NumPy."
+        return "Solve this one without Python loops or comprehensions: use vectorized array/tensor operations."
     return None
 
 

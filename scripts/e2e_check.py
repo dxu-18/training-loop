@@ -183,7 +183,25 @@ try:
         check("Correct" in pg.inner_text(".verdict"), "pandas 2.18 (plotting) reference solution is graded correct")
         selftest("pandas", only="2.18")
 
-        errors = [l for l in logs if "error" in l.lower()]
+        # pytorch (torch-lite + triton-lite): topic page, practice rounds, then every template
+        pg.goto(BASE + "/#/pytorch")
+        pg.reload()
+        pg.wait_for_selector(".modules")
+        n_mod = pg.locator(".modules a.topic").count()
+        check(n_mod == 19, f"pytorch page lists 19 live modules (got {n_mod})")
+        for mod in ("3.08", "3.15", "3.05"):
+            pg.goto(BASE + f"/#/pytorch/{mod}")
+            pg.wait_for_selector(".prompt", timeout=120000)
+            pg.evaluate(SET_CODE, pg.evaluate("view.problem.solution"))
+            pg.click(".submit")
+            pg.wait_for_function(f"{VERDICT}.length > 0", timeout=60000)
+            check("Correct" in pg.inner_text(".verdict"), f"pytorch {mod} reference solution is graded correct")
+        pg.screenshot(path=f"{args.out}/pytorch_practice.png", full_page=True)
+        pg.reload()
+        pg.wait_for_selector(".prompt", timeout=120000)
+        selftest("pytorch")
+
+        errors =[l for l in logs if "error" in l.lower()]
         check(not errors, f"no console errors {errors[:5]}")
         b.close()
 finally:
