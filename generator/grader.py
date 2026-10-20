@@ -1,9 +1,12 @@
 """Run and grade user code against a problem dict (as produced by core.generate).
 
-The answer is read from the variables in ``problem["answer"]`` if given, else
-from a variable named ``result``, else from the value of the last expression.
-The reference solution is run the same way on the same setup, and the two
-answers are compared with ``compare``.
+The graded value is, in order of precedence:
+  * the value of ``problem["post"]`` (check code run after the user's code), else
+  * the variables in ``problem["answer"]`` ("<stdout>" = everything the code printed), else
+  * a variable named ``result``, else the value of the last expression.
+The reference solution is run the same way on the same setup, and the two values
+are compared with ``compare``. Every run gets a fresh temporary working directory,
+and NumPy's global print/error options are restored afterwards.
 """
 
 from __future__ import annotations
@@ -13,10 +16,14 @@ import contextlib
 import io
 import linecache
 import math
+import os
+import shutil
 import sys
+import tempfile
 import traceback
 
 USER_FILE = "<answer>"
+STDOUT = "<stdout>"
 MAX_REPR = 4000
 _MISSING = object()
 
@@ -44,8 +51,10 @@ def _exec(code: str, ns: dict, filename: str):
     return eval(compile(last, filename, "eval"), ns)
 
 
-def _answer(problem: dict, ns: dict, last):
+def _answer(problem: dict, ns: dict, last, stdout: str):
     names = problem.get("answer") or []
+    if names == [STDOUT]:
+        return stdout
     if names:
         missing = [n for n in names if n not in ns]
         if missing:
@@ -55,8 +64,41 @@ def _answer(problem: dict, ns: dict, last):
         return ns["result"]
     if last is _MISSING or last is None:
         raise NoAnswer("Your code didn't produce an answer: end with an expression "
-                          "(not a print) or assign it to `result`.")
+                       "(not a print) or assign it to `result`.")
     return last
+
+
+@contextlib.contextmanager
+def _sandbox():
+    """Run in a fresh temp directory and restore NumPy's global state afterwards."""
+    try:
+        import numpy as np
+        saved = (np.get_printoptions(), np.geterr())
+    except ImportError:
+        np = saved = None
+    old = os.getcwd()
+    tmp = tempfile.mkdtemp(prefix="tl-")
+    os.chdir(tmp)
+    try:
+        yield
+    finally:
+        os.chdir(old)
+        shutil.rmtree(tmp, ignore_errors=True)
+        if saved:
+            np.set_printoptions(**saved[0])
+            np.seterr(**saved[1])
+
+
+def _detach(value):
+    """Copy memory-mapped arrays so they survive the temp directory being removed."""
+    np = sys.modules.get("numpy")
+    if np is not None and isinstance(value, np.memmap):
+        return np.array(value)
+    if isinstance(value, dict):
+        return {k: _detach(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return type(value)(_detach(v) for v in value)
+    return value
 
 
 def format_error(exc: BaseException) -> str:
@@ -87,13 +129,23 @@ def short_repr(value) -> str:
 
 
 def _run_once(problem: dict, code: str, setup: str, filename: str):
-    """-> (answer, stdout). Raises the user's exception unchanged."""
+    """-> (answer, stdout). Raises the user's exception unchanged, NoAnswer if nothing to grade."""
     ns: dict = {"__name__": "__main__"}
     buf = io.StringIO()
-    with contextlib.redirect_stdout(buf):
-        _exec(setup, ns, "<setup>")
-        last = _exec(code, ns, filename)
-    return _answer(problem, ns, last), buf.getvalue()
+    with _sandbox():
+        with contextlib.redirect_stdout(io.StringIO()):
+            _exec(setup, ns, "<setup>")
+        with contextlib.redirect_stdout(buf):
+            last = _exec(code, ns, filename)
+        if problem.get("post"):
+            try:
+                with contextlib.redirect_stdout(io.StringIO()):
+                    value = _exec(problem["post"], ns, "<check>")
+            except Exception as e:  # noqa: BLE001
+                raise NoAnswer(f"Checking your result failed: {type(e).__name__}: {e}") from None
+        else:
+            value = _answer(problem, ns, last, buf.getvalue())
+        return _detach(value), buf.getvalue()
 
 
 # ---------------------------------------------------------------- comparison
@@ -246,13 +298,15 @@ def run(problem: dict, code: str) -> dict:
     buf = io.StringIO()
     value, error = None, None
     try:
-        with contextlib.redirect_stdout(buf):
-            _exec(problem.get("setup", ""), ns, "<setup>")
-            last = _exec(code, ns, USER_FILE)
-        if last is not _MISSING and last is not None:
-            value = short_repr(last)
-        elif "result" in ns:
-            value = "result = " + short_repr(ns["result"])
+        with _sandbox():
+            with contextlib.redirect_stdout(io.StringIO()):
+                _exec(problem.get("setup", ""), ns, "<setup>")
+            with contextlib.redirect_stdout(buf):
+                last = _exec(code, ns, USER_FILE)
+            if last is not _MISSING and last is not None:
+                value = short_repr(last)
+            elif "result" in ns:
+                value = "result = " + short_repr(ns["result"])
     except BaseException as e:  # noqa: BLE001  (includes SystemExit from user code)
         error = format_error(e)
     return {"ok": error is None, "stdout": buf.getvalue(), "value": value, "error": error}
@@ -288,7 +342,8 @@ def grade(problem: dict, code: str) -> dict:
                 res["message"] = f"Hidden test {i} crashed."
             return res
         if i == 0:
-            res["stdout"], res["value"] = stdout, short_repr(got)
+            res["stdout"] = stdout
+            res["value"] = None if problem.get("answer") == [STDOUT] else short_repr(got)
         diff = compare(expected, got, problem.get("tol", 1e-6), problem.get("check_dtype", False))
         if diff:
             res["message"] = diff if i == 0 else f"Wrong answer on hidden test {i}."

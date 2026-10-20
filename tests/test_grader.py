@@ -50,3 +50,22 @@ def test_run_shows_value_and_stdout():
     r = run(P, "print('hi')\nx * 2")
     assert r["stdout"] == "hi\n" and r["value"] == "array([6, 2, 4])"
     assert "ZeroDivisionError" in run(P, "1/0")["error"]
+
+
+def test_stdout_answers_and_post_checks():
+    p = dict(P, solution="print(np.sort(x))", answer=["<stdout>"])
+    assert grade(p, "print(np.sort(x))")["correct"]
+    assert not grade(p, "np.sort(x)")["correct"]
+    p = dict(P, solution="np.save('s.npy', np.sort(x))", post="np.load('s.npy')")
+    assert grade(p, "np.save('s.npy', np.sort(x))")["correct"]
+    r = grade(p, "pass")
+    assert not r["correct"] and "FileNotFoundError" in r["message"]
+
+
+def test_runs_are_sandboxed():
+    p = dict(P, solution="np.save('s.npy', x)", post="np.load('s.npy')")
+    grade(p, "np.save('s.npy', x)")
+    assert not grade(p, "pass")["correct"]  # the reference's file must not leak into the user's run
+    p = dict(P, solution="repr(np.pi * np.ones(2))")
+    grade(p, "np.set_printoptions(precision=1)\nrepr(np.pi * np.ones(2))")
+    assert grade(p, "repr(np.pi * np.ones(2))")["correct"]  # global print options were restored

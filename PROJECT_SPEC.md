@@ -65,9 +65,20 @@ the slot is a placeholder.
 was at 68% used when session 1 started. Nothing has to be done in one shot, but
 session 1 should produce a working result.
 
+### Session 2 request (2026-10-20)
+Build the github.io page and make sure the whole frontend works, so people can start practicing.
+
+### Session 3 request (2026-10-20): one page per subsection
+**Every `###` subsection of a toolkit is its own practice page.** For example, clicking NumPy
+on the main menu opens NumPy's page: a list of its 18 subsections (1.01 Setup, printing & help,
+1.02 Creating arrays, …, 1.18 Vectorized ML patterns & testing). **Each subsection has its own
+250 goal** (counter, difficulty ladder, surprise medal) and unlimited, randomly generated
+questions. This supersedes the per-topic counter of session 1. The difficulty schedule
+(1–50 lite … 246–250 challenge, then random) now applies within each subsection.
+
 ---
 
-## 2. Architecture decisions (session 1)
+## 2. Architecture decisions (sessions 1–3)
 
 | Decision | Choice | Why |
 |---|---|---|
@@ -78,11 +89,23 @@ session 1 should produce a working result.
 | Syntax enforcement | Optional `require` (names that must appear in the code, `a\|b` = either) and `no_loops` (AST check) | Stops "right value, wrong skill" answers, e.g. hard-coding `(3, 4)` instead of `.shape`. |
 | Anti-hard-coding | `tests`: extra hidden setups the code must also pass. Used for every challenge problem. | Works like Codeforces hidden tests. |
 | Examples | An example is **another random instance of the same template**, shown with its solution | Every template gets examples for free, and the example never gives away the current answer. |
-| Template choice | Uniform over the templates registered for (section, tier), then a uniform theme, then random parameters | Gives every template an equal chance and keeps the questions varied. |
-| State | `localStorage` (solved count, current question seed and tier, medal) | A static site has no accounts. A backend can be added later. |
+| Template registry | `REGISTRY[section][module][tier]`, registered with `@template(module, tier)` (the section is fixed per package). A module is **live** once all 5 tiers have templates. | Matches the one-page-per-subsection structure (session 3). |
+| Template choice | Uniform over the templates registered for (section, module, tier), then a uniform theme, then random parameters | Gives every template an equal chance and keeps the questions varied. |
+| State | `localStorage` key `training-loop:v2`: per module (`"numpy/1.05"`) solved count, current seed and tier, medal, code draft | A static site has no accounts. The session-1 key `training-loop:v1` (one counter per topic) is left untouched but no longer read. |
+| Catalog | `scripts/build.py` parses COMP_GUIDE's `##`/`###` headings into `docs/build.json` (topics → modules, titles, live flag, template counts) | The site lists every subsection, even unfinished ones ("soon"), straight from the guide. `10.00 Practice schema` is skipped (reference material). |
+| Printed-output answers | `answer=["<stdout>"]` grades what the code printed | Needed for 1.01 (print options, `np.info`). |
+| Post checks | `post`: code run after the user's; its value is graded (e.g. `np.load('x.npy')`, `np.shares_memory(v, a)`) | Lets 1.06 check views vs copies and 1.17 check files the code wrote. |
+| Sandboxed runs | Each run gets a fresh temp working directory; NumPy print options and `np.seterr` are restored afterwards | The reference's files can't leak into the user's run, and `np.set_printoptions` in one answer can't change the next. |
 | Editor | CodeMirror 5 (cdnjs), with the mode set per topic | Simple script tags and no build step. |
 | Site folder | `docs/` on `main`, served by GitHub Pages ("deploy from branch", `/docs`). Live at https://dxu-18.github.io/training-loop/ | `docs/generator.zip` + `docs/build.json` are **committed**: run `scripts/build.py` before committing generator changes (`tests/test_bundle.py` fails if stale). An Actions deploy is ready in `ci/pages.yml` but needs a `gh` token with the `workflow` scope (see the file header). |
 | Worker type | **Module** worker (`new Worker(..., {type: "module"})`) importing `pyodide.mjs` | Classic `importScripts` of the CDN script failed in current Chromium (session 2). Module workers work in current Chrome, Firefox and Safari. |
+
+### Pyodide gotchas (found by the in-browser self-test, session 3)
+- Pyodide is **32-bit WebAssembly**: NumPy's default integer is `int32` (e.g. `2 ** np.array([32])`
+  overflows to 0). Use explicit `dtype=np.int64` in setups that need big integers.
+- **Writable memory maps don't work** (`np.memmap(..., mode='w+')` raises `OSError: Bad file
+  descriptor`). Read-only `np.load(..., mmap_mode='r')` works.
+- Always run `scripts/e2e_check.py`: it grades every template's own solution inside Pyodide.
 
 ### Non-Python sections: planned checkers
 - **SQL**: run for real with `sqlite3`, which is part of Pyodide's stdlib. Compare
@@ -110,12 +133,15 @@ generator/            Python package: question generation + grading (runs locall
   core.py             Problem dataclass, tier schedule, template registry, generate()
   grader.py           run / grade user code, value comparison, AST checks
   themes.py           themed datasets (AI labs, pets, appliances, speech, vision, ...)
-  sections/           one module per COMP_GUIDE section (s01_numpy.py, ...)
-  api.py              JSON entry points called by docs/worker.js
+  sections/           one package per COMP_GUIDE section
+    s01_numpy/        _common.py (helpers, challenge()) + one file per subsection: m01_printing.py … m18_ml_patterns.py
+  api.py              JSON entry points called by docs/worker.js (generate, run, grade, info, self_test)
 scripts/
-  build.py            zip generator/ into docs/generator.zip + write docs/build.json (rerun after every change)
+  build.py            zip generator/ into docs/generator.zip + write docs/build.json catalog (rerun after every change)
   preview.py          print sample questions from the CLI
-tests/                pytest: every template's reference solution must pass its own grader
+  e2e_check.py        Playwright click-through of the site + Pyodide self-test of every template
+ci/pages.yml          optional GitHub Actions deploy (inactive, see its header)
+tests/                pytest: every template passes its own grader; every challenge matches a brute force
 docs/                 the static website (GitHub Pages root)
 ```
 
@@ -123,7 +149,7 @@ Local dev:
 ```
 uv venv --python 3.14 .venv && uv pip install --python .venv/bin/python numpy pandas pytest
 .venv/bin/python -m pytest -q
-.venv/bin/python scripts/preview.py numpy --tier hard -n 3
+.venv/bin/python scripts/preview.py numpy --module 1.05 --tier hard -n 3 --solution
 .venv/bin/python scripts/build.py && python3 -m http.server -d docs 8000   # open http://localhost:8000
 .venv/bin/python scripts/e2e_check.py /tmp/shots [https://dxu-18.github.io/training-loop]  # browser click-through
 ```
@@ -136,7 +162,7 @@ Legend: ✅ done · 🟡 partial · ⬜ not started
 
 | # | Section | Templates | Checker | Notes |
 |---|---|---|---|---|
-| 1 | NumPy | 🟡 72 in `generator/sections/s01_numpy.py` (lite 16 · easy 18 · medium 18 · hard 12 · challenge 8) | exec (Pyodide) | Covers modules 1.02–1.05, 1.07–1.15 and 1.18. **Missing: 1.01 (printing/help), 1.06 (views/copies), 1.16 (strings/dates/structured/bits), 1.17 (file I/O).** |
+| 1 | NumPy | ✅ **all 18 modules live**: 277 templates in `generator/sections/s01_numpy/` (every module ≥ 2 templates per tier, 2 challenges each) | exec (Pyodide) | session 3 |
 | 2 | pandas | ⬜ | exec | |
 | 3 | PyTorch | ⬜ | **open problem** (see §2) | |
 | 4 | scikit-learn | ⬜ | exec | |
@@ -149,15 +175,17 @@ Legend: ✅ done · 🟡 partial · ⬜ not started
 | 11 | LaTeX | ⬜ | normalized / KaTeX | |
 | 12 | Docker | ⬜ | command / Dockerfile | |
 
-### What exists after session 1
+### What exists (after session 3)
 - `generator/`: core (tiers, registry, examples), grader (answer comparison, AST checks,
   hidden tests, clean tracebacks), themes (20 themes, 10 axes, 10 label sets), and the NumPy section.
-- `tests/`: 234 tests. Every template × 25 seeds must pass its own grader, obviously wrong
-  answers must fail, and variety is checked. Challenge solutions are cross-checked against brute force.
-- `docs/`: the working site. It has the topic list (count + medal slot, unlisted topics shown as
-  "soon"), a practice page (problem, Given, Example, CodeMirror editor, Run/Submit, console,
-  verdict), the Pyodide worker with a time limit (restarts on infinite loops), localStorage
-  state, and a placeholder medal plus a surprise modal at 250.
+- `tests/`: 882 tests. Every template × 25 seeds must pass its own grader, obviously wrong
+  answers must fail, and variety is checked. Every challenge (36) is cross-checked against a
+  brute force on 60 small inputs. `test_numpy_modules_complete` enforces ≥ 2 templates per tier.
+- `docs/`: the live site, three levels: topic list (`#/`: total solved + medal count per topic,
+  "soon" for topics with no live module) → topic page (`#/numpy`: its modules with per-module
+  count and medal) → practice (`#/numpy/1.05`: problem, Given, Example, editor, Run/Submit,
+  console, verdict). Pyodide worker with a time limit, per-module localStorage state, a
+  placeholder medal per module and the surprise modal at 250.
 - **Verified in a real browser (session 2)** with `scripts/e2e_check.py` (Playwright + bundled
   Chromium). In the Claude Code sandbox, run it with the sandbox disabled: the system Chrome
   has no network there, but Playwright's bundled Chromium does.
@@ -167,26 +195,29 @@ Legend: ✅ done · 🟡 partial · ⬜ not started
   fixes it and resubmits. Any other wrong submission shows ✗ and a **"New problem →"** button,
   which rerolls at the same number and tier.
 - **Run** (⌘/Ctrl+Enter) executes without grading. **Submit** is Shift+Enter.
-- The number shown on the practice page is the current question number (solved + 1). The home
-  page shows the solved count.
+- The number shown on the practice page is the current question number of that module
+  (solved + 1). The topic page shows each module's solved count and medal; the home page shows
+  the topic's total solved and how many module medals it holds (`×N`).
 - Refreshing does not reroll: the current seed and tier are saved, and so is a draft of the code.
 - Challenge prompts show the sample answer for the visible input, like Codeforces. Hidden tests
   are large (n = 2·10⁴), so quadratic solutions time out.
 
 ### Next steps (suggested order)
-1. Fill the NumPy gaps (1.01, 1.06, 1.16, 1.17).
-2. pandas section (`s02_pandas.py`; the exec checker already compares DataFrames and Series).
+1. pandas section (`s02_pandas.py`; the exec checker already compares DataFrames and Series).
    Add `"pandas"` to the topic's packages (already set in `docs/app.js`).
-3. SQL section (sqlite3 checker), then the `command` checker for Bash, Git and Docker.
-4. Decide the PyTorch / Hugging Face approach (§2 open problem).
-5. Medal art, then the style pass.
+2. SQL section (sqlite3 checker), then the `command` checker for Bash, Git and Docker.
+3. Decide the PyTorch / Hugging Face approach (§2 open problem).
+4. Medal art, then the style pass.
 
-A new section goes live once you register its templates, import the module in
-`generator/sections/__init__.py`, run `scripts/build.py`, and push to `main`. The topic list
-reads `build.json`.
+**Adding a section:** copy the `s01_numpy/` layout (`_common.py` with a `template(module, tier)` wrapper that
+fixes the section, one file per subsection), import the package in `generator/sections/__init__.py`, and give every
+subsection ≥ 1 template per tier (it goes live module by module). For each challenge add a brute
+force to `tests/test_challenges.py`. Then `scripts/build.py`, `pytest`, `scripts/e2e_check.py`, push.
 
 Other TODO:
-- ⬜ Medal art: a unique, cute medal image for each of the 12 topics (deferred by request).
+- ⬜ Medal art: a unique, cute medal image for each **subsection** (209 across the 12 topics;
+  deferred by request). The placeholder varies the colour per topic and the ribbon + number per module.
 - ⬜ Final visual style pass on the frontend.
 - ✅ GitHub Pages deploy (session 2): https://dxu-18.github.io/training-loop/
-- ⬜ Per-module coverage: every `###` module in COMP_GUIDE should own at least one template.
+- ✅ Per-module pages, counters and medals (session 3). 🟡 Content: NumPy 18/18 modules; the other
+  11 topics (191 modules) are listed as "soon".
