@@ -8,7 +8,7 @@
 // Titles and modules come from build.json (COMP_GUIDE).
 const TOPICS = [
   { id: "numpy", part: 1, mode: "python", packages: ["numpy"] },
-  { id: "pandas", part: 1, mode: "python", packages: ["numpy", "pandas"], extra: { "2.18": ["matplotlib", "jinja2"] } },
+  { id: "pandas", part: 1, mode: "python", packages: ["numpy", "pandas"], extra: { "2.03": ["jinja2"], "2.11": ["tzdata"], "2.18": ["matplotlib", "jinja2"] } },
   { id: "pytorch", part: 1, mode: "python", packages: ["numpy"] },
   { id: "sklearn", part: 1, mode: "python", packages: ["numpy", "scikit-learn"] },
   { id: "matplotlib", part: 1, mode: "python", packages: ["numpy", "matplotlib"] },

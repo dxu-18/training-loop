@@ -163,6 +163,14 @@ Decision: build a NumPy-backed `torch` (option (a) of the old open problem, exte
 - **Testing:** `tests/` run against torch-lite too (the `.venv` has no torch), and the Pyodide self-test grades
   every PyTorch template in the browser.
 
+### Guide coverage (session 6)
+"Add the missing syntax as much as possible": `scripts/guide_coverage.py` lists every API in a module's guide code and
+checks that some problem of that module uses it; **catalog templates** (`core.pick`, one API per problem, every item
+graded by `tests/test_catalogs.py` and by the Pyodide self-test) close the gaps. Now 100% of guide APIs are practised for
+NumPy (537), pandas (473) and PyTorch (855); browser-impossible names are listed with reasons in `EXCLUDED`, and
+`tests/test_coverage.py` keeps it at 100%. `scripts/diff_torch.py --torch-python <real-torch venv>` compares every
+deterministic PyTorch problem with real PyTorch (1,384 agree). Extra page packages: 2.03 jinja2, 2.11 tzdata.
+
 ### Open problem: Hugging Face in the browser
 Pyodide has no `transformers`. Options: extend the shim idea (a tiny tokenizer/pipeline layer over torch-lite),
 AST and pattern checks, or an optional "run locally" mode. **Not decided yet.**

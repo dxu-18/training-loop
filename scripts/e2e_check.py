@@ -174,7 +174,12 @@ try:
         pg.wait_for_function(f"{VERDICT}.length > 0", timeout=60000)
         check("Correct" in pg.inner_text(".verdict"), "pandas 2.13 reference solution is graded correct")
         pg.screenshot(path=f"{args.out}/pandas_practice.png", full_page=True)
-        selftest("pandas", skip="2.18")  # without matplotlib/jinja2, like every pandas page but 2.18
+        selftest("pandas", skip="2.03,2.11,2.18")  # the plain pandas pages (no extra packages)
+        for mod, why in (("2.03", "jinja2 for DataFrame.to_latex"), ("2.11", "tzdata for time zones")):
+            pg.goto(BASE + f"/#/pandas/{mod}")
+            pg.reload()
+            pg.wait_for_selector(".prompt", timeout=180000)
+            selftest("pandas", only=mod)  # this page also loads its extra package ({why})
         pg.goto(BASE + "/#/pandas/2.18")
         pg.wait_for_selector(".prompt", timeout=180000)
         pg.evaluate(SET_CODE, pg.evaluate("view.problem.solution"))

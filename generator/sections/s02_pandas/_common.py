@@ -140,3 +140,16 @@ def frame(rng: random.Random, n=(6, 9), nums: int = 2, group: bool = True, date:
 
 def threshold(rng: random.Random, vals: list, m) -> float:
     return T.threshold(rng, [v for v in vals if v == v], m)  # skip NaN
+
+
+# ---------------------------------------------------------------- catalogs
+# One API per problem, chosen with core.pick() (tests force every index). Item: (api, prompt, solution[, {options}]).
+
+def catalog(rng: random.Random, items: list, setup: str, intro: str = "", **kw) -> Problem:
+    from ...core import pick
+    item = pick(rng, items)
+    api, prompt, sol = item[:3]
+    opts = dict(item[3]) if len(item) > 3 else {}
+    req = opts.pop("require", [api] if api else [])
+    extra = opts.pop("setup", "")
+    return P(f"{intro} {prompt}".strip(), (setup + ("\n" + extra if extra else "")).strip(), sol, require=req, **{**kw, **opts})

@@ -82,6 +82,8 @@ def _reset_torch():
     torch._PROF.clear()
     torch.set_default_dtype(torch.float32)
     torch.set_printoptions(profile="default")
+    torch.use_deterministic_algorithms(False)
+    torch.set_float32_matmul_precision("highest")
     torch.distributed.destroy_process_group()
     torch.compiler.reset()
 
@@ -128,6 +130,8 @@ def _detach(value):
         return np.array(value)
     if isinstance(value, dict):
         return {k: _detach(v) for k, v in value.items()}
+    if isinstance(value, tuple) and hasattr(value, "_fields"):  # namedtuple, e.g. torch's (values, indices)
+        return type(value)(*(_detach(v) for v in value))
     if isinstance(value, (list, tuple)):
         return type(value)(_detach(v) for v in value)
     return value

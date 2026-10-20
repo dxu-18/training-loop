@@ -135,3 +135,18 @@ def challenge(title: str, story: str, setup: str, solution: str, tests: list[str
              f"tests up to these limits (time limit a few seconds), so aim for {speed}.\n\n"
              f"For the data shown, the answer is `{shown!r}`. Store your answer in `result`{answer_desc}.",
              setup, solution, tests=[HEADER + t for t in tests], timeout=12.0)
+
+
+# ---------------------------------------------------------------- catalogs
+# A catalog template practises many related APIs on shared random data: ONE item per problem, chosen with
+# core.pick() (tests force every index). Item: (api, prompt, solution[, {options}]); options may add `setup`
+# lines, `require` (default [api]), `tol`, `check_dtype`, `answer`, `post`.
+
+def catalog(rng: random.Random, items: list, setup: str, intro: str = "", **kw) -> Problem:
+    from ...core import pick
+    item = pick(rng, items)
+    api, prompt, sol = item[:3]
+    opts = dict(item[3]) if len(item) > 3 else {}
+    req = opts.pop("require", [api] if api else [])
+    extra = opts.pop("setup", "")
+    return P(f"{intro} {prompt}".strip(), (setup + ("\n" + extra if extra else "")).strip(), sol, require=req, **{**kw, **opts})

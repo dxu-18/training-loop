@@ -38,22 +38,31 @@ def self_test(section: str, seeds: int = 2, only: str = "", skip: str = "") -> s
     want = set(filter(None, only.split(",")))
     drop = set(filter(None, skip.split(",")))
     failures, count, timings = [], 0, []
+    runs = []
     for tpl in core.templates(section):
         if (want and tpl.module not in want) or tpl.module in drop:
             continue
-        for seed in range(seeds):
-            count += 1
-            try:
-                p = core.build(tpl, random.Random(seed).randrange(2**31)).to_dict()
-                t0 = time.perf_counter()
-                res = grader.grade(p, p["solution"])
-                timings.append((time.perf_counter() - t0, tpl.module, tpl.name, p["timeout"]))
-                if not res["correct"]:
-                    failures.append({"template": tpl.name, "module": tpl.module, "seed": seed,
-                                     "message": res["message"], "error": res["error"]})
-            except Exception as e:  # noqa: BLE001
-                failures.append({"template": tpl.name, "module": tpl.module, "seed": seed,
-                                 "message": "generation crashed", "error": repr(e)})
+        core._PICKED.clear()
+        core.build(tpl, 0)
+        n_items = core._PICKED[0] if core._PICKED else 0
+        runs += [(tpl, seed, None) for seed in range(seeds)]
+        runs += [(tpl, i, i) for i in range(n_items)]  # catalogs: every item once, too
+    for tpl, seed, item in runs:
+        count += 1
+        core._FORCE_ITEM[0] = item
+        try:
+            p = core.build(tpl, random.Random(seed).randrange(2**31)).to_dict()
+            t0 = time.perf_counter()
+            res = grader.grade(p, p["solution"])
+            timings.append((time.perf_counter() - t0, tpl.module, tpl.name, p["timeout"]))
+            if not res["correct"]:
+                failures.append({"template": tpl.name + (f"[{item}]" if item is not None else ""), "module": tpl.module,
+                                 "seed": seed, "message": res["message"], "error": res["error"]})
+        except Exception as e:  # noqa: BLE001
+            failures.append({"template": tpl.name, "module": tpl.module, "seed": seed,
+                             "message": "generation crashed", "error": repr(e)})
+        finally:
+            core._FORCE_ITEM[0] = None
     slow = sorted(timings, reverse=True)[:5]
     return json.dumps({"checked": count, "failures": failures,
                        "slowest": [{"seconds": round(t, 2), "module": m, "template": n, "limit": lim} for t, m, n, lim in slow]})

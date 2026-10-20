@@ -125,15 +125,20 @@ class Module:
         raise NotImplementedError(f'Module [{type(self).__name__}] is missing the required "forward" function')
 
     def __call__(self, *args, **kwargs):
-        for hook in list(self._forward_pre_hooks.values()):
+        for key, hook in list(self._forward_pre_hooks.items()):
+            if key in self.__dict__.get("_hook_kwargs", ()):
+                r = hook(self, args, kwargs)
+                if r is not None:
+                    args, kwargs = r
+                continue
             r = hook(self, args)
             if r is not None:
                 args = r if isinstance(r, tuple) else (r,)
         if self._backward_hooks:
             args = tuple(a if not isinstance(a, Tensor) or not a.requires_grad else a.view_as(a) for a in args)
         out = self.forward(*args, **kwargs)
-        for hook in list(self._forward_hooks.values()):
-            r = hook(self, args, out)
+        for key, hook in list(self._forward_hooks.items()):
+            r = hook(self, args, kwargs, out) if key in self.__dict__.get("_hook_kwargs", ()) else hook(self, args, out)
             if r is not None:
                 out = r
         if self._backward_hooks and isinstance(out, Tensor) and out.requires_grad:
@@ -151,15 +156,24 @@ class Module:
             out.register_hook(on_grad)
         return out
 
-    def register_forward_hook(self, hook, *, prepend=False, with_kwargs=False, always_call=False):
+    def _add_hook(self, store, hook, prepend, with_kwargs):
         key = object()
-        self._forward_hooks[key] = hook
-        return _Handle(self._forward_hooks, key)
+        if prepend:
+            items = list(store.items())
+            store.clear()
+            store[key] = hook
+            store.update(items)
+        else:
+            store[key] = hook
+        if with_kwargs:
+            self.__dict__.setdefault("_hook_kwargs", set()).add(key)
+        return _Handle(store, key)
+
+    def register_forward_hook(self, hook, *, prepend=False, with_kwargs=False, always_call=False):
+        return self._add_hook(self._forward_hooks, hook, prepend, with_kwargs)
 
     def register_forward_pre_hook(self, hook, *, prepend=False, with_kwargs=False):
-        key = object()
-        self._forward_pre_hooks[key] = hook
-        return _Handle(self._forward_pre_hooks, key)
+        return self._add_hook(self._forward_pre_hooks, hook, prepend, with_kwargs)
 
     def register_full_backward_hook(self, hook, prepend=False):
         key = object()
@@ -665,6 +679,8 @@ class _BatchNorm(Module):
         dims = (0,) + tuple(range(2, x.ndim))
         shape = (1, -1) + (1,) * (x.ndim - 2)
         if self.training:
+            if x.numel() // x.shape[1] <= 1:
+                raise ValueError(f"Expected more than 1 value per channel when training, got input size {x.shape}")
             mean = x.mean(dim=dims)
             var = x.var(dim=dims, unbiased=False)
             n = x.numel() / x.shape[1]
@@ -1005,6 +1021,12 @@ class TransformerEncoder(Module):
         for layer in self.layers:
             x = layer(x, src_mask=mask, src_key_padding_mask=src_key_padding_mask)
         return self.norm(x) if self.norm is not None else x
+
+
+from . import _more  # noqa: E402
+
+for _n in _more.EXPORTS:
+    globals()[_n] = getattr(_more, _n)
 
 
 def __getattr__(name):

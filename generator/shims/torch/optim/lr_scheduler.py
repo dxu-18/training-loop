@@ -119,6 +119,56 @@ class ConstantLR(LRScheduler):
         return base * (self.factor if t < self.total_iters else 1.0)
 
 
+class PolynomialLR(LRScheduler):
+    def __init__(self, optimizer, total_iters=5, power=1.0, last_epoch=-1):
+        self.total_iters, self.power = total_iters, power
+        super().__init__(optimizer, last_epoch)
+
+    def _lr(self, base, t, i):
+        return base * (1.0 - min(self.total_iters, t) / self.total_iters) ** self.power
+
+
+class CosineAnnealingWarmRestarts(LRScheduler):
+    def __init__(self, optimizer, T_0, T_mult=1, eta_min=0.0, last_epoch=-1):
+        if T_0 <= 0 or not isinstance(T_0, int):
+            raise ValueError(f"Expected positive integer T_0, but got {T_0}")
+        self.T_0, self.T_mult, self.eta_min = T_0, T_mult, eta_min
+        super().__init__(optimizer, last_epoch)
+
+    def _cycle(self, t):
+        if self.T_mult == 1:
+            return t % self.T_0, self.T_0
+        n = int(math.log(t / self.T_0 * (self.T_mult - 1) + 1, self.T_mult)) if t >= self.T_0 else 0
+        return t - self.T_0 * (self.T_mult ** n - 1) / (self.T_mult - 1), self.T_0 * self.T_mult ** n
+
+    def _lr(self, base, t, i):
+        cur, Ti = self._cycle(t)
+        return self.eta_min + (base - self.eta_min) * (1 + math.cos(math.pi * cur / Ti)) / 2
+
+
+class CyclicLR(LRScheduler):
+    def __init__(self, optimizer, base_lr, max_lr, step_size_up=2000, step_size_down=None, mode="triangular", gamma=1.0,
+                 last_epoch=-1, **kw):
+        for g in optimizer.param_groups:
+            g["lr"] = base_lr
+        self.base_lr_, self.max_lr_, self.up = base_lr, max_lr, step_size_up
+        self.down = step_size_down or step_size_up
+        self.mode, self.gamma = mode, gamma
+        super().__init__(optimizer, last_epoch)
+
+    def _lr(self, base, t, i):
+        total = self.up + self.down
+        cycle = math.floor(1 + t / total)
+        x = 1.0 + t / total - cycle
+        scale = x / (self.up / total) if x <= self.up / total else (x - 1) / (self.up / total - 1)
+        amp = (self.max_lr_ - self.base_lr_) * scale
+        if self.mode == "triangular2":
+            amp /= 2 ** (cycle - 1)
+        elif self.mode == "exp_range":
+            amp *= self.gamma ** t
+        return self.base_lr_ + amp
+
+
 class OneCycleLR(LRScheduler):
     def __init__(self, optimizer, max_lr, total_steps=None, epochs=None, steps_per_epoch=None, pct_start=0.3,
                  anneal_strategy="cos", div_factor=25.0, final_div_factor=1e4, three_phase=False, last_epoch=-1, **kw):

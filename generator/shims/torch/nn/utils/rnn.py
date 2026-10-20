@@ -12,3 +12,10 @@ def pad_sequence(sequences, batch_first=False, padding_value=0.0, padding_side="
         rows.append(torch.cat([s, fill] if padding_side == "right" else [fill, s]))
     out = torch.stack(rows)
     return out if batch_first else out.transpose(0, 1)
+
+
+def __getattr__(name):
+    from .. import _more
+    if name in ("pack_padded_sequence", "pad_packed_sequence", "pack_sequence", "PackedSequence"):
+        return getattr(_more, name)
+    raise AttributeError(name)

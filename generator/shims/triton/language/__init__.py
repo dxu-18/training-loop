@@ -228,7 +228,10 @@ def atomic_min(pointer, val, mask=None, sem=None, scope=None):
 # ---------------------------------------------------------------- math
 
 def _u(f):
-    return lambda x, *a, **k: _blk(f(_np(x), *a))
+    def g(x, *a, **k):
+        with np.errstate(all="ignore"):  # masked-out lanes may hold garbage; GPUs don't warn either
+            return _blk(f(_np(x), *a))
+    return g
 
 
 exp, log, sqrt, abs, sin, cos = (_u(np.exp), _u(np.log), _u(np.sqrt), _u(np.abs), _u(np.sin), _u(np.cos))

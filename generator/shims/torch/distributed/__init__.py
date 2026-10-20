@@ -22,6 +22,8 @@ def is_initialized():
 
 
 def init_process_group(backend=None, init_method=None, world_size=-1, rank=-1, **kwargs):
+    if _STATE["init"]:
+        raise ValueError("trying to initialize the default process group twice!")
     world = world_size if world_size > 0 else int(os.environ.get("WORLD_SIZE", 1))
     r = rank if rank >= 0 else int(os.environ.get("RANK", 0))
     if world != 1:

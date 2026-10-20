@@ -45,7 +45,13 @@ int16 = short = dtype("int16", _np.int16, False)
 int8 = dtype("int8", _np.int8, False)
 uint8 = dtype("uint8", _np.uint8, False)
 bool = dtype("bool", _np.bool_, False)
-_BY_NP = {d.np: d for d in (float32, float64, float16, int64, int32, int16, int8, uint8, bool)}
+complex64 = cfloat = dtype("complex64", _np.complex64, False)
+complex128 = cdouble = dtype("complex128", _np.complex128, False)
+for _d in (float32, float64, float16, bfloat16, int64, int32, int16, int8, uint8, bool, complex64, complex128):
+    _d.is_complex = _d.np.kind == "c"
+    _d.is_signed = _d.np.kind in "fic"
+_BY_NP = {d.np: d for d in (float32, float64, float16, int64, int32, int16, int8, uint8, bool, complex64, complex128)}
+strided, sparse_coo = "torch.strided", "torch.sparse_coo"
 contiguous_format, channels_last, preserve_format = "contiguous_format", "channels_last", "preserve_format"
 
 
@@ -88,9 +94,17 @@ class iinfo:
 
 
 def promote_types(a, b):
+    """PyTorch's rules: bool < integers < floats < complex; a float meeting an integer keeps the float's dtype."""
+    def cat(d):
+        return 3 if d.np.kind == "c" else 2 if d.is_floating_point else 0 if d is bool else 1
+    if cat(a) != cat(b):
+        hi, lo = (a, b) if cat(a) > cat(b) else (b, a)
+        if cat(hi) == 3 and cat(lo) == 2 and lo is float64:
+            return complex128
+        return hi
     if bfloat16 in (a, b):
         other = b if a is bfloat16 else a
-        return other if other in (float32, float64) else bfloat16
+        return other if other in (float32, float64, bfloat16) else float32  # bfloat16 + float16 -> float32
     return _BY_NP[_np.promote_types(a.np, b.np)]
 
 
@@ -235,6 +249,8 @@ def _new(data, dtype_=None):
         return a.astype(d)
     if a.dtype.kind == "f" and a.dtype == _np.float64:
         return a.astype(_np.float32)
+    if a.dtype == _np.complex128:
+        return a.astype(_np.complex64)
     if a.dtype.kind in "iu" and a.dtype != _np.uint8:
         return a.astype(_np.int64)
     if a.dtype.kind in "OUS":
@@ -246,6 +262,8 @@ def _promote(res, ops):
     """numpy promotes int/py-float math to float64; torch keeps the default float32."""
     if res.dtype == _np.float64 and not _b.any(isinstance(o, Tensor) and o._a.dtype == _np.float64 for o in ops):
         return res.astype(_np.float32)
+    if res.dtype == _np.complex128 and not _b.any(isinstance(o, Tensor) and o._a.dtype in (_np.complex128, _np.float64) for o in ops):
+        return res.astype(_np.complex64)
     return res
 
 
@@ -414,9 +432,14 @@ class Tensor:
         if a.dtype.kind == "f" and a.size:
             body = _np.array2string(a, separator=", ", formatter={"float_kind": _float_formatter(a)}, prefix="tensor(",
                                     threshold=1000, edgeitems=3)
+        elif a.dtype.kind == "c" and a.size:
+            fr, fi = _float_formatter(_np.real(a)), _float_formatter(_np.abs(_np.imag(a)))
+            cf = lambda v: f"{fr(v.real)}{'-' if v.imag < 0 else '+'}{fi(abs(v.imag)).strip()}j"  # noqa: E731
+            body = _np.array2string(a, separator=", ", formatter={"complex_kind": cf}, prefix="tensor(", threshold=1000,
+                                    edgeitems=3)
         else:
             body = _np.array2string(a, separator=", ", prefix="tensor(", threshold=1000, edgeitems=3)
-        extra = "" if self.dtype in (float32, int64, bool) else f", dtype={self.dtype}"
+        extra = "" if self.dtype in (float32, int64, bool, complex64) else f", dtype={self.dtype}"
         grad = ", requires_grad=True" if self.requires_grad and self.is_leaf else (", grad_fn=<LiteBackward>" if self.requires_grad else "")
         return f"tensor({body}{extra}{grad})"
 
@@ -675,7 +698,13 @@ class Tensor:
             _np.add.at(out, k, g)
             return out
 
-        return _make(self._a[k], [(self, back)], self._bf16)
+        if isinstance(k, tuple) and k and _b.all(isinstance(i, (_b.int, _np.integer)) for i in k) and len(k) == self.ndim:
+            view = self._a[k + (Ellipsis,)]  # a 0-d VIEW (plain a[i, j] would copy), like torch
+        elif isinstance(k, (_b.int, _np.integer)) and self.ndim == 1:
+            view = self._a[k, ...]
+        else:
+            view = self._a[k]
+        return _make(view, [(self, back)], self._bf16)
 
     # ---- arithmetic
     def _bin(self, o, fn, ga, gb, name):
@@ -765,7 +794,10 @@ class Tensor:
         return _const(o, self) @ self
 
     def _cmp(self, o, fn):
-        return _make(fn(self._a, _arr(o)))
+        b = _arr(o)
+        if not isinstance(o, Tensor) and b.ndim == 0 and self._a.dtype.kind == "f" and b.dtype.kind in "fiu":
+            b = b.astype(self._a.dtype)  # torch compares x > 1.1 in x's dtype (numpy would use float64)
+        return _make(fn(self._a, b))
 
     def __eq__(self, o):
         return self._cmp(o, _np.equal)
@@ -1421,6 +1453,8 @@ def _backprop_impl(root, seed):
         grads[id(t)] = g
         for p, fn in t._parents:
             pg = _np.asarray(fn(g))
+            if autograd._ANOMALY[0] and pg.dtype.kind in "fc" and _np.isnan(pg).any():
+                raise RuntimeError("Function 'LiteBackward0' returned nan values in its 0th output.")
             grads[id(p)] = pg if id(p) not in grads else grads[id(p)] + pg
             tensors[id(p)] = p
     return {tensors[i]: g for i, g in grads.items()}
@@ -1870,17 +1904,29 @@ def set_printoptions(precision=None, threshold=None, edgeitems=None, linewidth=N
         _PRINT["sci_mode"] = sci_mode
 
 
+_DETERMINISTIC = [False]
+
+
+def are_deterministic_algorithms_enabled():
+    return _DETERMINISTIC[0]
+
+
 def use_deterministic_algorithms(mode, warn_only=False):
+    _DETERMINISTIC[0] = _b.bool(mode)
     pass
+
+
+_MATMUL_PRECISION = ["highest"]
 
 
 def set_float32_matmul_precision(precision):
     if precision not in ("highest", "high", "medium"):
-        raise ValueError("precision must be 'highest', 'high' or 'medium'")
+        raise RuntimeError(f"Invalid precision {precision!r}: expected 'highest', 'high' or 'medium'")
+    _MATMUL_PRECISION[0] = precision
 
 
 def get_float32_matmul_precision():
-    return "highest"
+    return _MATMUL_PRECISION[0]
 
 
 def save(obj, f):
@@ -1919,5 +1965,5 @@ def __getattr__(name):
 from . import (_dynamo, amp, autograd, backends, compiler, cuda, distributed, library, linalg, nn, optim,  # noqa: E402,F401
                profiler, testing, utils)
 from .autograd import Function  # noqa: E402,F401
-from . import _extra, func  # noqa: E402,F401
+from . import _extra, _extra2, export, fft, func  # noqa: E402,F401
 from .library import ops  # noqa: E402,F401

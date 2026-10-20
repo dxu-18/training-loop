@@ -352,14 +352,21 @@ def cross_entropy(input, target, weight=None, ignore_index=-100, reduction="mean
         return nll
     C = input.shape[1]
     flat = logp.movedim(1, -1).reshape(-1, C) if logp.ndim > 2 else logp
-    keep = Tensor._wrap((_arr(target).reshape(-1) != ignore_index).astype(np.float32))
-    smooth = -flat.mean(dim=-1) * keep
+    t = _arr(target).reshape(-1)
+    keep_np = (t != ignore_index).astype(np.float32)
+    keep = Tensor._wrap(keep_np)
+    if weight is not None:  # PyTorch weights the smoothing term by class too
+        smooth = -(flat * weight[None, :]).sum(dim=-1) / C * keep
+        denom = float((_arr(weight)[np.where(t != ignore_index, t, 0)] * keep_np).sum())
+    else:
+        smooth = -flat.mean(dim=-1) * keep
+        denom = float(keep_np.sum())
     if reduction == "none":
         smooth_r = smooth.reshape(_arr(target).shape)
     elif reduction == "sum":
         smooth_r = smooth.sum()
     else:
-        smooth_r = smooth.sum() / keep.sum()
+        smooth_r = smooth.sum() / denom
     return (1 - label_smoothing) * nll + label_smoothing * smooth_r
 
 
