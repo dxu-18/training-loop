@@ -301,6 +301,399 @@ def dynamic_padding(ns):
     return best
 
 
+# ---------------------------------------------------------------- pandas 2.01 - 2.04
+
+@brute
+def asof_lookup(ns):
+    s, out = ns["s"], []
+    for q in ns["queries"].tolist():
+        earlier = [v for t, v in s.items() if t <= q]
+        out.append(earlier[-1] if earlier else np.nan)
+    return np.array(out, dtype=float)
+
+
+@brute
+def k_distinct_windows(ns):
+    x, K = ns["labels"].tolist(), ns["K"]
+    return sum(len(set(x[i:j])) <= K for i in range(len(x)) for j in range(i + 1, len(x) + 1))
+
+
+@brute
+def sparse_to_dense(ns):
+    import pandas as pd
+    cells = {}
+    for r, c, v in ns["updates"].values.tolist():
+        cells[(r, c)] = v
+    rows, cols = sorted({r for r, _ in cells}), sorted({c for _, c in cells})
+    return pd.DataFrame({c: [cells.get((r, c), np.nan) for r in rows] for c in cols}, index=rows, dtype=float)
+
+
+@brute
+def na_gap_budget(ns):
+    x, S = ns["x"].tolist(), ns["S"]
+    return max([j - i for i in range(len(x)) for j in range(i + 1, len(x) + 1)
+                if not any(v != v for v in x[i:j]) and sum(x[i:j]) <= S], default=0)
+
+
+@brute
+def chunked_distinct(ns):
+    import pandas as pd
+    users = pd.read_csv("events.csv")["user"].tolist()
+    k = ns["CHUNK"]
+    return [len(set(users[:end])) for end in range(k, len(users) + k, k)][: -(-len(users) // k)]
+
+
+@brute
+def log_percentiles(ns):
+    by = {}
+    for line in open("requests.log").read().splitlines():
+        parts = dict(p.split("=", 1) for p in line.split()[1:])
+        by.setdefault(parts["endpoint"], []).append(int(parts["ms"]))
+    return {ep: sorted(v)[math.ceil(0.95 * len(v)) - 1] for ep, v in by.items()}
+
+
+@brute
+def kth_pair_distance(ns):
+    a, k = ns["df"]["age"].tolist(), ns["k"]
+    return sorted(abs(a[i] - a[j]) for i in range(len(a)) for j in range(i + 1, len(a)))[k - 1]
+
+
+@brute
+def flip_equal_rows(ns):
+    rows = ns["flags"].values.tolist()
+    best = 0
+    for mask in itertools.product([0, 1], repeat=len(rows[0])):
+        best = max(best, sum(len({v ^ m for v, m in zip(r, mask)}) == 1 for r in rows))
+    return best
+
+
+# ---------------------------------------------------------------- pandas 2.05 - 2.08
+
+@brute
+def pareto_front(ns):
+    pts = list(zip(ns["df"]["acc"].tolist(), ns["df"]["speed"].tolist()))
+    return sum(not any(q[0] >= p[0] and q[1] >= p[1] and q != p for q in pts) for p in pts)
+
+
+@brute
+def range_count_queries(ns):
+    df = ns["df"]
+    return [int(((df["team"] == t) & df["score"].between(lo, hi)).sum())
+            for t, lo, hi in ns["queries"].itertuples(index=False)]
+
+
+@brute
+def range_add_updates(ns):
+    import pandas as pd
+    x = ns["df"]["x"].tolist()
+    for l_, r, d in ns["updates"].itertuples(index=False):
+        for i in range(l_, r + 1):
+            x[i] += d
+    return pd.Series(x, name="x")
+
+
+@brute
+def min_swaps_sort(ns):
+    v = ns["df"]["rank"].tolist()
+    swaps = 0
+    for i in range(len(v)):  # selection sort, counting real swaps
+        j = min(range(i, len(v)), key=v.__getitem__)
+        if j != i:
+            v[i], v[j] = v[j], v[i]
+            swaps += 1
+    return swaps
+
+
+@brute
+def nesting_chain(ns):
+    b = sorted(zip(ns["df"]["w"].tolist(), ns["df"]["h"].tolist()))
+    best = [1] * len(b)
+    for j in range(len(b)):
+        for i in range(j):
+            if b[i][0] < b[j][0] and b[i][1] < b[j][1]:
+                best[j] = max(best[j], best[i] + 1)
+    return max(best)
+
+
+@brute
+def make_unique_cost(ns):
+    v = sorted(ns["df"]["slot"].tolist())
+    lo, hi = v[0], v[-1] + len(v)
+    best = None
+    for targets in itertools.combinations(range(lo, hi), len(v)):
+        if all(t >= x for t, x in zip(targets, v)):
+            cost = sum(t - x for t, x in zip(targets, v))
+            best = cost if best is None else min(best, cost)
+    return best
+
+
+@brute
+def nearest_fill(ns):
+    import pandas as pd
+    v = ns["s"].tolist()
+    out = []
+    for i, x in enumerate(v):
+        if x == x:
+            out.append(x)
+            continue
+        for d in range(1, len(v)):
+            if i - d >= 0 and v[i - d] == v[i - d]:
+                out.append(v[i - d])
+                break
+            if i + d < len(v) and v[i + d] == v[i + d]:
+                out.append(v[i + d])
+                break
+    return pd.Series(out)
+
+
+@brute
+def largest_complete_block(ns):
+    ok = ns["df"].notna().to_numpy()
+    r, c = ok.shape
+    return max([(b - a) * (d - c0) for a in range(r) for b in range(a + 1, r + 1)
+                for c0 in range(c) for d in range(c0 + 1, c + 1) if ok[a:b, c0:d].all()], default=0)
+
+
+# ---------------------------------------------------------------- pandas 2.09 - 2.12
+
+@brute
+def alias_resolution(ns):
+    import pandas as pd
+    par = ns["parent"].to_dict()
+    out = []
+    for x in par:
+        for _ in range(len(par) + 1):
+            if par[x] == x:
+                break
+            x = par[x]
+        out.append(x if par[x] == x else -1)
+    return pd.Series(out, index=ns["parent"].index)
+
+
+@brute
+def tiered_cost(ns):
+    caps, rates = ns["tiers"]["up_to"].tolist(), ns["tiers"]["rate"].tolist()
+    total = 0
+    for u in ns["usage"].tolist():
+        for t in range(1, u + 1):  # price every token on its own
+            i = next((k for k, cap in enumerate(caps) if t <= cap), None)
+            total += rates[i] if i is not None else ns["last_rate"]
+    return total
+
+
+@brute
+def shortest_unique_prefix(ns):
+    import pandas as pd
+    w = ns["words"].tolist()
+    out = []
+    for i, word in enumerate(w):
+        others = w[:i] + w[i + 1:]
+        out.append(next((word[:k] for k in range(1, len(word) + 1)
+                         if not any(o.startswith(word[:k]) for o in others)), word))
+    return pd.Series(out)
+
+
+@brute
+def overlapping_counts(ns):
+    import pandas as pd
+    p = ns["pattern"]
+    return pd.Series([sum(t[i:i + len(p)] == p for i in range(len(t))) for t in ns["texts"].tolist()])
+
+
+@brute
+def sessionize(ns):
+    import pandas as pd
+    out = {}
+    for user, ts in ns["events"].groupby("user")["ts"]:
+        ts = sorted(ts)
+        out[user] = 1 + sum(b - a > pd.Timedelta(minutes=30) for a, b in zip(ts, ts[1:]))
+    return out
+
+
+@brute
+def longest_daily_streak(ns):
+    import pandas as pd
+    best = {}
+    for user, days in ns["log"].groupby("user")["day"]:
+        ds = set(days)
+        best[user] = max(next(k for k in range(1, 400) if d + pd.Timedelta(days=k) not in ds) for d in ds)
+    top = max(best.values())
+    return (min(u for u, v in best.items() if v == top), top)
+
+
+@brute
+def optimal_binning(ns):
+    v, k = sorted(ns["x"].tolist()), ns["k"]
+    best = None
+    for cuts in itertools.combinations(range(1, len(v)), k - 1):
+        b = [0, *cuts, len(v)]
+        cost = sum(sum((t - sum(v[i:j]) / (j - i)) ** 2 for t in v[i:j]) for i, j in zip(b, b[1:]))
+        best = cost if best is None else min(best, cost)
+    return round(best, 6)
+
+
+@brute
+def balanced_window(ns):
+    x = ns["labels"].tolist()
+    classes = set(x)
+    if len(classes) < 2:
+        return 0
+    return max([j - i for i in range(len(x)) for j in range(i + 1, len(x) + 1)
+                if len({x[i:j].count(c) for c in classes}) == 1], default=0)
+
+
+# ---------------------------------------------------------------- pandas 2.13 - 2.16
+
+@brute
+def pairs_within_d(ns):
+    rows = list(ns["df"][["team", "score"]].itertuples(index=False))
+    return sum(a.team == b.team and abs(a.score - b.score) <= ns["D"]
+               for i, a in enumerate(rows) for b in rows[i + 1:])
+
+
+@brute
+def entity_resolution(ns):
+    df = ns["df"]
+    n = len(df)
+    e, p = df["email"].tolist(), df["phone"].tolist()
+    seen, sizes = set(), []
+    for s0 in range(n):
+        if s0 in seen:
+            continue
+        stack, comp = [s0], 0
+        seen.add(s0)
+        while stack:
+            i = stack.pop()
+            comp += 1
+            for j in range(n):
+                if j not in seen and (e[i] == e[j] or p[i] == p[j]):
+                    seen.add(j)
+                    stack.append(j)
+        sizes.append(comp)
+    return (len(sizes), max(sizes))
+
+
+@brute
+def grid_max_path(ns):
+    c = ns["cells"]
+    grid = {(r, k): v for r, k, v in c[["row", "col", "value"]].itertuples(index=False)}
+    R, C = c["row"].max() + 1, c["col"].max() + 1
+
+    def walk(i, j):
+        if (i, j) == (R - 1, C - 1):
+            return grid[(i, j)]
+        options = []
+        if i + 1 < R:
+            options.append(walk(i + 1, j))
+        if j + 1 < C:
+            options.append(walk(i, j + 1))
+        return grid[(i, j)] + max(options)
+
+    return walk(0, 0)
+
+
+@brute
+def cooccurring_tags(ns):
+    docs = [set(t) for t in ns["docs"]["tags"]]
+    vocab = sorted(set().union(*docs))
+    counts = {(a, b): sum(a in d and b in d for d in docs) for a, b in itertools.combinations(vocab, 2)}
+    best = max(counts.values())
+    return (min(p for p, c in counts.items() if c == best), best)
+
+
+@brute
+def interval_lookup(ns):
+    sh = list(ns["shifts"].itertuples(index=False))
+    return [next((s.shift for s in sh if s.start <= t < s.end), None) for t in ns["events"]["t"].tolist()]
+
+
+@brute
+def join_size(ns):
+    L, R = ns["L"], ns["R"]
+    return (len(L.merge(R, on="key", how="inner")), len(L.merge(R, on="key", how="left")))
+
+
+@brute
+def count_windows_mean_ge(ns):
+    x, t = ns["s"].tolist(), ns["t"]
+    return sum(sum(x[i:j]) >= t * (j - i) for i in range(len(x)) for j in range(i + 1, len(x) + 1))
+
+
+@brute
+def longest_window_mean_ge(ns):
+    x, t = ns["s"].tolist(), ns["t"]
+    return max([j - i for i in range(len(x)) for j in range(i + 1, len(x) + 1) if sum(x[i:j]) >= t * (j - i)], default=0)
+
+
+# ---------------------------------------------------------------- pandas 2.17 - 2.19
+
+@brute
+def grid_components(ns):
+    cells = {(int(r), int(c)) for r, c in ns["active"].index}
+    R, C = max(r for r, _ in cells) + 2, max(c for _, c in cells) + 2
+    label, sizes = {}, []
+    for r in range(R):  # dense flood fill over the bounding box
+        for c in range(C):
+            if (r, c) in cells and (r, c) not in label:
+                label[(r, c)] = len(sizes)
+                todo, size = [(r, c)], 0
+                while todo:
+                    i, j = todo.pop()
+                    size += 1
+                    for nb in ((i + 1, j), (i - 1, j), (i, j + 1), (i, j - 1)):
+                        if nb in cells and nb not in label:
+                            label[nb] = len(sizes)
+                            todo.append(nb)
+                sizes.append(size)
+    return (len(sizes), max(sizes))
+
+
+@brute
+def subtree_sums(ns):
+    import pandas as pd
+    par, cost = ns["tree"]["parent"].tolist(), ns["tree"]["cost"].tolist()
+    total = [0] * len(par)
+    for v in range(len(par)):  # add every node's cost to itself and all its ancestors
+        u = v
+        while u != -1:
+            total[u] += cost[v]
+            u = par[u]
+    return pd.Series(total, index=ns["tree"].index)
+
+
+@brute
+def nice_ticks(ns):
+    out = []
+    for lo, hi, m in ns["ranges"].itertuples(index=False):
+        step = next(s for s in itertools.chain.from_iterable((1 * 10**e, 2 * 10**e, 5 * 10**e) for e in range(20))
+                    if len(range(math.floor(lo / s) * s, math.ceil(hi / s) * s + 1, s)) <= m)
+        out.append(step)
+    return out
+
+
+@brute
+def max_visible_labels(ns):
+    boxes = list(zip(ns["labels"]["left"], ns["labels"]["right"]))
+    best = 0
+    for mask in range(1 << len(boxes)):
+        chosen = sorted(b for i, b in enumerate(boxes) if mask >> i & 1)
+        if all(a[1] <= b[0] for a, b in zip(chosen, chosen[1:])):
+            best = max(best, len(chosen))
+    return best
+
+
+@brute
+def pairs_sum_divisible(ns):
+    x, k = ns["s"].tolist(), ns["k"]
+    return sum((x[i] + x[j]) % k == 0 for i in range(len(x)) for j in range(i + 1, len(x)))
+
+
+@brute
+def max_subarray_mod(ns):
+    x, m = ns["s"].tolist(), ns["m"]
+    return max(sum(x[i:j]) % m for i in range(len(x)) for j in range(i + 1, len(x) + 1))
+
+
 # ---------------------------------------------------------------- shared by later modules
 
 @brute
@@ -374,7 +767,24 @@ def test_every_challenge_has_a_brute_force():
 
 
 def _same(got, expected):
+    import pandas as pd
+    if isinstance(expected, pd.DataFrame):
+        try:
+            pd.testing.assert_frame_equal(got, expected, check_dtype=False, check_names=False, check_index_type=False,
+                                          check_column_type=False)
+            return True
+        except AssertionError:
+            return False
+    if isinstance(expected, pd.Series):
+        try:
+            pd.testing.assert_series_equal(pd.Series(got), expected, check_dtype=False, check_names=False,
+                                           check_index_type=False)
+            return True
+        except AssertionError:
+            return False
     if isinstance(expected, np.ndarray):
+        if expected.dtype.kind == "f":
+            return np.allclose(np.asarray(got, dtype=float), expected, equal_nan=True)
         return np.array_equal(np.asarray(got), expected)
     if isinstance(expected, float):
         return math.isclose(got, expected, rel_tol=1e-9, abs_tol=1e-9)

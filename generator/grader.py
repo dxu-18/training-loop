@@ -21,6 +21,9 @@ import shutil
 import sys
 import tempfile
 import traceback
+import warnings
+
+os.environ.setdefault("MPLBACKEND", "Agg")  # headless plotting (Pyodide runs us in a Web Worker)
 
 USER_FILE = "<answer>"
 STDOUT = "<stdout>"
@@ -70,7 +73,7 @@ def _answer(problem: dict, ns: dict, last, stdout: str):
 
 @contextlib.contextmanager
 def _sandbox():
-    """Run in a fresh temp directory and restore NumPy's global state afterwards."""
+    """Run in a fresh temp directory; afterwards restore NumPy/pandas options and close figures."""
     try:
         import numpy as np
         saved = (np.get_printoptions(), np.geterr())
@@ -87,6 +90,14 @@ def _sandbox():
         if saved:
             np.set_printoptions(**saved[0])
             np.seterr(**saved[1])
+        if (pd := sys.modules.get("pandas")) is not None:
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                # only display.* (what user code may set): resetting "all" also resets the plotting
+                # options, whose callback imports matplotlib, which pages without plots don't load
+                pd.reset_option("^display\\.")
+        if (plt := sys.modules.get("matplotlib.pyplot")) is not None:
+            plt.close("all")
 
 
 def _detach(value):
@@ -138,6 +149,7 @@ def _run_once(problem: dict, code: str, setup: str, filename: str):
         with contextlib.redirect_stdout(buf):
             last = _exec(code, ns, filename)
         if problem.get("post"):
+            ns["_"] = ns.get("result") if last is _MISSING or last is None else last  # the answer, for the check
             try:
                 with contextlib.redirect_stdout(io.StringIO()):
                     value = _exec(problem["post"], ns, "<check>")
@@ -166,16 +178,30 @@ def compare(exp, got, tol: float = 1e-6, check_dtype: bool = False, path: str = 
     np = sys.modules.get("numpy")
     pd = sys.modules.get("pandas")
 
-    if pd is not None and isinstance(exp, (pd.DataFrame, pd.Series, pd.Index)):
-        if not isinstance(got, type(exp)):
-            return f"{path} should be a {type(exp).__name__}, got {type(got).__name__}"
-        fn = {pd.DataFrame: pd.testing.assert_frame_equal,
-              pd.Series: pd.testing.assert_series_equal}.get(type(exp), pd.testing.assert_index_equal)
-        try:
-            fn(exp, got, check_dtype=check_dtype, check_exact=False, rtol=tol, atol=tol)
-        except AssertionError as e:
-            return f"{path} differs: " + str(e).strip().splitlines()[0]
-        return None
+    if pd is not None:
+        if isinstance(exp, pd.api.extensions.ExtensionArray):  # e.g. pd.array(..., dtype="Int64"), Categorical
+            if not isinstance(got, pd.api.extensions.ExtensionArray) and not hasattr(got, "__len__"):
+                return f"{path} should be an array, got {type(got).__name__}"
+            exp, got = pd.Series(exp), pd.Series(got)
+        if isinstance(exp, (pd.DataFrame, pd.Series, pd.Index)):
+            kind = "DataFrame" if isinstance(exp, pd.DataFrame) else "Series" if isinstance(exp, pd.Series) else "Index"
+            if not isinstance(got, (pd.DataFrame if kind == "DataFrame" else pd.Series if kind == "Series" else pd.Index)):
+                return f"{path} should be a {kind}, got {type(got).__name__}"
+            loose = dict(check_exact=False, rtol=tol, atol=tol, check_names=False)
+            try:
+                if kind == "Index":
+                    pd.testing.assert_index_equal(exp, got, exact=False, **loose)
+                else:
+                    fn = pd.testing.assert_frame_equal if kind == "DataFrame" else pd.testing.assert_series_equal
+                    extra = dict(check_column_type=False) if kind == "DataFrame" else {}
+                    fn(exp, got, check_dtype=check_dtype, check_index_type=False, check_freq=False,
+                       **extra, **loose)
+            except AssertionError as e:
+                lines = [ln for ln in str(e).strip().splitlines() if ln.strip()]
+                return f"{path} differs: " + " ".join(lines[:2])[:300]
+            return None
+        if exp is pd.NA or exp is pd.NaT:
+            return None if got is exp or (got is not None and pd.isna(got) is True) else f"{path} should be missing ({exp})"
 
     if np is not None and isinstance(exp, np.ndarray) and exp.ndim > 0:
         if not isinstance(got, np.ndarray):

@@ -16,7 +16,8 @@ NUMPY_MODULES = [f"1.{i:02d}" for i in range(1, 19)]
 
 @pytest.mark.parametrize("tpl", ALL, ids=IDS)
 def test_reference_passes(tpl):
-    for seed in SEEDS:
+    # challenges also run large hidden tests, and test_challenges.py checks them against brute force
+    for seed in (range(6) if tpl.tier == "challenge" else SEEDS):
         p = build(tpl, seed).to_dict()
         res = grade(p, p["solution"])
         assert res["correct"], f"seed {seed}: {res}\n{p['prompt']}\n{p['setup']}\n{p['solution']}"
@@ -35,6 +36,13 @@ def test_variety(tpl):
     """Different seeds should give different problems."""
     seen = {build(tpl, s).prompt + build(tpl, s).setup for s in range(12)}
     assert len(seen) >= 4
+
+
+def test_pandas_modules_complete():
+    assert modules("pandas") == [f"2.{i:02d}" for i in range(1, 20)]
+    for m in modules("pandas"):
+        for tier in TIERS:
+            assert len(templates("pandas", m, tier)) >= 2, (m, tier)
 
 
 def test_numpy_modules_complete():

@@ -4,10 +4,11 @@
 //   #/<topic>/<module> one-problem-at-a-time practice; every module has its own counter and medal
 "use strict";
 
-// Per-topic editor mode and Pyodide packages. Titles and modules come from build.json (COMP_GUIDE).
+// Per-topic editor mode and Pyodide packages (`extra`: heavy packages only some modules need).
+// Titles and modules come from build.json (COMP_GUIDE).
 const TOPICS = [
   { id: "numpy", part: 1, mode: "python", packages: ["numpy"] },
-  { id: "pandas", part: 1, mode: "python", packages: ["numpy", "pandas"] },
+  { id: "pandas", part: 1, mode: "python", packages: ["numpy", "pandas"], extra: { "2.18": ["matplotlib", "jinja2"] } },
   { id: "pytorch", part: 1, mode: "python", packages: ["numpy"] },
   { id: "sklearn", part: 1, mode: "python", packages: ["numpy", "scikit-learn"] },
   { id: "matplotlib", part: 1, mode: "python", packages: ["numpy", "matplotlib"] },
@@ -235,7 +236,7 @@ async function renderPractice(topic, mod, topicTitle) {
   $(".next").onclick = () => loadProblem();
 
   if (!py) py = new Py();
-  try { await py.init(topic.packages); }
+  try { await py.init([...topic.packages, ...((topic.extra || {})[mod.id] || [])]); }
   catch (e) { $(".problem").innerHTML = `<div class="loading">Couldn't start Python: ${esc(e.message)}</div>`; return; }
   await loadProblem();
 }

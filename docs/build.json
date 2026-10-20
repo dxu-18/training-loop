@@ -1,5 +1,5 @@
 {
- "hash": "1e9a0dd7d3ea",
+ "hash": "8eb490672f25",
  "topics": {
   "numpy": {
    "title": "NumPy",
@@ -228,229 +228,229 @@
     {
      "id": "2.01",
      "title": "Setup, options & core objects",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 3,
+      "easy": 3,
+      "medium": 3,
+      "hard": 2,
+      "challenge": 2
      }
     },
     {
      "id": "2.02",
      "title": "Creating DataFrames & dtypes",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 3,
+      "medium": 3,
+      "hard": 2,
+      "challenge": 2
      }
     },
     {
      "id": "2.03",
      "title": "Reading & writing data",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 3,
+      "medium": 4,
+      "hard": 3,
+      "challenge": 2
      }
     },
     {
      "id": "2.04",
      "title": "Inspecting data",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 3,
+      "medium": 4,
+      "hard": 3,
+      "challenge": 2
      }
     },
     {
      "id": "2.05",
      "title": "Selecting & filtering",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 3,
+      "medium": 3,
+      "hard": 3,
+      "challenge": 2
      }
     },
     {
      "id": "2.06",
      "title": "Adding, modifying & removing columns",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 3,
+      "medium": 4,
+      "hard": 3,
+      "challenge": 2
      }
     },
     {
      "id": "2.07",
      "title": "Sorting, ranking & duplicates",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 3,
+      "medium": 3,
+      "hard": 3,
+      "challenge": 2
      }
     },
     {
      "id": "2.08",
      "title": "Missing data",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 3,
+      "medium": 4,
+      "hard": 3,
+      "challenge": 2
      }
     },
     {
      "id": "2.09",
      "title": "Applying functions",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 3,
+      "medium": 4,
+      "hard": 3,
+      "challenge": 2
      }
     },
     {
      "id": "2.10",
      "title": "String methods (.str)",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 3,
+      "medium": 4,
+      "hard": 3,
+      "challenge": 2
      }
     },
     {
      "id": "2.11",
      "title": "Dates, times & time series",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 3,
+      "medium": 4,
+      "hard": 3,
+      "challenge": 2
      }
     },
     {
      "id": "2.12",
      "title": "Categoricals & binning",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 3,
+      "medium": 4,
+      "hard": 3,
+      "challenge": 2
      }
     },
     {
      "id": "2.13",
      "title": "GroupBy (split-apply-combine)",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 3,
+      "medium": 4,
+      "hard": 3,
+      "challenge": 2
      }
     },
     {
      "id": "2.14",
      "title": "Reshaping",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 3,
+      "medium": 4,
+      "hard": 3,
+      "challenge": 2
      }
     },
     {
      "id": "2.15",
      "title": "Combining frames",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 3,
+      "medium": 4,
+      "hard": 3,
+      "challenge": 2
      }
     },
     {
      "id": "2.16",
      "title": "Window functions",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 3,
+      "medium": 4,
+      "hard": 3,
+      "challenge": 2
      }
     },
     {
      "id": "2.17",
      "title": "MultiIndex",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 3,
+      "medium": 4,
+      "hard": 3,
+      "challenge": 2
      }
     },
     {
      "id": "2.18",
      "title": "Plotting & styling",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 3,
+      "medium": 4,
+      "hard": 3,
+      "challenge": 2
      }
     },
     {
      "id": "2.19",
      "title": "Performance & handing data to models",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 3,
+      "medium": 4,
+      "hard": 3,
+      "challenge": 2
      }
     }
    ]

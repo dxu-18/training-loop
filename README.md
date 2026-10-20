@@ -7,7 +7,8 @@ Matplotlib, Hugging Face) and developer tools (Bash, Git, Vim, SQL, LaTeX, Docke
 
 Every topic is split into its COMP_GUIDE subsections (NumPy has 18), and each subsection is its own
 page with its own counter, a medal at 250, and endless randomly generated questions that get harder
-as you go. Your code runs in the browser (Pyodide), so there is nothing to install. Topics come from [COMP_GUIDE.md](COMP_GUIDE.md); the design and roadmap are in
+as you go. Your code runs in the browser (Pyodide), so there is nothing to install. Live now: NumPy and
+pandas; the other topics are listed as "soon". Topics come from [COMP_GUIDE.md](COMP_GUIDE.md); the design and roadmap are in
 [PROJECT_SPEC.md](PROJECT_SPEC.md).
 
 ## Develop

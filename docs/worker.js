@@ -33,7 +33,7 @@ const commands = {
   run: ({ problem, code }) => JSON.parse(api.run(JSON.stringify(problem), code)),
   grade: ({ problem, code }) => JSON.parse(api.grade(JSON.stringify(problem), code)),
   // grade every template's own solution inside Pyodide (used by scripts/e2e_check.py)
-  selftest: ({ section, seeds }) => JSON.parse(api.self_test(section, seeds ?? 2)),
+  selftest: ({ section, seeds, only, skip }) => JSON.parse(api.self_test(section, seeds ?? 2, only ?? "", skip ?? "")),
 };
 
 self.onmessage = async ({ data: { id, cmd, args } }) => {
