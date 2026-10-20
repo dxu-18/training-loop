@@ -1,12 +1,2405 @@
 {
-  "hash": "de33e30fca25",
-  "sections": {
-    "numpy": {
-      "lite": 16,
-      "easy": 18,
-      "medium": 18,
-      "hard": 12,
-      "challenge": 8
+ "hash": "1e9a0dd7d3ea",
+ "topics": {
+  "numpy": {
+   "title": "NumPy",
+   "modules": [
+    {
+     "id": "1.01",
+     "title": "Setup, printing & help",
+     "live": true,
+     "templates": {
+      "lite": 3,
+      "easy": 3,
+      "medium": 3,
+      "hard": 2,
+      "challenge": 2
+     }
+    },
+    {
+     "id": "1.02",
+     "title": "Creating arrays",
+     "live": true,
+     "templates": {
+      "lite": 5,
+      "easy": 4,
+      "medium": 4,
+      "hard": 3,
+      "challenge": 2
+     }
+    },
+    {
+     "id": "1.03",
+     "title": "Random numbers",
+     "live": true,
+     "templates": {
+      "lite": 2,
+      "easy": 3,
+      "medium": 4,
+      "hard": 4,
+      "challenge": 2
+     }
+    },
+    {
+     "id": "1.04",
+     "title": "Attributes, dtypes & casting",
+     "live": true,
+     "templates": {
+      "lite": 3,
+      "easy": 3,
+      "medium": 3,
+      "hard": 3,
+      "challenge": 2
+     }
+    },
+    {
+     "id": "1.05",
+     "title": "Indexing & slicing",
+     "live": true,
+     "templates": {
+      "lite": 3,
+      "easy": 4,
+      "medium": 6,
+      "hard": 3,
+      "challenge": 2
+     }
+    },
+    {
+     "id": "1.06",
+     "title": "Views, copies & memory layout",
+     "live": true,
+     "templates": {
+      "lite": 2,
+      "easy": 3,
+      "medium": 4,
+      "hard": 3,
+      "challenge": 2
+     }
+    },
+    {
+     "id": "1.07",
+     "title": "Reshaping & moving axes",
+     "live": true,
+     "templates": {
+      "lite": 2,
+      "easy": 3,
+      "medium": 4,
+      "hard": 3,
+      "challenge": 2
+     }
+    },
+    {
+     "id": "1.08",
+     "title": "Joining, splitting, repeating & padding",
+     "live": true,
+     "templates": {
+      "lite": 2,
+      "easy": 3,
+      "medium": 4,
+      "hard": 3,
+      "challenge": 2
+     }
+    },
+    {
+     "id": "1.09",
+     "title": "Broadcasting",
+     "live": true,
+     "templates": {
+      "lite": 2,
+      "easy": 3,
+      "medium": 4,
+      "hard": 4,
+      "challenge": 2
+     }
+    },
+    {
+     "id": "1.10",
+     "title": "Elementwise math & ufuncs",
+     "live": true,
+     "templates": {
+      "lite": 3,
+      "easy": 3,
+      "medium": 3,
+      "hard": 3,
+      "challenge": 2
+     }
+    },
+    {
+     "id": "1.11",
+     "title": "Reductions & statistics",
+     "live": true,
+     "templates": {
+      "lite": 2,
+      "easy": 4,
+      "medium": 5,
+      "hard": 3,
+      "challenge": 2
+     }
+    },
+    {
+     "id": "1.12",
+     "title": "Comparisons, logic & missing values",
+     "live": true,
+     "templates": {
+      "lite": 2,
+      "easy": 4,
+      "medium": 3,
+      "hard": 3,
+      "challenge": 2
+     }
+    },
+    {
+     "id": "1.13",
+     "title": "Sorting, searching, sets & counting",
+     "live": true,
+     "templates": {
+      "lite": 3,
+      "easy": 4,
+      "medium": 5,
+      "hard": 3,
+      "challenge": 2
+     }
+    },
+    {
+     "id": "1.14",
+     "title": "Linear algebra & einsum",
+     "live": true,
+     "templates": {
+      "lite": 2,
+      "easy": 3,
+      "medium": 5,
+      "hard": 4,
+      "challenge": 2
+     }
+    },
+    {
+     "id": "1.15",
+     "title": "FFT, polynomials & signal helpers",
+     "live": true,
+     "templates": {
+      "lite": 3,
+      "easy": 3,
+      "medium": 3,
+      "hard": 4,
+      "challenge": 2
+     }
+    },
+    {
+     "id": "1.16",
+     "title": "Strings, dates, structured arrays & bits",
+     "live": true,
+     "templates": {
+      "lite": 2,
+      "easy": 4,
+      "medium": 4,
+      "hard": 3,
+      "challenge": 2
+     }
+    },
+    {
+     "id": "1.17",
+     "title": "File I/O",
+     "live": true,
+     "templates": {
+      "lite": 2,
+      "easy": 3,
+      "medium": 4,
+      "hard": 4,
+      "challenge": 2
+     }
+    },
+    {
+     "id": "1.18",
+     "title": "Vectorized ML patterns & testing",
+     "live": true,
+     "templates": {
+      "lite": 2,
+      "easy": 3,
+      "medium": 5,
+      "hard": 8,
+      "challenge": 2
+     }
     }
+   ]
+  },
+  "pandas": {
+   "title": "pandas",
+   "modules": [
+    {
+     "id": "2.01",
+     "title": "Setup, options & core objects",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "2.02",
+     "title": "Creating DataFrames & dtypes",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "2.03",
+     "title": "Reading & writing data",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "2.04",
+     "title": "Inspecting data",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "2.05",
+     "title": "Selecting & filtering",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "2.06",
+     "title": "Adding, modifying & removing columns",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "2.07",
+     "title": "Sorting, ranking & duplicates",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "2.08",
+     "title": "Missing data",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "2.09",
+     "title": "Applying functions",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "2.10",
+     "title": "String methods (.str)",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "2.11",
+     "title": "Dates, times & time series",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "2.12",
+     "title": "Categoricals & binning",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "2.13",
+     "title": "GroupBy (split-apply-combine)",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "2.14",
+     "title": "Reshaping",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "2.15",
+     "title": "Combining frames",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "2.16",
+     "title": "Window functions",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "2.17",
+     "title": "MultiIndex",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "2.18",
+     "title": "Plotting & styling",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "2.19",
+     "title": "Performance & handing data to models",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    }
+   ]
+  },
+  "pytorch": {
+   "title": "PyTorch",
+   "modules": [
+    {
+     "id": "3.01",
+     "title": "Tensors",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "3.02",
+     "title": "Broadcasting & shape changes",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "3.03",
+     "title": "Autograd, gradient descent & backprop",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "3.04",
+     "title": "Dataset & DataLoader",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "3.05",
+     "title": "MLP training: modules, losses, optimizers & the loop",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "3.06",
+     "title": "Custom autograd Functions",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "3.07",
+     "title": "Memory, strides & contiguity",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "3.08",
+     "title": "Attention",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "3.09",
+     "title": "Transformer block",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "3.10",
+     "title": "Hooks & debugging",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "3.11",
+     "title": "KV cache",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "3.12",
+     "title": "LoRA layer",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "3.13",
+     "title": "Automatic mixed precision (AMP)",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "3.14",
+     "title": "Profiler & benchmarking",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "3.15",
+     "title": "Triton kernels & C++ extensions",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "3.16",
+     "title": "Distributed Data Parallel (DDP)",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "3.17",
+     "title": "FSDP & checkpointing",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "3.18",
+     "title": "torch.compile",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "3.19",
+     "title": "DPO loss",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    }
+   ]
+  },
+  "sklearn": {
+   "title": "scikit-learn",
+   "modules": [
+    {
+     "id": "4.01",
+     "title": "The estimator API",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "4.02",
+     "title": "Datasets",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "4.03",
+     "title": "Splitting & cross-validation",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "4.04",
+     "title": "Scaling & feature transforms",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "4.05",
+     "title": "Encoding categories & imputing missing values",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "4.06",
+     "title": "Pipelines & ColumnTransformer",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "4.07",
+     "title": "Feature selection",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "4.08",
+     "title": "Linear models",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "4.09",
+     "title": "SVMs, nearest neighbours & naive Bayes",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "4.10",
+     "title": "Trees & ensembles",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "4.11",
+     "title": "Clustering & mixture models",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "4.12",
+     "title": "Dimensionality reduction & embeddings",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "4.13",
+     "title": "Classification metrics",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "4.14",
+     "title": "Regression, clustering & distance metrics",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "4.15",
+     "title": "Hyperparameter search",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "4.16",
+     "title": "Probability calibration & decision thresholds",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "4.17",
+     "title": "Model inspection & built-in plots",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "4.18",
+     "title": "Text features",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "4.19",
+     "title": "Outliers, multi-output, semi-supervised & other models",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "4.20",
+     "title": "Custom estimators, persistence & configuration",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    }
+   ]
+  },
+  "matplotlib": {
+   "title": "Matplotlib",
+   "modules": [
+    {
+     "id": "5.01",
+     "title": "Setup, backends & the two interfaces",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "5.02",
+     "title": "Figures, subplots & layouts",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "5.03",
+     "title": "Line & scatter plots",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "5.04",
+     "title": "Bars, histograms & distributions",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "5.05",
+     "title": "Areas, error bars, reference lines & spans",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "5.06",
+     "title": "Images, heatmaps, contours & vector fields",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "5.07",
+     "title": "Pie, polar & 3D",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "5.08",
+     "title": "Titles, labels, limits, scales & ticks",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "5.09",
+     "title": "Legends, annotations, text & math",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "5.10",
+     "title": "Colors, colormaps, norms & colorbars",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "5.11",
+     "title": "Styles & rcParams",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "5.12",
+     "title": "Saving & exporting",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "5.13",
+     "title": "Patches, collections & coordinate systems",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "5.14",
+     "title": "Animation & live-updating plots",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "5.15",
+     "title": "ML visualization recipes",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    }
+   ]
+  },
+  "huggingface": {
+   "title": "Hugging Face",
+   "modules": [
+    {
+     "id": "6.01",
+     "title": "The ecosystem at a glance",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "6.02",
+     "title": "The Hub: auth, download, upload & cache",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "6.03",
+     "title": "Pipelines",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "6.04",
+     "title": "Tokenizers & chat templates",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "6.05",
+     "title": "Models & configs",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "6.06",
+     "title": "Text generation",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "6.07",
+     "title": "Datasets",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "6.08",
+     "title": "Trainer & TrainingArguments",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "6.09",
+     "title": "Custom loops with Accelerate",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "6.10",
+     "title": "PEFT: LoRA & QLoRA",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "6.11",
+     "title": "TRL: SFT, DPO & GRPO",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "6.12",
+     "title": "Evaluate, safetensors, embeddings & diffusion",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "6.13",
+     "title": "Inspecting & visualizing models",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    }
+   ]
+  },
+  "bash": {
+   "title": "Bash & the command line",
+   "modules": [
+    {
+     "id": "7.01",
+     "title": "Shell basics & getting help",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "7.02",
+     "title": "Navigating & managing files",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "7.03",
+     "title": "Viewing & comparing files",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "7.04",
+     "title": "Permissions, archives & disk usage",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "7.05",
+     "title": "Finding files & searching text",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "7.06",
+     "title": "Text processing: cut, sort, uniq, tr, sed, awk, jq",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "7.07",
+     "title": "Pipes & redirection",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "7.08",
+     "title": "Variables, quoting & expansion",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "7.09",
+     "title": "Arrays & arithmetic",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "7.10",
+     "title": "Conditionals & loops",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "7.11",
+     "title": "Functions & scripts",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "7.12",
+     "title": "Processes & jobs",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "7.13",
+     "title": "Environment, PATH & config files",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "7.14",
+     "title": "Remote work: ssh, scp, rsync, curl & tmux",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "7.15",
+     "title": "Python environments",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "7.16",
+     "title": "ML workflow one-liners",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "7.17",
+     "title": "Keyboard shortcuts & history",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    }
+   ]
+  },
+  "git": {
+   "title": "Git & GitHub",
+   "modules": [
+    {
+     "id": "8.01",
+     "title": "Setup & configuration",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "8.02",
+     "title": "Creating repositories & .gitignore",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "8.03",
+     "title": "The daily loop: status, add, commit",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "8.04",
+     "title": "History & diffs",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "8.05",
+     "title": "Branches",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "8.06",
+     "title": "Merging & resolving conflicts",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "8.07",
+     "title": "Rebasing & rewriting history",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "8.08",
+     "title": "Remotes: fetch, pull, push & forks",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "8.09",
+     "title": "Stash, tags & cherry-pick",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "8.10",
+     "title": "Undoing things",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "8.11",
+     "title": "Debugging & search",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "8.12",
+     "title": "Advanced: worktrees, submodules, LFS, hooks & history surgery",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "8.13",
+     "title": "GitHub: gh CLI, pull requests, Actions & Pages",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "8.14",
+     "title": "Git for ML projects & commit conventions",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    }
+   ]
+  },
+  "vim": {
+   "title": "Vim",
+   "modules": [
+    {
+     "id": "9.01",
+     "title": "Modes, opening, saving & quitting",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "9.02",
+     "title": "Moving around",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "9.03",
+     "title": "Inserting & basic editing",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "9.04",
+     "title": "The grammar: operators × motions × text objects",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "9.05",
+     "title": "Visual mode",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "9.06",
+     "title": "Search & replace",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "9.07",
+     "title": "Registers & the clipboard",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "9.08",
+     "title": "Macros & the dot command",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "9.09",
+     "title": "Buffers, windows & tabs",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "9.10",
+     "title": "Marks, folds & undo history",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "9.11",
+     "title": "Command-line power moves",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "9.12",
+     "title": "A starter .vimrc & Vim keys everywhere",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    }
+   ]
+  },
+  "sql": {
+   "title": "SQL",
+   "modules": [
+    {
+     "id": "10.01",
+     "title": "SELECT: filtering, sorting & limiting",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "10.02",
+     "title": "Expressions: CASE, NULL handling & casting",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "10.03",
+     "title": "Aggregation: GROUP BY & HAVING",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "10.04",
+     "title": "Joins",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "10.05",
+     "title": "Subqueries, CTEs & set operations",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "10.06",
+     "title": "Window functions",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "10.07",
+     "title": "String functions",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "10.08",
+     "title": "Dates & times",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "10.09",
+     "title": "Math & numeric functions",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "10.10",
+     "title": "Creating & changing tables (DDL)",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "10.11",
+     "title": "Inserting, updating, deleting & upserting (DML)",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "10.12",
+     "title": "Transactions, views & indexes",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "10.13",
+     "title": "JSON & arrays",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "10.14",
+     "title": "Query performance",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "10.15",
+     "title": "SQL from Python & the command line",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "10.16",
+     "title": "Analytics & ML patterns",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    }
+   ]
+  },
+  "latex": {
+   "title": "LaTeX",
+   "modules": [
+    {
+     "id": "11.01",
+     "title": "Document skeleton & compiling",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "11.02",
+     "title": "Structure",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "11.03",
+     "title": "Text formatting, special characters & spacing",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "11.04",
+     "title": "Lists",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "11.05",
+     "title": "Math mode basics",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "11.06",
+     "title": "Symbols reference",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "11.07",
+     "title": "Multi-line equations & numbering",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "11.08",
+     "title": "Matrices, cases, brackets & custom operators",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "11.09",
+     "title": "ML equations gallery",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "11.10",
+     "title": "Figures",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "11.11",
+     "title": "Tables",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "11.12",
+     "title": "Cross-references, links & citations",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "11.13",
+     "title": "Algorithms & code listings",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "11.14",
+     "title": "Theorems & custom macros",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "11.15",
+     "title": "Page layout, colors & boxes",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "11.16",
+     "title": "TikZ & pgfplots: diagrams and plots",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "11.17",
+     "title": "Beamer slides",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "11.18",
+     "title": "Troubleshooting",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    }
+   ]
+  },
+  "docker": {
+   "title": "Docker",
+   "modules": [
+    {
+     "id": "12.01",
+     "title": "Setup & first commands",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "12.02",
+     "title": "Running containers",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "12.03",
+     "title": "Managing containers",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "12.04",
+     "title": "Images",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "12.05",
+     "title": "Dockerfile instructions",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "12.06",
+     "title": "Building images & .dockerignore",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "12.07",
+     "title": "Best practices & multi-stage builds",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "12.08",
+     "title": "Volumes & bind mounts",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "12.09",
+     "title": "Networking",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "12.10",
+     "title": "Docker Compose",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "12.11",
+     "title": "GPUs & ML images",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "12.12",
+     "title": "Recipes: Jupyter & a model API",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "12.13",
+     "title": "Registries",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "12.14",
+     "title": "Debugging & cleanup",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    }
+   ]
   }
+ }
 }

@@ -1,33 +1,58 @@
-// training-loop frontend: topic list (#/) and one-problem-at-a-time practice (#/<topic>).
+// training-loop frontend.
+//   #/                 topic list
+//   #/<topic>          the topic's modules (one per COMP_GUIDE subsection)
+//   #/<topic>/<module> one-problem-at-a-time practice; every module has its own counter and medal
 "use strict";
 
+// Per-topic editor mode and Pyodide packages. Titles and modules come from build.json (COMP_GUIDE).
 const TOPICS = [
-  { id: "numpy", title: "NumPy", part: 1, mode: "python", packages: ["numpy"] },
-  { id: "pandas", title: "pandas", part: 1, mode: "python", packages: ["numpy", "pandas"] },
-  { id: "pytorch", title: "PyTorch", part: 1, mode: "python", packages: ["numpy"] },
-  { id: "sklearn", title: "scikit-learn", part: 1, mode: "python", packages: ["numpy", "scikit-learn"] },
-  { id: "matplotlib", title: "Matplotlib", part: 1, mode: "python", packages: ["numpy", "matplotlib"] },
-  { id: "huggingface", title: "Hugging Face", part: 1, mode: "python", packages: ["numpy"] },
-  { id: "bash", title: "Bash & the command line", part: 2, mode: "shell", packages: [] },
-  { id: "git", title: "Git & GitHub", part: 2, mode: "shell", packages: [] },
-  { id: "vim", title: "Vim", part: 2, mode: null, packages: [] },
-  { id: "sql", title: "SQL", part: 2, mode: "text/x-sql", packages: [] },
-  { id: "latex", title: "LaTeX", part: 2, mode: null, packages: [] },
-  { id: "docker", title: "Docker", part: 2, mode: "shell", packages: [] },
+  { id: "numpy", part: 1, mode: "python", packages: ["numpy"] },
+  { id: "pandas", part: 1, mode: "python", packages: ["numpy", "pandas"] },
+  { id: "pytorch", part: 1, mode: "python", packages: ["numpy"] },
+  { id: "sklearn", part: 1, mode: "python", packages: ["numpy", "scikit-learn"] },
+  { id: "matplotlib", part: 1, mode: "python", packages: ["numpy", "matplotlib"] },
+  { id: "huggingface", part: 1, mode: "python", packages: ["numpy"] },
+  { id: "bash", part: 2, mode: "shell", packages: [] },
+  { id: "git", part: 2, mode: "shell", packages: [] },
+  { id: "vim", part: 2, mode: null, packages: [] },
+  { id: "sql", part: 2, mode: "text/x-sql", packages: [] },
+  { id: "latex", part: 2, mode: null, packages: [] },
+  { id: "docker", part: 2, mode: "shell", packages: [] },
 ];
 const TOPIC = Object.fromEntries(TOPICS.map((t) => [t.id, t]));
 const EXAMPLE_UNTIL = 10;
 const MEDAL_AT = 250;
 const REVEAL_AFTER = 250;
 
-// ------------------------------------------------------------ storage
-const STORE_KEY = "training-loop:v1";
+// ------------------------------------------------------------ catalog (docs/build.json)
+let catalogPromise = null;
+function catalog() {
+  catalogPromise ||= fetch("build.json", { cache: "no-cache" })
+    .then((r) => r.json())
+    .then((b) => b.topics || {})
+    .catch(() => ({}));
+  return catalogPromise;
+}
+const liveModules = (cat, id) => (cat[id]?.modules || []).filter((m) => m.live);
+
+// ------------------------------------------------------------ storage (per module)
+// v1 (one counter per topic) is left untouched in localStorage; v2 counts per module.
+const STORE_KEY = "training-loop:v2";
 const state = (() => {
-  try { return JSON.parse(localStorage.getItem(STORE_KEY)) || { topics: {} }; }
-  catch { return { topics: {} }; }
+  try { return JSON.parse(localStorage.getItem(STORE_KEY)) || { modules: {} }; }
+  catch { return { modules: {} }; }
 })();
 function save() { try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch { /* private mode */ } }
-function topicState(id) { return (state.topics[id] ||= { solved: 0, medal: false, current: null }); }
+function moduleState(topicId, moduleId) {
+  return (state.modules[`${topicId}/${moduleId}`] ||= { solved: 0, medal: false, current: null });
+}
+function topicTotals(topicId) {
+  let solved = 0, medals = 0;
+  for (const [key, ms] of Object.entries(state.modules)) {
+    if (key.startsWith(topicId + "/")) { solved += ms.solved; medals += ms.medal ? 1 : 0; }
+  }
+  return { solved, medals };
+}
 const newSeed = () => Math.floor(Math.random() * 2 ** 31);
 
 // ------------------------------------------------------------ Python worker
@@ -79,15 +104,21 @@ let py = null;
 
 // ------------------------------------------------------------ tiny markdown
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+function inline(text) {
+  // code spans first, so `**` inside code is never read as bold
+  return esc(text).split(/(`[^`]+`)/)
+    .map((seg, i) => (i % 2 ? `<code>${seg.slice(1, -1)}</code>` : seg.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")))
+    .join("");
+}
 function md(text) {
   return text.split(/\n{2,}/).map((block) => {
     if (block.startsWith("```")) return `<pre class="code-block">${esc(block.replace(/^```\w*\n?|```$/g, ""))}</pre>`;
-    // code spans first, so `**` inside code is never read as bold
-    const html = esc(block).split(/(`[^`]+`)/)
-      .map((seg, i) => (i % 2 ? `<code>${seg.slice(1, -1)}</code>` : seg.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")))
-      .join("")
-      .replace(/\n/g, "<br>");
-    return `<p>${html}</p>`;
+    const lines = block.split("\n");
+    if (lines.every((l) => /^(\* |\d+\. )/.test(l))) {
+      const tag = lines[0].startsWith("* ") ? "ul" : "ol";
+      return `<${tag}>${lines.map((l) => `<li>${inline(l.replace(/^(\* |\d+\. )/, ""))}</li>`).join("")}</${tag}>`;
+    }
+    return `<p>${inline(block).replace(/\n/g, "<br>")}</p>`;
   }).join("");
 }
 function codeBlock(code, mode = "python") {
@@ -99,34 +130,36 @@ function codeBlock(code, mode = "python") {
 }
 
 // ------------------------------------------------------------ medals (placeholder art; real designs TBD)
-function medalSVG(topic) {
-  const hue = (TOPICS.indexOf(topic) * 137) % 360;
-  const initials = topic.title.replace(/[^A-Za-z ]/g, "").split(" ").map((w) => w[0]).join("").slice(0, 2);
-  return `<svg viewBox="0 0 64 64" aria-label="${esc(topic.title)} medal">
-    <path d="M22 2h8l6 22h-8z" fill="hsl(${hue} 55% 55%)"/><path d="M42 2h-8l-6 22h8z" fill="hsl(${hue} 55% 42%)"/>
+function medalSVG(topicId, moduleId, label) {
+  const hue = (TOPICS.findIndex((t) => t.id === topicId) * 137) % 360;
+  const k = Number(moduleId.split(".")[1]) || 0;  // vary the ribbon per module
+  const ribbon = (hue + k * 23) % 360;
+  const text = moduleId.split(".")[1] || "";
+  return `<svg viewBox="0 0 64 64" role="img" aria-label="${esc(label)} medal">
+    <path d="M22 2h8l6 22h-8z" fill="hsl(${ribbon} 55% 55%)"/><path d="M42 2h-8l-6 22h8z" fill="hsl(${ribbon} 55% 42%)"/>
     <circle cx="32" cy="40" r="20" fill="hsl(${hue} 70% 62%)" stroke="hsl(${hue} 50% 40%)" stroke-width="2.5"/>
     <circle cx="32" cy="40" r="14" fill="none" stroke="hsl(${hue} 60% 85%)" stroke-width="1.5" stroke-dasharray="2 3"/>
-    <text x="32" y="45" text-anchor="middle" font-family="Georgia, serif" font-size="14" fill="hsl(${hue} 60% 20%)">${esc(initials)}</text>
+    <text x="32" y="45" text-anchor="middle" font-family="Georgia, serif" font-size="14" fill="hsl(${hue} 60% 20%)">${esc(text)}</text>
   </svg>`;
 }
 
-// ------------------------------------------------------------ home
-let buildInfo = null; // docs/build.json: { hash, sections: { numpy: {lite: n, ...}, ... } }
-async function liveSections() {
-  buildInfo ||= fetch("build.json", { cache: "no-cache" }).then((r) => r.json()).catch(() => ({ sections: {} }));
-  return (await buildInfo).sections || {};
-}
-
+// ------------------------------------------------------------ home: topic list
 async function renderHome() {
   document.title = "training-loop";
-  const available = await liveSections();
+  const cat = await catalog();
   const row = (t) => {
-    const ts = topicState(t.id);
-    const right = `<span class="t-right"><span class="t-count">${available[t.id] ? ts.solved : "soon"}</span>
-      <span class="badge">${ts.medal ? medalSVG(t) : ""}</span></span>`;
-    return available[t.id]
-      ? `<li><a class="topic" href="#/${t.id}"><span class="t-title">${esc(t.title)}</span>${right}</a></li>`
-      : `<li><div class="topic soon"><span class="t-title">${esc(t.title)}</span>${right}</div></li>`;
+    const title = cat[t.id]?.title || t.id;
+    const live = liveModules(cat, t.id).length;
+    if (!live) {
+      return `<li><div class="topic soon"><span class="t-title">${esc(title)}</span>
+        <span class="t-right"><span class="t-count">soon</span><span class="badge"></span></span></div></li>`;
+    }
+    const { solved, medals } = topicTotals(t.id);
+    const medalChip = medals
+      ? `<span class="medal-chip" title="${medals} medal${medals > 1 ? "s" : ""}">${medalSVG(t.id, "", title)}<span>×${medals}</span></span>`
+      : "";
+    return `<li><a class="topic" href="#/${t.id}"><span class="t-title">${esc(title)}</span>
+      <span class="t-right"><span class="t-count">${solved}</span><span class="badge wide">${medalChip}</span></span></a></li>`;
   };
   const part = (n, name) => `<section class="part"><h2>Part ${n === 1 ? "I" : "II"} · ${name}</h2>
     <ol class="topics">${TOPICS.filter((t) => t.part === n).map(row).join("")}</ol></section>`;
@@ -137,14 +170,39 @@ async function renderHome() {
   </div>`;
 }
 
-// ------------------------------------------------------------ practice
-let view = null; // { topic, ts, problem, editor, phase }
+// ------------------------------------------------------------ topic page: module list
+async function renderTopic(topic) {
+  const cat = await catalog();
+  const info = cat[topic.id];
+  document.title = `${info.title} · training-loop`;
+  const row = (m) => {
+    const head = `<span class="t-title"><span class="m-id">${esc(m.id)}</span>${esc(m.title)}</span>`;
+    if (!m.live) {
+      return `<li><div class="topic soon">${head}<span class="t-right"><span class="t-count">soon</span><span class="badge"></span></span></div></li>`;
+    }
+    const ms = moduleState(topic.id, m.id);
+    return `<li><a class="topic" href="#/${topic.id}/${m.id}">${head}<span class="t-right">
+      <span class="t-count">${ms.solved}</span><span class="badge">${ms.medal ? medalSVG(topic.id, m.id, m.title) : ""}</span>
+      </span></a></li>`;
+  };
+  app().innerHTML = `<div class="home">
+    <a class="back" href="#/">← Topics</a>
+    <h1>${esc(info.title)}</h1>
+    <p class="tag">${info.modules.length} modules. Each has its own counter, 250-problem medal and endless questions.</p>
+    <ol class="topics modules">${info.modules.map(row).join("")}</ol>
+  </div>`;
+}
 
-async function renderPractice(topic) {
-  const ts = topicState(topic.id);
-  document.title = `${topic.title} · training-loop`;
+// ------------------------------------------------------------ practice
+let view = null; // { topic, mod, ms, problem, editor, phase }
+
+async function renderPractice(topic, mod, topicTitle) {
+  const ms = moduleState(topic.id, mod.id);
+  document.title = `${mod.id} ${mod.title} · training-loop`;
   app().innerHTML = `
-    <div class="bar"><a href="#/">← Topics</a><span class="crumb">${esc(topic.title)}</span><span class="qnum" title="Question number"></span></div>
+    <div class="bar"><a href="#/${topic.id}">← ${esc(topicTitle)}</a>
+      <span class="crumb"><span class="m-id">${esc(mod.id)}</span>${esc(mod.title)}</span>
+      <span class="qnum" title="Question number"></span></div>
     <div class="practice">
       <section>
         <article class="problem"><div class="loading">Starting Python… (the first load takes a few seconds)</div></article>
@@ -170,8 +228,8 @@ async function renderPractice(topic) {
       Tab: (cm) => (cm.somethingSelected() ? cm.indentSelection("add") : cm.replaceSelection("    ")),
     },
   });
-  editor.on("change", () => { if (view && view.problem) { ts.draft = { seed: view.problem.seed, code: editor.getValue() }; save(); } });
-  view = { topic, ts, problem: null, editor, phase: "loading" };
+  editor.on("change", () => { if (view && view.problem) { ms.draft = { seed: view.problem.seed, code: editor.getValue() }; save(); } });
+  view = { topic, mod, ms, problem: null, editor, phase: "loading" };
   $(".run").onclick = doRun;
   $(".submit").onclick = doSubmit;
   $(".next").onclick = () => loadProblem();
@@ -183,13 +241,13 @@ async function renderPractice(topic) {
 }
 
 async function loadProblem() {
-  const { ts, topic } = view;
-  if (!ts.current) ts.current = { n: ts.solved + 1, seed: newSeed(), tier: null };
-  const cur = ts.current;
+  const { ms, topic, mod } = view;
+  if (!ms.current) ms.current = { n: ms.solved + 1, seed: newSeed(), tier: null };
+  const cur = ms.current;
   const v = view;
   setBusy(true);
   let p;
-  try { p = await py.call("generate", { section: topic.id, n: cur.n, seed: cur.seed, tier: cur.tier }, 20000); }
+  try { p = await py.call("generate", { section: topic.id, module: mod.id, n: cur.n, seed: cur.seed, tier: cur.tier }, 20000); }
   catch (e) { if (view === v) $(".problem").innerHTML = `<div class="loading">Couldn't generate a problem: ${esc(e.message)}</div>`; return; }
   if (view !== v) return; // navigated away meanwhile
   cur.tier = p.tier;
@@ -197,7 +255,7 @@ async function loadProblem() {
   view.problem = p;
   view.phase = "answering";
   drawProblem(p, cur.n);
-  view.editor.setValue(ts.draft && ts.draft.seed === p.seed ? ts.draft.code : "");
+  view.editor.setValue(ms.draft && ms.draft.seed === p.seed ? ms.draft.code : "");
   view.editor.focus();
   $(".verdict").textContent = "";
   $(".verdict").className = "verdict";
@@ -210,11 +268,12 @@ async function loadProblem() {
 
 function drawProblem(p, n) {
   $(".qnum").textContent = n;
+  const mode = view.topic.mode;
   const el = $(".problem");
   el.innerHTML = `<div class="prompt">${md(p.prompt)}</div>`;
   if (p.setup.trim()) {
     el.insertAdjacentHTML("beforeend", `<div class="label">Given</div>`);
-    el.appendChild(codeBlock(p.setup, view.topic.mode));
+    el.appendChild(codeBlock(p.setup, mode));
   }
   if (p.example) {
     const d = document.createElement("details");
@@ -222,16 +281,16 @@ function drawProblem(p, n) {
     d.open = n <= EXAMPLE_UNTIL;
     d.innerHTML = `<summary>Example</summary><div class="inner"><div class="prompt">${md(p.example.prompt)}</div></div>`;
     const inner = d.querySelector(".inner");
-    if (p.example.setup.trim()) { inner.insertAdjacentHTML("beforeend", `<div class="label">Given</div>`); inner.appendChild(codeBlock(p.example.setup, view.topic.mode)); }
+    if (p.example.setup.trim()) { inner.insertAdjacentHTML("beforeend", `<div class="label">Given</div>`); inner.appendChild(codeBlock(p.example.setup, mode)); }
     inner.insertAdjacentHTML("beforeend", `<div class="label">Solution</div>`);
-    inner.appendChild(codeBlock(p.example.solution, view.topic.mode));
+    inner.appendChild(codeBlock(p.example.solution, mode));
     el.appendChild(d);
   }
   if (n > REVEAL_AFTER) {
     const d = document.createElement("details");
     d.className = "answer";
     d.innerHTML = `<summary>Show answer</summary><div class="inner"></div>`;
-    d.querySelector(".inner").appendChild(codeBlock(p.solution, view.topic.mode));
+    d.querySelector(".inner").appendChild(codeBlock(p.solution, mode));
     el.appendChild(d);
   }
 }
@@ -268,7 +327,7 @@ async function doRun() {
 
 async function doSubmit() {
   if (view.phase !== "answering" || $(".submit").disabled) return;
-  const { ts, problem } = view;
+  const { ms, problem } = view;
   const code = view.editor.getValue();
   if (!code.trim()) return;
   setBusy(true);
@@ -292,31 +351,31 @@ async function doSubmit() {
   }
   view.phase = "done";
   if (res.correct) {
-    ts.solved += 1;
-    ts.current = { n: ts.solved + 1, seed: newSeed(), tier: null };
+    ms.solved += 1;
+    ms.current = { n: ms.solved + 1, seed: newSeed(), tier: null };
     $(".verdict").textContent = "✓ Correct";
     $(".verdict").className = "verdict good";
     $(".next").textContent = "Next →";
   } else {
-    ts.current = { n: ts.current.n, seed: newSeed(), tier: problem.tier }; // same number, same tier, new problem
+    ms.current = { n: ms.current.n, seed: newSeed(), tier: problem.tier }; // same number, same tier, new problem
     $(".verdict").textContent = "✗ Wrong";
     $(".verdict").className = "verdict bad";
     $(".next").textContent = "New problem →";
   }
   $(".verdict-msg").textContent = res.correct ? (res.message || "") : (res.message || (res.error ? "Your code raised an error." : ""));
-  ts.draft = null;
+  ms.draft = null;
   save();
   $(".next").hidden = false;
   $(".next").focus();
   setBusy(false);
-  if (res.correct && ts.solved >= MEDAL_AT && !ts.medal) { ts.medal = true; save(); showMedal(view.topic); }
+  if (res.correct && ms.solved >= MEDAL_AT && !ms.medal) { ms.medal = true; save(); showMedal(view.topic, view.mod); }
 }
 
-function showMedal(topic) {
+function showMedal(topic, mod) {
   const m = document.createElement("div");
   m.className = "modal";
-  m.innerHTML = `<div class="card">${medalSVG(topic)}<h2>Surprise!</h2>
-    <p>You've solved ${MEDAL_AT} ${esc(topic.title)} problems. This medal is yours.</p>
+  m.innerHTML = `<div class="card">${medalSVG(topic.id, mod.id, mod.title)}<h2>Surprise!</h2>
+    <p>You've solved ${MEDAL_AT} problems in ${esc(mod.id)} ${esc(mod.title)}. This medal is yours.</p>
     <button class="btn primary">Keep going</button></div>`;
   m.querySelector("button").onclick = () => m.remove();
   document.body.appendChild(m);
@@ -327,10 +386,14 @@ const app = () => document.getElementById("app");
 const $ = (sel) => app().querySelector(sel);
 
 async function route() {
-  const id = location.hash.replace(/^#\/?/, "");
+  const [topicId, moduleId] = location.hash.replace(/^#\/?/, "").split("/");
   view = null;
-  const live = await liveSections();
-  TOPIC[id] && live[id] ? renderPractice(TOPIC[id]) : renderHome();
+  const cat = await catalog();
+  const topic = TOPIC[topicId];
+  if (!topic || !liveModules(cat, topicId).length) return renderHome();
+  if (!moduleId) return renderTopic(topic);
+  const mod = liveModules(cat, topicId).find((m) => m.id === moduleId);
+  return mod ? renderPractice(topic, mod, cat[topicId].title) : renderTopic(topic);
 }
-window.addEventListener("hashchange", route);
+window.addEventListener("hashchange", () => { window.scrollTo(0, 0); route(); });
 route();

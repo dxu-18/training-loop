@@ -5,8 +5,9 @@ Matplotlib, Hugging Face) and developer tools (Bash, Git, Vim, SQL, LaTeX, Docke
 
 **Practice:** https://dxu-18.github.io/training-loop/
 
-Every question is randomly generated, and your code runs in the browser (Pyodide), so nothing
-to install. Topics come from [COMP_GUIDE.md](COMP_GUIDE.md); the design and roadmap are in
+Every topic is split into its COMP_GUIDE subsections (NumPy has 18), and each subsection is its own
+page with its own counter, a medal at 250, and endless randomly generated questions that get harder
+as you go. Your code runs in the browser (Pyodide), so there is nothing to install. Topics come from [COMP_GUIDE.md](COMP_GUIDE.md); the design and roadmap are in
 [PROJECT_SPEC.md](PROJECT_SPEC.md).
 
 ## Develop
@@ -14,7 +15,7 @@ to install. Topics come from [COMP_GUIDE.md](COMP_GUIDE.md); the design and road
 ```
 uv venv --python 3.14 .venv && uv pip install --python .venv/bin/python numpy pandas pytest
 .venv/bin/python -m pytest -q                          # every template must pass its own grader
-.venv/bin/python scripts/preview.py numpy --tier hard -n 3 --solution
+.venv/bin/python scripts/preview.py numpy --module 1.05 --tier hard -n 3 --solution
 python3 scripts/build.py && python3 -m http.server -d docs 8000   # http://localhost:8000
 ```
 

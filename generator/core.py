@@ -1,9 +1,12 @@
 """Problem type, difficulty schedule and template registry.
 
-A *template* is a function ``f(rng) -> Problem`` registered for one section and
-one tier. ``generate(section, tier, seed)`` picks a template uniformly at random,
-builds the problem, and attaches an example: a second, independent instance of
-the same template, shown together with its solution.
+A *template* is a function ``f(rng) -> Problem`` registered for one section
+(e.g. "numpy"), one module of that section (a COMP_GUIDE subsection, e.g. "1.05")
+and one tier. Every module is its own practice page with its own counter, so the
+tier schedule below applies per module. ``generate(section, module, tier, seed)``
+picks one of that cell's templates uniformly at random, builds the problem, and
+attaches an example: a second, independent instance of the same template, shown
+together with its solution.
 """
 
 from __future__ import annotations
@@ -14,7 +17,7 @@ from typing import Callable
 
 TIERS = ("lite", "easy", "medium", "hard", "challenge")
 
-# (last question number, tier) for questions 1..250
+# (last question number, tier) for questions 1..250 of a module
 SCHEDULE = ((50, "lite"), (120, "easy"), (200, "medium"), (245, "hard"), (250, "challenge"))
 
 # after question 250, tiers keep the same share they had in 1..250
@@ -44,6 +47,7 @@ class Problem:
     require: list[str] = field(default_factory=list)  # names that must appear in the code; "a|b" = either
     no_loops: bool = False                # forbid for/while/comprehensions
     check_dtype: bool = False             # compare array dtypes too
+    post: str = ""                        # check code run after the user's; its value is graded
     tol: float = 1e-6                     # relative/absolute tolerance for floats
     kind: str = "python"                  # python | sql | command | text
     lang: str = "python"                  # editor mode
@@ -64,60 +68,72 @@ class Problem:
 class Template:
     fn: Callable[[random.Random], Problem]
     section: str
-    tier: str
     module: str   # COMP_GUIDE module number, e.g. "1.05"
+    tier: str
 
     @property
     def name(self) -> str:
         return self.fn.__name__
 
 
-REGISTRY: dict[str, dict[str, list[Template]]] = {}
+# section -> module -> tier -> templates
+REGISTRY: dict[str, dict[str, dict[str, list[Template]]]] = {}
 
 
-def template(section: str, tier: str, module: str):
-    """Decorator that registers a template function."""
+def template(section: str, module: str, tier: str):
+    """Decorator that registers a template function for one (section, module, tier) cell."""
     if tier not in TIERS:
         raise ValueError(f"unknown tier {tier!r}")
 
     def register(fn):
-        REGISTRY.setdefault(section, {t: [] for t in TIERS})[tier].append(
-            Template(fn, section, tier, module))
+        cells = REGISTRY.setdefault(section, {}).setdefault(module, {t: [] for t in TIERS})
+        cells[tier].append(Template(fn, section, module, tier))
         return fn
 
     return register
 
 
-def templates(section: str, tier: str | None = None) -> list[Template]:
+def sections() -> list[str]:
+    return list(REGISTRY)
+
+
+def modules(section: str) -> list[str]:
+    return sorted(REGISTRY.get(section, {}), key=lambda m: tuple(int(x) for x in m.split(".")))
+
+
+def templates(section: str, module: str | None = None, tier: str | None = None) -> list[Template]:
+    mods = modules(section) if module is None else [module]
     tiers = TIERS if tier is None else (tier,)
-    return [t for tr in tiers for t in REGISTRY.get(section, {}).get(tr, [])]
+    cells = REGISTRY.get(section, {})
+    return [t for m in mods for tr in tiers for t in cells.get(m, {}).get(tr, [])]
 
 
-def available_tier(section: str, tier: str) -> str:
-    """``tier`` if the section has templates for it, else the nearest tier that does."""
+def is_live(section: str, module: str) -> bool:
+    """A module is playable once every tier has at least one template."""
+    return all(templates(section, module, t) for t in TIERS)
+
+
+def available_tier(section: str, module: str, tier: str) -> str:
+    """``tier`` if the module has templates for it, else the nearest tier that does."""
     order = sorted(TIERS, key=lambda t: abs(TIERS.index(t) - TIERS.index(tier)))
     for t in order:
-        if templates(section, t):
+        if templates(section, module, t):
             return t
-    raise LookupError(f"section {section!r} has no templates")
+    raise LookupError(f"{section} {module} has no templates")
 
 
 def build(tpl: Template, seed: int) -> Problem:
     p = tpl.fn(random.Random(seed))
-    p.section, p.tier, p.template, p.module, p.seed = tpl.section, tpl.tier, tpl.name, tpl.module, seed
+    p.section, p.module, p.tier, p.template, p.seed = tpl.section, tpl.module, tpl.tier, tpl.name, seed
     return p
 
 
-def generate(section: str, tier: str, seed: int) -> dict:
-    """A random problem for (section, tier), with an example attached."""
-    tier = available_tier(section, tier)
+def generate(section: str, module: str, tier: str, seed: int) -> dict:
+    """A random problem for (section, module, tier), with an example attached."""
+    tier = available_tier(section, module, tier)
     rng = random.Random(seed)
-    tpl = rng.choice(templates(section, tier))
+    tpl = rng.choice(templates(section, module, tier))
     problem = build(tpl, seed)
     ex = build(tpl, rng.randrange(2**31))
     problem.example = {"prompt": ex.prompt, "setup": ex.setup, "solution": ex.solution}
     return problem.to_dict()
-
-
-def sections() -> list[str]:
-    return list(REGISTRY)
