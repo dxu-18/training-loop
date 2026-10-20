@@ -139,16 +139,49 @@ try:
         m.wait_for_selector(".prompt", timeout=120000)
         m.screenshot(path=f"{args.out}/mobile_practice.png", full_page=True)
 
-        # every template's own solution, graded inside Pyodide
-        if args.selftest_seeds:
-            pg.goto(BASE + "/#/numpy/1.01")
-            pg.wait_for_selector(".prompt", timeout=120000)
+        def selftest(section, only="", skip=""):
+            if not args.selftest_seeds:
+                return
             t0 = time.time()
-            rep = pg.evaluate(f"py.call('selftest', {{section: 'numpy', seeds: {args.selftest_seeds}}})")
+            rep = pg.evaluate(f"py.call('selftest', {{section: '{section}', seeds: {args.selftest_seeds}, "
+                              f"only: '{only}', skip: '{skip}'}})")
             fails = rep["failures"]
-            check(not fails, f"Pyodide self-test: {rep['checked']} runs, {len(fails)} failures ({time.time() - t0:.0f}s)")
-            for f in fails[:20]:
+            what = f"{section}{' ' + only if only else ''}{' (all but ' + skip + ')' if skip else ''}"
+            check(not fails, f"Pyodide self-test {what}: {rep['checked']} runs, {len(fails)} failures ({time.time() - t0:.0f}s)")
+            for f in fails[:25]:
                 print("     ", json.dumps(f)[:400])
+            slow = rep["slowest"][0] if rep["slowest"] else None
+            if slow:  # grading = reference + user code, so the user's half must also fit the limit
+                check(slow["seconds"] < slow["limit"], f"slowest grade {slow['seconds']}s ({slow['module']} {slow['template']}) "
+                      f"within its {slow['limit']}s limit")
+
+        # each self-test runs on a fresh page that loaded exactly that module's packages
+        pg.goto(BASE + "/#/numpy/1.01")
+        pg.reload()
+        pg.wait_for_selector(".prompt", timeout=120000)
+        selftest("numpy")
+
+        # pandas: topic page, a practice round, the plotting module (extra packages)
+        pg.goto(BASE + "/#/pandas")
+        pg.reload()
+        pg.wait_for_selector(".modules")
+        n_mod = pg.locator(".modules a.topic").count()
+        check(n_mod == 19, f"pandas page lists 19 live modules (got {n_mod})")
+        pg.click("a[href='#/pandas/2.13']")
+        pg.wait_for_selector(".prompt", timeout=120000)
+        pg.evaluate(SET_CODE, pg.evaluate("view.problem.solution"))
+        pg.click(".submit")
+        pg.wait_for_function(f"{VERDICT}.length > 0", timeout=60000)
+        check("Correct" in pg.inner_text(".verdict"), "pandas 2.13 reference solution is graded correct")
+        pg.screenshot(path=f"{args.out}/pandas_practice.png", full_page=True)
+        selftest("pandas", skip="2.18")  # without matplotlib/jinja2, like every pandas page but 2.18
+        pg.goto(BASE + "/#/pandas/2.18")
+        pg.wait_for_selector(".prompt", timeout=180000)
+        pg.evaluate(SET_CODE, pg.evaluate("view.problem.solution"))
+        pg.click(".submit")
+        pg.wait_for_function(f"{VERDICT}.length > 0", timeout=120000)
+        check("Correct" in pg.inner_text(".verdict"), "pandas 2.18 (plotting) reference solution is graded correct")
+        selftest("pandas", only="2.18")
 
         errors = [l for l in logs if "error" in l.lower()]
         check(not errors, f"no console errors {errors[:5]}")

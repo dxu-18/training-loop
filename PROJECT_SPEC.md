@@ -76,9 +76,13 @@ on the main menu opens NumPy's page: a list of its 18 subsections (1.01 Setup, p
 questions. This supersedes the per-topic counter of session 1. The difficulty schedule
 (1–50 lite … 246–250 challenge, then random) now applies within each subsection.
 
+### Session 4 request (2026-10-20)
+"Do pandas now." Same structure as NumPy: every pandas subsection (2.01–2.19) is its own page with
+its own 250 goal; medal art is still deferred.
+
 ---
 
-## 2. Architecture decisions (sessions 1–3)
+## 2. Architecture decisions (sessions 1–4)
 
 | Decision | Choice | Why |
 |---|---|---|
@@ -95,7 +99,11 @@ questions. This supersedes the per-topic counter of session 1. The difficulty sc
 | Catalog | `scripts/build.py` parses COMP_GUIDE's `##`/`###` headings into `docs/build.json` (topics → modules, titles, live flag, template counts) | The site lists every subsection, even unfinished ones ("soon"), straight from the guide. `10.00 Practice schema` is skipped (reference material). |
 | Printed-output answers | `answer=["<stdout>"]` grades what the code printed | Needed for 1.01 (print options, `np.info`). |
 | Post checks | `post`: code run after the user's; its value is graded (e.g. `np.load('x.npy')`, `np.shares_memory(v, a)`) | Lets 1.06 check views vs copies and 1.17 check files the code wrote. |
-| Sandboxed runs | Each run gets a fresh temp working directory; NumPy print options and `np.seterr` are restored afterwards | The reference's files can't leak into the user's run, and `np.set_printoptions` in one answer can't change the next. |
+| Sandboxed runs | Each run gets a fresh temp working directory; NumPy print options, `np.seterr` and pandas `display.*` options are restored and Matplotlib figures closed afterwards | The reference's files can't leak into the user's run, and global settings in one answer can't change the next. |
+| pandas comparisons | `assert_frame_equal` / `assert_series_equal` with `check_names=False`, `check_index_type=False`, `check_column_type=False`, `check_freq=False` (and `check_dtype` only when asked); nullable arrays, `pd.NA`, `NaT` handled | Grade the data, not incidental metadata such as a Series name from `groupby`. |
+| `_` in post checks | `post` code can refer to the answer value as `_` | e.g. Styler answers are checked with `_.set_uuid('chk').to_html()`. |
+| Plot grading | Setup imports `matplotlib.pyplot as plt`; `post` inspects `plt.gca()` / `plt.gcf()` (bar heights, line data, labels, titles, saved PNG size). The grader sets `MPLBACKEND=Agg`. | Works for any plotting style that draws on the current figure. |
+| Per-module packages | `TOPICS[...].extra` in `docs/app.js` (e.g. pandas `2.18` → matplotlib, jinja2) | Heavy packages download only on the page that needs them. |
 | Editor | CodeMirror 5 (cdnjs), with the mode set per topic | Simple script tags and no build step. |
 | Site folder | `docs/` on `main`, served by GitHub Pages ("deploy from branch", `/docs`). Live at https://dxu-18.github.io/training-loop/ | `docs/generator.zip` + `docs/build.json` are **committed**: run `scripts/build.py` before committing generator changes (`tests/test_bundle.py` fails if stale). An Actions deploy is ready in `ci/pages.yml` but needs a `gh` token with the `workflow` scope (see the file header). |
 | Worker type | **Module** worker (`new Worker(..., {type: "module"})`) importing `pyodide.mjs` | Classic `importScripts` of the CDN script failed in current Chromium (session 2). Module workers work in current Chrome, Firefox and Safari. |
@@ -105,7 +113,14 @@ questions. This supersedes the per-topic counter of session 1. The difficulty sc
   overflows to 0). Use explicit `dtype=np.int64` in setups that need big integers.
 - **Writable memory maps don't work** (`np.memmap(..., mode='w+')` raises `OSError: Bad file
   descriptor`). Read-only `np.load(..., mmap_mode='r')` works.
-- Always run `scripts/e2e_check.py`: it grades every template's own solution inside Pyodide.
+- Always run `scripts/e2e_check.py`: it grades every template's own solution inside Pyodide, **with exactly
+  the packages its page loads** (a self-test on a page with extra packages hid a bug once), and checks
+  that the slowest grade fits its time limit.
+- `pd.reset_option("all")` imports matplotlib (the plotting options' callback), so the sandbox resets only
+  `^display\.` options.
+- `sqlite3` is bundled with Pyodide 314. **Not available:** `tabulate` (`df.to_markdown`) and `openpyxl`
+  (Excel), so those parts of 2.03 aren't practised. Parquet is skipped too: loading `pyarrow` would switch
+  pandas' default string storage mid-session.
 
 ### Non-Python sections: planned checkers
 - **SQL**: run for real with `sqlite3`, which is part of Pyodide's stdlib. Compare
@@ -135,6 +150,7 @@ generator/            Python package: question generation + grading (runs locall
   themes.py           themed datasets (AI labs, pets, appliances, speech, vision, ...)
   sections/           one package per COMP_GUIDE section
     s01_numpy/        _common.py (helpers, challenge()) + one file per subsection: m01_printing.py … m18_ml_patterns.py
+    s02_pandas/       _common.py (themed DataFrame builder `frame()`, challenge()) + m01_core.py … m19_performance.py
   api.py              JSON entry points called by docs/worker.js (generate, run, grade, info, self_test)
 scripts/
   build.py            zip generator/ into docs/generator.zip + write docs/build.json catalog (rerun after every change)
@@ -163,7 +179,7 @@ Legend: ✅ done · 🟡 partial · ⬜ not started
 | # | Section | Templates | Checker | Notes |
 |---|---|---|---|---|
 | 1 | NumPy | ✅ **all 18 modules live**: 277 templates in `generator/sections/s01_numpy/` (every module ≥ 2 templates per tier, 2 challenges each) | exec (Pyodide) | session 3 |
-| 2 | pandas | ⬜ | exec | |
+| 2 | pandas | ✅ **all 19 modules live**: 261 templates in `generator/sections/s02_pandas/` (every module ≥ 2 templates per tier, 2 challenges each) | exec (Pyodide) + figure/Styler inspection for 2.18 | session 4 |
 | 3 | PyTorch | ⬜ | **open problem** (see §2) | |
 | 4 | scikit-learn | ⬜ | exec | |
 | 5 | Matplotlib | ⬜ | exec + figure inspection | |
@@ -175,12 +191,13 @@ Legend: ✅ done · 🟡 partial · ⬜ not started
 | 11 | LaTeX | ⬜ | normalized / KaTeX | |
 | 12 | Docker | ⬜ | command / Dockerfile | |
 
-### What exists (after session 3)
+### What exists (after session 4)
 - `generator/`: core (tiers, registry, examples), grader (answer comparison, AST checks,
   hidden tests, clean tracebacks), themes (20 themes, 10 axes, 10 label sets), and the NumPy section.
-- `tests/`: 882 tests. Every template × 25 seeds must pass its own grader, obviously wrong
-  answers must fail, and variety is checked. Every challenge (36) is cross-checked against a
-  brute force on 60 small inputs. `test_numpy_modules_complete` enforces ≥ 2 templates per tier.
+- `tests/`: 1,704 tests. Every template × 25 seeds (6 for challenges) must pass its own grader,
+  obviously wrong answers must fail, and variety is checked. Every challenge (74: 36 NumPy, 38 pandas)
+  is cross-checked against a brute force on 60 small inputs. `test_*_modules_complete` enforces
+  ≥ 2 templates per tier for NumPy and pandas.
 - `docs/`: the live site, three levels: topic list (`#/`: total solved + medal count per topic,
   "soon" for topics with no live module) → topic page (`#/numpy`: its modules with per-module
   count and medal) → practice (`#/numpy/1.05`: problem, Given, Example, editor, Run/Submit,
@@ -203,8 +220,8 @@ Legend: ✅ done · 🟡 partial · ⬜ not started
   are large (n = 2·10⁴), so quadratic solutions time out.
 
 ### Next steps (suggested order)
-1. pandas section (`s02_pandas.py`; the exec checker already compares DataFrames and Series).
-   Add `"pandas"` to the topic's packages (already set in `docs/app.js`).
+1. scikit-learn (exec checker; add `"scikit-learn"` packages, already listed in `docs/app.js`) and
+   Matplotlib (reuse the 2.18 figure-inspection `post` pattern).
 2. SQL section (sqlite3 checker), then the `command` checker for Bash, Git and Docker.
 3. Decide the PyTorch / Hugging Face approach (§2 open problem).
 4. Medal art, then the style pass.
@@ -219,5 +236,5 @@ Other TODO:
   deferred by request). The placeholder varies the colour per topic and the ribbon + number per module.
 - ⬜ Final visual style pass on the frontend.
 - ✅ GitHub Pages deploy (session 2): https://dxu-18.github.io/training-loop/
-- ✅ Per-module pages, counters and medals (session 3). 🟡 Content: NumPy 18/18 modules; the other
-  11 topics (191 modules) are listed as "soon".
+- ✅ Per-module pages, counters and medals (session 3). 🟡 Content: NumPy 18/18 and pandas 19/19 modules;
+  the other 10 topics (172 modules) are listed as "soon".
