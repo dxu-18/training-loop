@@ -1,5 +1,5 @@
 {
- "hash": "8eb490672f25",
+ "hash": "0727878ef714",
  "topics": {
   "numpy": {
    "title": "NumPy",
@@ -461,229 +461,229 @@
     {
      "id": "3.01",
      "title": "Tensors",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 3,
+      "easy": 4,
+      "medium": 4,
+      "hard": 3,
+      "challenge": 2
      }
     },
     {
      "id": "3.02",
      "title": "Broadcasting & shape changes",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 3,
+      "medium": 3,
+      "hard": 3,
+      "challenge": 2
      }
     },
     {
      "id": "3.03",
      "title": "Autograd, gradient descent & backprop",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 3,
+      "medium": 3,
+      "hard": 3,
+      "challenge": 2
      }
     },
     {
      "id": "3.04",
      "title": "Dataset & DataLoader",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 3,
+      "medium": 3,
+      "hard": 3,
+      "challenge": 2
      }
     },
     {
      "id": "3.05",
      "title": "MLP training: modules, losses, optimizers & the loop",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 3,
+      "easy": 3,
+      "medium": 4,
+      "hard": 3,
+      "challenge": 2
      }
     },
     {
      "id": "3.06",
      "title": "Custom autograd Functions",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 3,
+      "medium": 3,
+      "hard": 3,
+      "challenge": 2
      }
     },
     {
      "id": "3.07",
      "title": "Memory, strides & contiguity",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 3,
+      "medium": 3,
+      "hard": 3,
+      "challenge": 2
      }
     },
     {
      "id": "3.08",
      "title": "Attention",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 3,
+      "medium": 3,
+      "hard": 3,
+      "challenge": 2
      }
     },
     {
      "id": "3.09",
      "title": "Transformer block",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 3,
+      "medium": 3,
+      "hard": 3,
+      "challenge": 2
      }
     },
     {
      "id": "3.10",
      "title": "Hooks & debugging",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 3,
+      "medium": 3,
+      "hard": 3,
+      "challenge": 2
      }
     },
     {
      "id": "3.11",
      "title": "KV cache",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 3,
+      "hard": 2,
+      "challenge": 2
      }
     },
     {
      "id": "3.12",
      "title": "LoRA layer",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 3,
+      "hard": 2,
+      "challenge": 2
      }
     },
     {
      "id": "3.13",
      "title": "Automatic mixed precision (AMP)",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 3,
+      "medium": 3,
+      "hard": 2,
+      "challenge": 2
      }
     },
     {
      "id": "3.14",
      "title": "Profiler & benchmarking",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 3,
+      "medium": 3,
+      "hard": 2,
+      "challenge": 2
      }
     },
     {
      "id": "3.15",
      "title": "Triton kernels & C++ extensions",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 3,
+      "hard": 3,
+      "challenge": 2
      }
     },
     {
      "id": "3.16",
      "title": "Distributed Data Parallel (DDP)",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 3,
+      "medium": 3,
+      "hard": 3,
+      "challenge": 2
      }
     },
     {
      "id": "3.17",
      "title": "FSDP & checkpointing",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 3,
+      "hard": 2,
+      "challenge": 2
      }
     },
     {
      "id": "3.18",
      "title": "torch.compile",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 3,
+      "hard": 2,
+      "challenge": 2
      }
     },
     {
      "id": "3.19",
      "title": "DPO loss",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 3,
+      "medium": 3,
+      "hard": 2,
+      "challenge": 2
      }
     }
    ]

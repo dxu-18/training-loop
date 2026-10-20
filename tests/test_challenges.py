@@ -761,6 +761,467 @@ def best_window_length_range(ns):
 
 # ---------------------------------------------------------------- the test
 
+# ---------------------------------------------------------------- 3.01
+
+@brute
+def window_peak_memory(ns):
+    x, k = ns["mem"].tolist(), ns["k"]
+    return [max(x[i:i + k]) for i in range(len(x) - k + 1)]
+
+
+@brute
+def running_kth_largest(ns):
+    x, k = ns["scores"].tolist(), ns["k"]
+    return [sorted(x[:i + 1], reverse=True)[k - 1] for i in range(k - 1, len(x))]
+
+
+# ---------------------------------------------------------------- 3.02
+
+@brute
+def longest_broadcastable_run(ns):
+    rows = ns["shapes"].tolist()
+
+    def ok(win):
+        return all(len({r[d] for r in win if r[d] != 1}) <= 1 for d in range(4))
+    return max(j - i for i in range(len(rows)) for j in range(i + 1, len(rows) + 1) if ok(rows[i:j]))
+
+
+@brute
+def count_3d_views(ns):
+    out = []
+    for n in ns["sizes"].tolist():
+        out.append(sum(1 for a in range(1, n + 1) if n % a == 0 for b in range(1, n // a + 1) if (n // a) % b == 0))
+    return out
+
+
+# ---------------------------------------------------------------- 3.03
+
+@brute
+def backprop_dag_mod(ns):
+    n, edges = ns["n"], ns["edges"].tolist()
+
+    def paths(u):
+        if u == n - 1:
+            return 1
+        return sum(w * paths(v) for a, v, w in edges if a == u)
+    return paths(0) % (10**9 + 7)
+
+
+@brute
+def backward_schedule(ns):
+    n, edges = ns["n"], [tuple(e) for e in ns["edges"].tolist()]
+    best = None
+    for order in itertools.permutations(range(n)):
+        pos = {op: i for i, op in enumerate(order)}
+        if all(pos[b] < pos[a] for a, b in edges) and (best is None or list(order) > best):
+            best = list(order)
+    return best
+
+
+# ---------------------------------------------------------------- 3.04
+
+@brute
+def dynamic_weighted_sampling(ns):
+    w, out = ns["weights"].tolist(), []
+    for t, a, b in ns["ops"].tolist():
+        if t == 0:
+            w[a] = b
+        else:
+            acc = 0
+            for i, v in enumerate(w):
+                acc += v
+                if acc > a:
+                    out.append(i)
+                    break
+    return out
+
+
+def _set_partitions(items):
+    if not items:
+        yield []
+        return
+    first, rest = items[0], items[1:]
+    for part in _set_partitions(rest):
+        for i in range(len(part)):
+            yield part[:i] + [[first] + part[i]] + part[i + 1:]
+        yield [[first]] + part
+
+
+@brute
+def bucketed_padding_cost(ns):
+    L, B, C = ns["lengths"].tolist(), ns["B"], ns["C"]
+    return min(sum(len(g) * max(g) - sum(g) + C for g in part)
+               for part in _set_partitions(L) if all(len(g) <= B for g in part))
+
+
+# ---------------------------------------------------------------- 3.05
+
+@brute
+def longest_improving_checkpoints(ns):
+    x = ns["val_acc"].tolist()
+    best = [1] * len(x)
+    for i in range(len(x)):
+        for j in range(i):
+            if x[j] < x[i]:
+                best[i] = max(best[i], best[j] + 1)
+    return max(best)
+
+
+@brute
+def tied_param_groups(ns):
+    numel, n = ns["numel"].tolist(), len(ns["numel"])
+    adj = {i: set() for i in range(n)}
+    for a, b in ns["ties"].tolist():
+        adj[a].add(b)
+        adj[b].add(a)
+    seen, groups, total = set(), 0, 0
+    for i in range(n):
+        if i in seen:
+            continue
+        groups += 1
+        total += numel[i]
+        stack = [i]
+        seen.add(i)
+        while stack:
+            for j in adj[stack.pop()]:
+                if j not in seen:
+                    seen.add(j)
+                    stack.append(j)
+    return [groups, total]
+
+
+# ---------------------------------------------------------------- 3.06
+
+@brute
+def max_grad_scale_chain(ns):
+    x = ns["factors"].tolist()
+    return max(math.prod(x[i:j]) for i in range(len(x)) for j in range(i + 1, len(x) + 1))
+
+
+@brute
+def range_grad_products(ns):
+    x = ns["factors"].tolist()
+    return [math.prod(x[l:r + 1]) % (10**9 + 7) for l, r in ns["queries"].tolist()]
+
+
+# ---------------------------------------------------------------- 3.07
+
+@brute
+def best_fit_allocator(ns):
+    N, used, live, out = ns["N"], [], {}, []   # used: list of (addr, size)
+    for t, i, s in ns["ops"].tolist():
+        if t == 1:
+            if i in live:
+                used.remove(live.pop(i))
+            continue
+        blocks, pos = [], 0
+        for a, sz in sorted(used):
+            if a > pos:
+                blocks.append((a - pos, pos))
+            pos = a + sz
+        if pos < N:
+            blocks.append((N - pos, pos))
+        fit = sorted(b for b in blocks if b[0] >= s)
+        if not fit:
+            out.append(-1)
+            continue
+        a = fit[0][1]
+        live[i] = (a, s)
+        used.append((a, s))
+        out.append(a)
+    return out
+
+
+@brute
+def largest_rectangle_hist(ns):
+    h = ns["free_mb"].tolist()
+    return max(min(h[i:j]) * (j - i) for i in range(len(h)) for j in range(i + 1, len(h) + 1))
+
+
+# ---------------------------------------------------------------- 3.08
+
+@brute
+def windowed_attention_peak(ns):
+    q, k, w = ns["q"].tolist(), ns["k"].tolist(), ns["w"]
+    return [max(q[i] * k[j] for j in range(max(0, i - w + 1), i + 1)) for i in range(len(q))]
+
+
+@brute
+def causal_top1_counts(ns):
+    q, k = ns["q"].tolist(), ns["k"].tolist()
+    counts = [0] * len(k)
+    for i in range(len(q)):
+        scores = [q[i] * k[j] for j in range(i + 1)]
+        counts[scores.index(max(scores))] += 1
+    return counts
+
+
+# ---------------------------------------------------------------- 3.09
+
+@brute
+def greedy_decode_cycle(ns):
+    t, table = ns["start"], ns["next_tok"].tolist()
+    for _ in range(ns["N"]):
+        t = table[t]
+    return t
+
+
+@brute
+def top_p_cutoff_queries(ns):
+    w = sorted(ns["weights"].tolist(), reverse=True)
+    out = []
+    for p in ns["thresholds"].tolist():
+        acc, k = 0, 0
+        while acc < p:
+            acc += w[k]
+            k += 1
+        out.append(k)
+    return out
+
+
+# ---------------------------------------------------------------- 3.10
+
+@brute
+def range_max_activation(ns):
+    x = ns["peak"].tolist()
+    return [max(x[l:r + 1]) for l, r in ns["queries"].tolist()]
+
+
+@brute
+def spike_pairs(ns):
+    x = ns["grad_norm"].tolist()
+    return sum(x[j] >= 2 * x[i] for i in range(len(x)) for j in range(i + 1, len(x)))
+
+
+# ---------------------------------------------------------------- 3.11
+
+@brute
+def optimal_kv_evictions(ns):
+    seq, C = ns["blocks"].tolist(), ns["C"]
+    cache, misses = set(), 0
+    for i, b in enumerate(seq):
+        if b in cache:
+            continue
+        misses += 1
+        if len(cache) == C:
+            def next_use(x):
+                return next((j for j in range(i + 1, len(seq)) if seq[j] == x), len(seq) + 1)
+            cache.remove(max(cache, key=next_use))
+        cache.add(b)
+    return misses
+
+
+@brute
+def prefix_cache_reuse(ns):
+    reqs, total = ns["requests"], 0
+    for i, r in enumerate(reqs):
+        best = 0
+        for p in reqs[:i]:
+            k = 0
+            while k < min(len(r), len(p)) and r[k] == p[k]:
+                k += 1
+            best = max(best, k)
+        total += best
+    return total
+
+
+# ---------------------------------------------------------------- 3.12
+
+@brute
+def lora_rank_allocation(ns):
+    cost, gains, budget = ns["cost"].tolist(), ns["gains"].tolist(), ns["budget"]
+    ranks = (0, 4, 8, 16)
+    best = 0
+    for pick in itertools.product(range(4), repeat=len(cost)):
+        if sum(ranks[k] * c for k, c in zip(pick, cost)) <= budget:
+            best = max(best, sum(g[k - 1] for k, g in zip(pick, gains) if k))
+    return best
+
+
+@brute
+def min_rank_for_tolerance(ns):
+    sv = ns["sv"].tolist()
+    return [next(r for r in range(len(sv) + 1) if sum(v * v for v in sv[r:]) <= tau) for tau in ns["tolerances"].tolist()]
+
+
+# ---------------------------------------------------------------- 3.13
+
+@brute
+def bf16_collisions(ns):
+    def bf16(v):  # round the float64 mantissa to 8 bits; Python's round() is ties-to-even
+        m, e = math.frexp(v)
+        return round(m * 256) * 2.0 ** (e - 8)
+    x = ns["x"].tolist()
+    return sum(x[i] != x[j] and bf16(x[i]) == bf16(x[j]) for i in range(len(x)) for j in range(i + 1, len(x)))
+
+
+@brute
+def grad_scaler_trace(ns):
+    scale, streak, skipped = 2.0 ** ns["k0"], 0, 0
+    for v in ns["grads"].tolist():
+        if v * scale > 65504:
+            skipped, scale, streak = skipped + 1, scale / 2, 0
+        else:
+            streak += 1
+            if streak == ns["G"]:
+                scale, streak = scale * 2, 0
+    return [skipped, int(math.log2(scale))]
+
+
+# ---------------------------------------------------------------- 3.14
+
+@brute
+def critical_path_ms(ns):
+    d, deps = ns["dur_us"].tolist(), ns["deps"].tolist()
+    memo = {}
+
+    def finish(i):
+        if i not in memo:
+            memo[i] = d[i] + max([finish(a) for a, b in deps if b == i], default=0)
+        return memo[i]
+    return max(finish(i) for i in range(len(d)))
+
+
+@brute
+def top_self_time(ns):
+    parent, tot = ns["parent"].tolist(), ns["total_us"].tolist()
+    self_us = [tot[i] - sum(tot[j] for j in range(len(tot)) if parent[j] == i) for i in range(len(tot))]
+    order = sorted(range(len(tot)), key=lambda i: (-self_us[i], i))
+    return order[:ns["k"]]
+
+
+# ---------------------------------------------------------------- 3.15
+
+@brute
+def swizzled_tile_loads(ns):
+    pm, pn, G = ns["num_pid_m"], ns["num_pid_n"], ns["GROUP_M"]
+    per = G * pn
+    out = []
+    for P in ns["queries"].tolist():
+        rows, cols = set(), set()
+        for pid in range(P):
+            first = pid // per * G
+            size = min(pm - first, G)
+            rows.add(first + (pid % per) % size)
+            cols.add((pid % per) // size)
+        out.append(len(rows) + len(cols))
+    return out
+
+
+@brute
+def pow2_block_fit(ns):
+    x, S = ns["x"].tolist(), ns["S"]
+    best, B = 0, 1
+    while B < 2 * len(x):
+        if all(sum(x[i:i + B]) <= S for i in range(0, len(x), B)):
+            best = B
+        B *= 2
+    return best
+
+
+# ---------------------------------------------------------------- 3.16
+
+@brute
+def ddp_bucket_timeline(ns):
+    sz, rd, cap = ns["size"].tolist(), ns["ready"].tolist(), ns["cap"]
+    order = list(range(len(sz)))[::-1]
+    buckets = [[order[0]]]
+    for i in order[1:]:
+        if sum(sz[j] for j in buckets[-1]) + sz[i] > cap:
+            buckets.append([i])
+        else:
+            buckets[-1].append(i)
+    t = 0
+    for b in buckets:
+        t = max(t, *(rd[i] for i in b)) + sum(sz[i] for i in b)
+    return t
+
+
+@brute
+def world_sizes_low_waste(ns):
+    n, d = ns["n"], ns["d"]
+    return sum(n % r <= d for r in range(1, n + 1))
+
+
+# ---------------------------------------------------------------- 3.17
+
+@brute
+def checkpoint_segment_size(ns):
+    a = ns["a"].tolist()
+    n = len(a)
+    best = None
+    for s in range(1, n + 1):
+        chunks = [a[i:i + s] for i in range(0, n, s)]
+        cand = (sum(c[0] for c in chunks) + max(sum(c) for c in chunks), s)
+        best = cand if best is None or cand < best else best
+    return list(best)
+
+
+@brute
+def fsdp_unit_padding(ns):
+    x, w, c = ns["numel"].tolist(), ns["world"], ns["overhead"]
+    best = None
+    for cuts in itertools.product([0, 1], repeat=len(x) - 1):
+        units, cur = [], [x[0]]
+        for v, cut in zip(x[1:], cuts):
+            if cut:
+                units.append(cur)
+                cur = [v]
+            else:
+                cur.append(v)
+        units.append(cur)
+        cost = sum(c + (-sum(u)) % w for u in units)
+        best = cost if best is None else min(best, cost)
+    return best
+
+
+# ---------------------------------------------------------------- 3.18
+
+@brute
+def count_recompiles(ns):
+    calls, limit = [tuple(s) for s in ns["shapes"].tolist()], ns["limit"]
+    graphs, misses, fallbacks = [], [], 0
+    for s in calls:
+        if any(all(v == q or (q is None and v >= 2) for v, q in zip(s, g)) for g in graphs):
+            continue
+        misses.append(s)
+        dyn = {i for m in misses for i in range(len(s)) if m[i] != misses[0][i]}
+        if len(graphs) < limit:
+            graphs.append(tuple(None if i in dyn and v >= 2 else v for i, v in enumerate(s)))
+        else:
+            fallbacks += 1
+    return [len(graphs), fallbacks]
+
+
+@brute
+def longest_graph_k_fixes(ns):
+    f, k = ns["is_break"].tolist(), ns["k"]
+    return max(j - i for i in range(len(f)) for j in range(i + 1, len(f) + 1) if sum(f[i:j]) <= k)
+
+
+# ---------------------------------------------------------------- 3.19
+
+@brute
+def discordant_pairs(ns):
+    p, r = ns["policy"].tolist(), ns["ref"].tolist()
+    return sum((p[i] - p[j]) * (r[i] - r[j]) < 0 for i in range(len(p)) for j in range(i + 1, len(p)))
+
+
+@brute
+def max_preference_pairs(ns):
+    c, r, d = ns["chosen"].tolist(), ns["rejected"].tolist(), ns["margin"]
+
+    def best(i, used):
+        if i == len(c):
+            return 0
+        out = best(i + 1, used)
+        for j in range(len(r)):
+            if not used >> j & 1 and c[i] >= r[j] + d:
+                out = max(out, 1 + best(i + 1, used | 1 << j))
+        return out
+    return best(0, 0)
+
+
 def test_every_challenge_has_a_brute_force():
     missing = sorted({t.name for t in CHALLENGES} - set(BRUTE))
     assert not missing, missing

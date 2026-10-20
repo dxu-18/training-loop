@@ -45,6 +45,13 @@ def test_pandas_modules_complete():
             assert len(templates("pandas", m, tier)) >= 2, (m, tier)
 
 
+def test_pytorch_modules_complete():
+    assert modules("pytorch") == [f"3.{i:02d}" for i in range(1, 20)]
+    for m in modules("pytorch"):
+        for tier in TIERS:
+            assert len(templates("pytorch", m, tier)) >= 2, (m, tier)
+
+
 def test_numpy_modules_complete():
     assert modules("numpy") == NUMPY_MODULES
     for m in NUMPY_MODULES:

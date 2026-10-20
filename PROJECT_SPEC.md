@@ -80,9 +80,13 @@ questions. This supersedes the per-topic counter of session 1. The difficulty sc
 "Do pandas now." Same structure as NumPy: every pandas subsection (2.01–2.19) is its own page with
 its own 250 goal; medal art is still deferred.
 
+### Session 5 request (2026-10-20)
+"Do PyTorch" ("the limit reset, just do the whole thing"): all 19 subsections (3.01–3.19) at the
+NumPy/pandas standard, running in the browser.
+
 ---
 
-## 2. Architecture decisions (sessions 1–4)
+## 2. Architecture decisions (sessions 1–5)
 
 | Decision | Choice | Why |
 |---|---|---|
@@ -106,6 +110,9 @@ its own 250 goal; medal art is still deferred.
 | Per-module packages | `TOPICS[...].extra` in `docs/app.js` (e.g. pandas `2.18` → matplotlib, jinja2) | Heavy packages download only on the page that needs them. |
 | Editor | CodeMirror 5 (cdnjs), with the mode set per topic | Simple script tags and no build step. |
 | Site folder | `docs/` on `main`, served by GitHub Pages ("deploy from branch", `/docs`). Live at https://dxu-18.github.io/training-loop/ | `docs/generator.zip` + `docs/build.json` are **committed**: run `scripts/build.py` before committing generator changes (`tests/test_bundle.py` fails if stale). An Actions deploy is ready in `ci/pages.yml` but needs a `gh` token with the `workflow` scope (see the file header). |
+| PyTorch in the browser | **torch-lite**: a NumPy-backed `torch` package in `generator/shims/torch` (plus `triton-lite` in `generator/shims/triton`), put on `sys.path` by `generator/__init__.py` only when real torch is missing | Pyodide has no torch build. The shim follows PyTorch semantics for what the templates use (see "torch-lite" below), so prompts, solutions and printed tensors look exactly like PyTorch. |
+| torch state in the sandbox | Before and after every run the grader calls `torch.manual_seed(0)`, re-enables grad mode, clears autocast/profilers, destroys the process group and resets `torch.compiler`; it also restores `os.environ` | The reference and the user's run see the same random numbers, and modes one answer leaves on can't leak into the next. |
+| "Write a module" problems | `post` fills the user's module's parameters **by sorted name** from a fixed seed (or loads a reference `state_dict`), then compares outputs | Grading doesn't depend on the order the user created layers in, only on the names and the forward pass the prompt asks for. |
 | Worker type | **Module** worker (`new Worker(..., {type: "module"})`) importing `pyodide.mjs` | Classic `importScripts` of the CDN script failed in current Chromium (session 2). Module workers work in current Chrome, Firefox and Safari. |
 
 ### Pyodide gotchas (found by the in-browser self-test, session 3)
@@ -133,11 +140,32 @@ its own 250 goal; medal art is still deferred.
   render the user's math later.
 - **Dockerfile / compose.yaml**: line-wise normalized comparison or a parsed-structure check.
 
-### Open problem: PyTorch and Hugging Face in the browser
-Pyodide has no `torch` or `transformers`. The options:
-(a) a small numpy-backed `torch` shim for the tensor and shape modules (3.01–3.03),
-(b) AST and pattern checks, plus shape reasoning, for the rest,
-(c) an optional "run locally" mode. **Not decided yet.**
+### torch-lite (session 5): what it covers and where it differs from PyTorch
+Decision: build a NumPy-backed `torch` (option (a) of the old open problem, extended to all of 3.01–3.19).
+- **Covered:** tensors with PyTorch dtypes/printing (float32/int64 defaults, emulated bfloat16), broadcasting,
+  real views and strides (`view` errors on incompatible strides, `contiguous`, `as_strided`, `channels_last`),
+  reverse-mode autograd (hooks, `retain_grad`, `no_grad`, in-place-on-leaf errors), `torch.autograd.Function`
+  (old and `setup_context` style, gradient count/shape checks, `gradcheck`), `torch.func` (grad, vmap,
+  functional_call, jacrev, hessian), `nn` (Module registration, hooks, state_dict, Linear/Conv/Norm/Embedding/
+  MultiheadAttention/TransformerEncoder, all common losses), `optim` (exact SGD/Adam/AdamW/RMSprop/Adagrad
+  formulas, param groups, state_dict) and LR schedulers, `utils.data` (DataLoader with simulated workers and
+  `get_worker_info`, samplers, `random_split`, DistributedSampler), checkpointing, autocast + GradScaler,
+  profiler (record_function, schedules, key_averages), benchmark.Timer, `torch.library.custom_op`/`torch.ops`,
+  `torch.compile` (option checks, `_orig_mod`, `fullgraph` errors, `explain` graph-break counts),
+  `torch.distributed` (a real **single-process** group), FSDP2 `fully_shard` (identity sharding) and DCP.
+  `triton-lite` runs `@triton.jit` kernels one program at a time with masked loads/stores, atomics and `tl.dot`;
+  an unmasked out-of-bounds access raises a clear error.
+- **Differs:** random numbers are reproducible under `manual_seed` but are not PyTorch's stream; no
+  `create_graph` (higher-order autograd; `torch.func.hessian` uses finite differences of exact gradients);
+  `torch.compile` runs eagerly (no speed-up); profiler op times are not meaningful (counts are); no CUDA, LSTM/GRU,
+  real multi-process collectives or C++ extensions (`load_inline` explains why). Anything unsupported raises
+  "not available in the browser's torch-lite" instead of silently misbehaving.
+- **Testing:** `tests/` run against torch-lite too (the `.venv` has no torch), and the Pyodide self-test grades
+  every PyTorch template in the browser.
+
+### Open problem: Hugging Face in the browser
+Pyodide has no `transformers`. Options: extend the shim idea (a tiny tokenizer/pipeline layer over torch-lite),
+AST and pattern checks, or an optional "run locally" mode. **Not decided yet.**
 
 ---
 
@@ -151,6 +179,10 @@ generator/            Python package: question generation + grading (runs locall
   sections/           one package per COMP_GUIDE section
     s01_numpy/        _common.py (helpers, challenge()) + one file per subsection: m01_printing.py … m18_ml_patterns.py
     s02_pandas/       _common.py (themed DataFrame builder `frame()`, challenge()) + m01_core.py … m19_performance.py
+    s03_pytorch/      _common.py (HEADER imports torch/nn/F, tensor literals, challenge()) + m01_tensors.py … m19_dpo.py
+  shims/torch/        torch-lite: NumPy-backed torch (core in __init__.py, more ops in _extra.py; nn, optim, utils, func,
+                      autograd, amp, profiler, distributed (+ fsdp, checkpoint), library, _compile, ...)
+  shims/triton/       triton-lite: @triton.jit kernels interpreted on the CPU
   api.py              JSON entry points called by docs/worker.js (generate, run, grade, info, self_test)
 scripts/
   build.py            zip generator/ into docs/generator.zip + write docs/build.json catalog (rerun after every change)
@@ -180,7 +212,7 @@ Legend: ✅ done · 🟡 partial · ⬜ not started
 |---|---|---|---|---|
 | 1 | NumPy | ✅ **all 18 modules live**: 277 templates in `generator/sections/s01_numpy/` (every module ≥ 2 templates per tier, 2 challenges each) | exec (Pyodide) | session 3 |
 | 2 | pandas | ✅ **all 19 modules live**: 261 templates in `generator/sections/s02_pandas/` (every module ≥ 2 templates per tier, 2 challenges each) | exec (Pyodide) + figure/Styler inspection for 2.18 | session 4 |
-| 3 | PyTorch | ⬜ | **open problem** (see §2) | |
+| 3 | PyTorch | ✅ **all 19 modules live**: 240 templates in `generator/sections/s03_pytorch/` (every module ≥ 2 templates per tier, 2 challenges each) | exec (Pyodide) on torch-lite + triton-lite | session 5 |
 | 4 | scikit-learn | ⬜ | exec | |
 | 5 | Matplotlib | ⬜ | exec + figure inspection | |
 | 6 | Hugging Face | ⬜ | **open problem** | |
@@ -191,13 +223,13 @@ Legend: ✅ done · 🟡 partial · ⬜ not started
 | 11 | LaTeX | ⬜ | normalized / KaTeX | |
 | 12 | Docker | ⬜ | command / Dockerfile | |
 
-### What exists (after session 4)
+### What exists (after session 5)
 - `generator/`: core (tiers, registry, examples), grader (answer comparison, AST checks,
   hidden tests, clean tracebacks), themes (20 themes, 10 axes, 10 label sets), and the NumPy section.
-- `tests/`: 1,704 tests. Every template × 25 seeds (6 for challenges) must pass its own grader,
-  obviously wrong answers must fail, and variety is checked. Every challenge (74: 36 NumPy, 38 pandas)
-  is cross-checked against a brute force on 60 small inputs. `test_*_modules_complete` enforces
-  ≥ 2 templates per tier for NumPy and pandas.
+- `tests/`: 2,463 tests. Every template × 25 seeds (6 for challenges) must pass its own grader,
+  obviously wrong answers must fail, and variety is checked. Every challenge (112: 36 NumPy, 38 pandas,
+  38 PyTorch) is cross-checked against a brute force on 60 small inputs. `test_*_modules_complete` enforces
+  ≥ 2 templates per tier for NumPy, pandas and PyTorch.
 - `docs/`: the live site, three levels: topic list (`#/`: total solved + medal count per topic,
   "soon" for topics with no live module) → topic page (`#/numpy`: its modules with per-module
   count and medal) → practice (`#/numpy/1.05`: problem, Given, Example, editor, Run/Submit,
@@ -223,7 +255,7 @@ Legend: ✅ done · 🟡 partial · ⬜ not started
 1. scikit-learn (exec checker; add `"scikit-learn"` packages, already listed in `docs/app.js`) and
    Matplotlib (reuse the 2.18 figure-inspection `post` pattern).
 2. SQL section (sqlite3 checker), then the `command` checker for Bash, Git and Docker.
-3. Decide the PyTorch / Hugging Face approach (§2 open problem).
+3. Hugging Face (§2 open problem; torch-lite is a starting point).
 4. Medal art, then the style pass.
 
 **Adding a section:** copy the `s01_numpy/` layout (`_common.py` with a `template(module, tier)` wrapper that
@@ -232,9 +264,9 @@ subsection ≥ 1 template per tier (it goes live module by module). For each cha
 force to `tests/test_challenges.py`. Then `scripts/build.py`, `pytest`, `scripts/e2e_check.py`, push.
 
 Other TODO:
-- ⬜ Medal art: a unique, cute medal image for each **subsection** (209 across the 12 topics;
+- ⬜ Medal art: a unique, cute medal image for each **subsection** (195 across the 12 topics;
   deferred by request). The placeholder varies the colour per topic and the ribbon + number per module.
 - ⬜ Final visual style pass on the frontend.
 - ✅ GitHub Pages deploy (session 2): https://dxu-18.github.io/training-loop/
-- ✅ Per-module pages, counters and medals (session 3). 🟡 Content: NumPy 18/18 and pandas 19/19 modules;
-  the other 10 topics (172 modules) are listed as "soon".
+- ✅ Per-module pages, counters and medals (session 3). 🟡 Content: NumPy 18/18, pandas 19/19 and PyTorch 19/19
+  modules; the other 9 topics (139 modules) are listed as "soon".
