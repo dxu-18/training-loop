@@ -1,0 +1,47 @@
+# OPTIONAL: deploy through GitHub Actions instead of serving the committed docs/ bundle.
+# Not active: pushing workflow files needs a token with the `workflow` scope. To enable:
+#   gh auth refresh -h github.com -s workflow
+#   git mv ci/pages.yml .github/workflows/pages.yml   (then push)
+#   gh api -X PUT repos/dxu-18/training-loop/pages -f build_type=workflow
+# Test the generator, bundle it, and publish docs/ to GitHub Pages.
+name: pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"   # same CPython line as Pyodide 314
+      - run: pip install "numpy==2.4.*" "pandas==3.0.*" pytest
+      - run: python -m pytest -q
+      - run: python scripts/build.py   # writes docs/generator.zip + docs/build.json
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: docs
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,12 @@
+{
+  "hash": "de33e30fca25",
+  "sections": {
+    "numpy": {
+      "lite": 16,
+      "easy": 18,
+      "medium": 18,
+      "hard": 12,
+      "challenge": 8
+    }
+  }
+}
