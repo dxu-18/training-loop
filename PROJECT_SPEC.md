@@ -171,6 +171,33 @@ NumPy (537), pandas (473) and PyTorch (855); browser-impossible names are listed
 `tests/test_coverage.py` keeps it at 100%. `scripts/diff_torch.py --torch-python <real-torch venv>` compares every
 deterministic PyTorch problem with real PyTorch (1,384 agree). Extra page packages: 2.03 jinja2, 2.11 tzdata.
 
+### Session 7 (2026-10-20): Bash, in progress (not live yet)
+Request: "skip scikit-learn for now, and do bash first. ensure everything in comp_guide.md is included for bash."
+Decision: instead of the planned shlex `command` checker, build **bash-lite** (`generator/bashlite/`), a simulated
+bash running in Pyodide. User code really runs, so the console shows real output, and grading compares stdout (or a
+`post` check) between the reference and the user, on the same simulated machine.
+- **Written, but untested (no builtins or commands yet, so nothing runs):**
+  - `vfs.py`: in-memory filesystem with inodes, symlinks, modes, owners, times and sorted listings.
+  - `parser.py`: full bash grammar, incremental `parse_next`, heredocs, aliases, `Incomplete` for interactive input.
+    It parses all 189 bash blocks of guide section 7.
+  - `syntax.py`: AST.
+  - `kernel.py`: generator-based processes, pipes with SIGPIPE, signals, a virtual clock and the TTY.
+  - `fileio.py`: read, write and open, including `/dev/fd`.
+  - `arith.py`, `pattern.py` (globs, `${x#pat}`, pathname expansion), `quoting.py`.
+  - `shell.py`: interpreter with expansions, splitting, redirections, pipelines, functions, jobs and traps.
+- **Next:**
+  - Modules: `builtins.py`, `exec.py` (shebangs, `/usr/bin` stubs `\x7fELF...BASHLITE:<name>`), `regex.py`
+    (BRE/ERE/PCRE → Python `re`), `world.py` (World/Host/Session; Ubuntu-like base FS, user `ada`, fixed virtual
+    clock).
+  - Commands: `utils/` (coreutils, grep, sed, awk compiled to Python, find, xargs, jq, tar/zip/gzip; simulated
+    ssh/scp/rsync/curl/tmux/pip/uv/conda/nvidia-smi/ps/kill).
+  - `keys.py`: readline and tmux key simulators for 7.17.
+  - Grader `kind="bash"`, frontend (hide `#:` directive lines, stderr in red, clear-screen), then `s07_bash`
+    templates and coverage of every guide command and flag.
+- **Reference behaviour checked against real bash 5.2.37** (assoc-array order is FNV-1 hash bucket order, xtrace,
+  `type`/`declare -f` printing, `printf`, `read`, `getopts`). Recreate the reference tools with micromamba:
+  `micromamba create -p <dir> -c conda-forge bash coreutils sed gawk grep findutils diffutils tar gzip jq bc xz zip unzip file`.
+
 ### Open problem: Hugging Face in the browser
 Pyodide has no `transformers`. Options: extend the shim idea (a tiny tokenizer/pipeline layer over torch-lite),
 AST and pattern checks, or an optional "run locally" mode. **Not decided yet.**
@@ -224,7 +251,7 @@ Legend: ✅ done · 🟡 partial · ⬜ not started
 | 4 | scikit-learn | ⬜ | exec | |
 | 5 | Matplotlib | ⬜ | exec + figure inspection | |
 | 6 | Hugging Face | ⬜ | **open problem** | |
-| 7 | Bash | ⬜ | command | |
+| 7 | Bash | 🟡 bash-lite core written (session 7), no templates yet | simulated shell (bash-lite) | next up |
 | 8 | Git & GitHub | ⬜ | command | |
 | 9 | Vim | ⬜ | keystrokes | |
 | 10 | SQL | ⬜ | sqlite3 exec | |
