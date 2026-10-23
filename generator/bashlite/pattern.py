@@ -312,8 +312,8 @@ def _glob_comps(fs, cwd, base, comps, dotglob, globstar, nocase, extglob):
                 out += _glob_comps(fs, cwd, d, rest, dotglob, globstar, nocase, extglob)
             else:
                 out.append(d)
-        if not rest:   # "**" alone also matches files
-            out = []
+        if not rest:   # "**" alone also matches files (and dir/** includes dir/ itself)
+            out = [base.rstrip("/") + "/"] if base else []
             for p in _walk_all(fs, cwd, base, dotglob):
                 out.append(p)
         return out

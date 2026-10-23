@@ -124,6 +124,8 @@ class Parser:
         self.s += text
         self.n = len(self.s)
         self._index_lines()
+        if self._tok is not None and self._tok.kind == "eof":
+            self._tok = None
 
     def line_of(self, pos: int) -> int:
         return self.base_line + bisect.bisect_left(self._nl, pos)
@@ -146,11 +148,12 @@ class Parser:
         except Incomplete:
             return "incomplete"
 
-    def _eof(self, what: str = ""):
+    def _eof(self, what: str = "", at: int | None = None):
         if self.interactive:
             raise Incomplete("unexpected end of file", self.line_of(self.i))
         if what:
-            raise ParseError(f"unexpected EOF while looking for matching `{what}'", self.line_of(self.i))
+            line = self.line_of(at) if at is not None and what in ("'", '"', "`") else self.line_of(self.i)
+            raise ParseError(f"unexpected EOF while looking for matching `{what}'", line)
         raise ParseError("syntax error: unexpected end of file", self.line_of(self.i))
 
     def _unexpected(self, tok: Tok):
@@ -280,14 +283,16 @@ class Parser:
                 flush()
                 j = s.find("'", self.i + 1)
                 if j < 0:
+                    q0 = self.i
                     self.i = n
-                    self._eof("'")
+                    self._eof("'", q0)
                 parts.append(SQ(s[self.i + 1:j]))
                 self.i = j + 1
             elif c == '"':
                 flush()
+                q0 = self.i
                 self.i += 1
-                parts.append(DQ(self._dq_parts()))
+                parts.append(DQ(self._dq_parts(q0=q0)))
             elif c == "$":
                 flush()
                 parts.append(self._dollar(False))
@@ -300,7 +305,7 @@ class Parser:
         flush()
         return Word(parts, s[start:self.i])
 
-    def _dq_parts(self, heredoc: bool = False) -> list:
+    def _dq_parts(self, heredoc: bool = False, q0: int | None = None) -> list:
         """Parts of a double-quoted string; self.i is just after the opening quote (heredoc: no quotes)."""
         s, n = self.s, self.n
         parts: list = []
@@ -315,7 +320,7 @@ class Parser:
             if self.i >= n:
                 if heredoc:
                     break
-                self._eof('"')
+                self._eof('"', q0)
             c = s[self.i]
             if c == '"' and not heredoc:
                 self.i += 1
@@ -549,12 +554,22 @@ class Parser:
             self.i += 1
             return Param(name, sub, "", indirect=indirect, braced=True)
         two = s[self.i:self.i + 2]
+
+        def close():
+            need()
+            if s[self.i] != "}":
+                raise ParseError(f"{s[start:self.i + 1]}: bad substitution", self.line_of(start))
+            self.i += 1
         if two in (":-", ":=", ":?", ":+"):
             self.i += 2
-            return Param(name, sub, two, self._param_arg(), indirect=indirect, braced=True)
+            arg = self._param_arg()
+            close()
+            return Param(name, sub, two, arg, indirect=indirect, braced=True)
         if c in "-=?+":
             self.i += 1
-            return Param(name, sub, c, self._param_arg(), indirect=indirect, braced=True)
+            arg = self._param_arg()
+            close()
+            return Param(name, sub, c, arg, indirect=indirect, braced=True)
         if c == ":":
             self.i += 1
             off = self._param_arg(stop=":")
@@ -562,13 +577,14 @@ class Parser:
             if need() == ":":
                 self.i += 1
                 length = self._param_arg()
-            else:
-                self.i += 1
+            close()
             return Param(name, sub, ":", off, length, indirect=indirect, braced=True)
         if c in "#%":
             op = c * 2 if need(1) == c else c
             self.i += len(op)
-            return Param(name, sub, op, self._param_arg(pattern=True), indirect=indirect, braced=True)
+            arg = self._param_arg(pattern=True)
+            close()
+            return Param(name, sub, op, arg, indirect=indirect, braced=True)
         if c == "/":
             nxt = need(1)
             op = "/" + nxt if nxt in "/#%" else "/"
@@ -578,16 +594,18 @@ class Parser:
             if need() == "/":
                 self.i += 1
                 rep = self._param_arg()
-            else:
-                self.i += 1
+            close()
             return Param(name, sub, op, pat, rep, indirect=indirect, braced=True)
         if c in "^,":
             op = c * 2 if need(1) == c else c
             self.i += len(op)
-            return Param(name, sub, op, self._param_arg(pattern=True), indirect=indirect, braced=True)
+            arg = self._param_arg(pattern=True)
+            close()
+            return Param(name, sub, op, arg, indirect=indirect, braced=True)
         if c == "@":
             self.i += 1
             arg = self._param_arg()
+            close()
             return Param(name, sub, "@", arg, indirect=indirect, braced=True)
         j = s.find("}", self.i)
         raise ParseError(f"{s[start:j + 1] if j > 0 else s[start:]}: bad substitution", self.line_of(start))
@@ -735,8 +753,8 @@ class Parser:
                     if self.interactive:
                         self.heredocs = docs[docs.index(hd):]
                         raise Incomplete("here-document", start_line)
-                    self.warnings.append(f"warning: here-document at line {start_line - 1} delimited by end-of-file "
-                                         f"(wanted `{hd.delim}')")
+                    self.warnings.append((self.line_of(self.i), f"warning: here-document at line {start_line - 1} "
+                                          f"delimited by end-of-file (wanted `{hd.delim}')"))
                     break
                 j = s.find("\n", self.i)
                 if j < 0:

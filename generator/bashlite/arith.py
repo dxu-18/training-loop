@@ -82,7 +82,7 @@ class Evaluator:
         return val
 
     def _rest(self, tok) -> str:
-        return self.text[tok[2]:].strip()
+        return self.text[tok[2]:]
 
     def _tokens(self, text: str):
         out, i, n = [], 0, len(text)
@@ -293,8 +293,9 @@ class Evaluator:
             t = self._peek()
             if t and t[0] == "op" and t[1] in ("*", "/", "%"):
                 self.pos += 1
+                rt = self._peek()
                 r = self._pow(ev)
-                v = self._binop(t[1], v, r, ev, t)
+                v = self._binop(t[1], v, r, ev, rt)
             else:
                 return v
 

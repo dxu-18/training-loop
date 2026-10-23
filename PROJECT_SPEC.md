@@ -185,15 +185,21 @@ bash running in Pyodide. User code really runs, so the console shows real output
   - `fileio.py`: read, write and open, including `/dev/fd`.
   - `arith.py`, `pattern.py` (globs, `${x#pat}`, pathname expansion), `quoting.py`.
   - `shell.py`: interpreter with expansions, splitting, redirections, pipelines, functions, jobs and traps.
-- **Next:**
-  - Modules: `builtins.py`, `exec.py` (shebangs, `/usr/bin` stubs `\x7fELF...BASHLITE:<name>`), `regex.py`
-    (BRE/ERE/PCRE → Python `re`), `world.py` (World/Host/Session; Ubuntu-like base FS, user `ada`, fixed virtual
-    clock).
-  - Commands: `utils/` (coreutils, grep, sed, awk compiled to Python, find, xargs, jq, tar/zip/gzip; simulated
-    ssh/scp/rsync/curl/tmux/pip/uv/conda/nvidia-smi/ps/kill).
-  - `keys.py`: readline and tmux key simulators for 7.17.
-  - Grader `kind="bash"`, frontend (hide `#:` directive lines, stderr in red, clear-screen), then `s07_bash`
-    templates and coverage of every guide command and flag.
+- **Written since (2026-10-23, still not live):**
+  - `builtins.py` (all bash builtins), `exec.py` (shebangs, `/usr/bin` stubs `\x7fELF...BASHLITE:<name>`),
+    `regex.py` (BRE/ERE/PCRE → Python `re`), `world.py` + `basefs.py` (World/Host/Session, Ubuntu-like base FS,
+    user `ada`, fixed virtual clock), `history.py`, `printf.py`, `timeutil.py`, `unparse.py`, `helptext.py`.
+  - `utils/`: coreutils, grep/rg, sed, awk (compiled to Python), find/xargs, jq, bc, tar/zip/gzip/xz, ps/kill/top,
+    man/tldr/shellcheck/crontab, ssh/scp/rsync/curl/wget (`net.py`), tmux, and `pyenv.py` (python that really runs
+    against the simulated FS, venv, pip with PEP 668, uv, conda with `conda init` hooks, jupyter, tensorboard,
+    torchrun, `python -m http.server`).
+  - Job notices now follow real bash's timing (checked in a pty): a job that dies during `wait` or a foreground
+    command is reported at the next prompt, one killed by `kill` a prompt later.
+  - Differential corpora (`tests/bash_corpus/`, `scripts/diff_bash.py`) agree with real bash/GNU tools except jq
+    1.8 vs Ubuntu's 1.7.1 wording (bash-lite follows 1.7.1).
+- **Next:** `gpu.py` (nvidia-smi, nvtop), `directives.py` (`#:` setup lines), `keys.py` (readline and tmux keys for
+  7.17), `features.py` (AST features for `require`), grader `kind="bash"`, frontend (hide `#:` lines, stderr in red,
+  clear-screen, ANSI colours), then `s07_bash` templates and coverage of every guide command and flag.
 - **Reference behaviour checked against real bash 5.2.37** (assoc-array order is FNV-1 hash bucket order, xtrace,
   `type`/`declare -f` printing, `printf`, `read`, `getopts`). Recreate the reference tools with micromamba:
   `micromamba create -p <dir> -c conda-forge bash coreutils sed gawk grep findutils diffutils tar gzip jq bc xz zip unzip file`.
@@ -251,7 +257,7 @@ Legend: ✅ done · 🟡 partial · ⬜ not started
 | 4 | scikit-learn | ⬜ | exec | |
 | 5 | Matplotlib | ⬜ | exec + figure inspection | |
 | 6 | Hugging Face | ⬜ | **open problem** | |
-| 7 | Bash | 🟡 bash-lite core written (session 7), no templates yet | simulated shell (bash-lite) | next up |
+| 7 | Bash | 🟡 bash-lite shell and most commands written, no templates yet | simulated shell (bash-lite) | next up |
 | 8 | Git & GitHub | ⬜ | command | |
 | 9 | Vim | ⬜ | keystrokes | |
 | 10 | SQL | ⬜ | sqlite3 exec | |
