@@ -104,11 +104,15 @@ def read(kernel, of: OpenFile | None, n: int = -1):
         return bytes(of.rng.getrandbits(8) for _ in range(m))
     if k == "tty":
         tty = of.tty
+        if _background_reader(kernel, tty):
+            return b""
         while True:
             if tty.input:
                 data = bytes(tty.input if n < 0 else tty.input[:n])
                 del tty.input[:len(data)]
                 return data
+            if tty.take_line():
+                continue
             if tty.input_eof:
                 return b""
             yield ("tty", tty)
@@ -162,6 +166,8 @@ def readline(kernel, of, delim: bytes = b"\n"):
             yield ("read", p)
     if k == "tty":
         tty = of.tty
+        if _background_reader(kernel, tty):
+            return b""
         out = bytearray()
         while True:
             if tty.input:
@@ -173,11 +179,22 @@ def readline(kernel, of, delim: bytes = b"\n"):
                 out += tty.input
                 tty.input.clear()
                 continue
+            if tty.take_line():
+                continue
             if tty.input_eof:
                 return bytes(out)
             yield ("tty", tty)
     data = yield from read(kernel, of, 1 << 16)
     return data
+
+
+def _background_reader(kernel, tty) -> bool:
+    """A background job that reads the terminal is stopped with SIGTTIN (job control)."""
+    p = kernel.current
+    if p is None or not tty.fg_pgid or p.pgid == tty.fg_pgid or p.shell is not None and p.shell.interactive:
+        return False
+    kernel.signal(p, 21)
+    return True
 
 
 DEVICES = {"/dev/null": "null", "/dev/zero": "zero", "/dev/urandom": "rand", "/dev/random": "rand", "/dev/full": "null"}

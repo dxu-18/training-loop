@@ -114,12 +114,15 @@ class TTY:
         self.size = 0
         self.limit = 2_000_000
         self.input = bytearray()     # typeahead (keys typed while a command runs)
-        self.input_eof = True        # script mode: reading the terminal gives EOF
+        self.lines = deque()         # lines typed at the terminal that nobody has read yet
+        self.input_eof = True        # when nothing is left to read, the terminal gives EOF (like Ctrl-D)
         self.fg_pgid = 0
         self.waiters: list = []
         self.mute = False
 
     def write(self, stream: str, data: bytes) -> None:
+        if self.mirror is not None:
+            self.mirror.write(stream, data)
         if self.mute:
             return
         text = data.decode("utf-8", "replace")
@@ -130,6 +133,20 @@ class TTY:
             self.out[-1][1] += text
         else:
             self.out.append([stream, text])
+
+    source = None       # a pane bridged to another terminal reads that terminal's typed lines
+    mirror = None       # ... and copies its output there
+    on_starve = None
+
+    def take_line(self) -> bool:
+        """Move the next typed line into the input buffer. False if nothing is left."""
+        if not self.lines:
+            if self.source is not None and self.source.lines:
+                self.input += (self.source.lines.popleft() + "\n").encode("utf-8", "surrogateescape")
+                return True
+            return False
+        self.input += (self.lines.popleft() + "\n").encode("utf-8", "surrogateescape")
+        return True
 
     def text(self, streams=("out", "err", "echo")) -> str:
         return "".join(t for s, t in self.out if s in streams)
@@ -180,6 +197,8 @@ class Proc:
         self.shell = None
         self.job = None
         self.on_exit = []
+        self.ctty = parent.ctty if parent is not None else None
+        self.bg = parent.bg if parent is not None else False    # started with & while job control is off
 
     @property
     def cmdline(self) -> str:
@@ -247,6 +266,20 @@ class Kernel:
         if gen is not None:
             self.runq.append(p)
         return p
+
+    def start(self, p: Proc, gen) -> Proc:
+        """Give a spawned process its program and make it runnable."""
+        p.gen = gen
+        if p.state == "R":
+            self.runq.append(p)
+        return p
+
+    def poke(self, p: Proc) -> None:
+        """Make a blocked process re-check whatever it is waiting for."""
+        if p.state == "S":
+            p.state = "R"
+            p.token += 1
+            self.runq.append(p)
 
     def wake(self, obj) -> None:
         ws = obj.waiters
@@ -348,6 +381,14 @@ class Kernel:
         if kind == "yield":
             self.runq.append(p)
             return
+        if kind == "idle":       # an interactive shell waiting for the next run
+            p.state = "I"
+            return
+        if kind == "forever":    # a daemon: sleeps until a signal arrives
+            p.state = "S"
+            p.token += 1
+            p.waiting = req
+            return
         p.state = "S"
         p.token += 1
         tok = p.token
@@ -374,6 +415,9 @@ class Kernel:
         elif kind == "tty":
             tty = req[1]
             tty.waiters.append((p, tok))
+            hook = getattr(tty, "on_starve", None)
+            if hook is not None:
+                hook()
         else:
             raise RuntimeError(f"bad block request {req!r}")
 

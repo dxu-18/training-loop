@@ -96,6 +96,9 @@ class Job:
     def __init__(self, num, procs, text):
         self.num, self.procs, self.text = num, procs, text
         self.notified = False
+        self.report_at = None            # prompt number at which "Done"/"Terminated" is reported
+        self.died_in_wait = False
+        self.died_line = None
         self.reported_state = "Running"
         self.disowned = False
         self.nohup = False
@@ -153,6 +156,8 @@ class Shell:
         self.ignored_sigs: set[int] = set()
         self.pending_traps: list[int] = []
         self.jobs: dict[int, Job] = {}
+        self.prompt_no = 0                 # primary prompts shown so far (job notices are timed by them)
+        self._in_wait_builtin = False
         self.job_order: list[int] = []     # most recent last (+ = current, - = previous)
         self.dirstack: list[str] = []
         self.history: list[str] = []
@@ -220,7 +225,7 @@ class Shell:
         sub = self.fork(child)
         if extra:
             extra(sub)
-        child.gen = sub._subshell_main(body)
+        k.start(child, sub._subshell_main(body))
         return child
 
     def _subshell_main(self, body):
@@ -273,7 +278,7 @@ class Shell:
             return "bash: "
         if self.script is not None:
             return f"{self.script}: line {self.lineno}: "
-        return f"bash: line {self.lineno}: "
+        return f"{self.arg0 if self.c_mode else 'bash'}: line {self.lineno}: "
 
     def error(self, msg: str):
         yield from self.err(self.prefix() + msg + "\n")
@@ -418,6 +423,8 @@ class Shell:
             var.value = value
         if name == "PWD":
             self.dir_logical = var.value if isinstance(var.value, str) else self.dir_logical
+        elif name == "PATH":
+            self.hashed.clear()
 
     def _convert(self, var, value, old, append):
         if "i" in var.attrs:
@@ -547,9 +554,9 @@ class Shell:
             return ev.eval(text)
         except ArithError as e:
             tok = e.token
-            self.error_now(f"{text.strip() if not self._arith_ctx else self._arith_ctx + text}: {e.msg} "
-                           f"(error token is \"{tok}\")")
-            raise ShellAbort(1, fatal=not self._arith_cmd) from None
+            shown = text.lstrip()
+            self.error_now(f"{self._arith_ctx}{shown}: {e.msg} (error token is \"{tok}\")")
+            raise ShellAbort(1, fatal=(not self._arith_cmd) and (self.c_mode or self.interactive and False)) from None
 
     _arith_ctx = ""
     _arith_cmd = False
@@ -874,16 +881,16 @@ class Shell:
             if target is None:
                 if "nounset" in self.opts:
                     self.error_now(f"{name}: unbound variable")
-                    raise ShellAbort(127, fatal=True)
+                    raise ShellAbort(self.fatal_status(), fatal=True)
                 return None, False, False, name
             m = re.fullmatch(r"([A-Za-z_][A-Za-z0-9_]*)\[(.*)\]", target)
             if m:
                 fake = Param(m.group(1), Word([Lit(m.group(2))], m.group(2)), "")
-                return self._param_values(fake)
+                return (yield from self._param_values(fake))
             if not NAME.match(target) and not target.isdigit() and target not in "@*#?-$!":
                 self.error_now(f"{target}: invalid variable name")
                 raise ShellAbort(1, fatal=True)
-            return self._param_values(Param(target))
+            return (yield from self._param_values(Param(target)))
         if p.op in ("!*", "!@"):
             names = sorted(set(k for k in list(self.globals) + [k for s in self.scopes for k in s]
                                if k.startswith(name) and self.lookup(k) is not None and self.lookup(k).value is not None))
@@ -944,6 +951,10 @@ class Shell:
                     ("onecmd", "t"), ("nounset", "u"), ("verbose", "v"), ("xtrace", "x"), ("braceexpand", "B"),
                     ("noclobber", "C"), ("errtrace", "E"), ("histexpand", "H"), ("physical", "P"), ("functrace", "T"))
 
+    def fatal_status(self) -> int:
+        """Exit status after a fatal expansion error: 127 for bash -c, else 1."""
+        return 127 if self.c_mode else 1
+
     def flags(self) -> str:
         f = "".join(ch for opt, ch in self.FLAG_LETTERS if opt in self.opts or (opt == "interactive" and self.interactive))
         if self.interactive:
@@ -966,7 +977,7 @@ class Shell:
             v = vals[0] if vals else None
             if v is None and "nounset" in self.opts:
                 self.error_now(f"{nm}: unbound variable")
-                raise ShellAbort(127, fatal=True)
+                raise ShellAbort(self.fatal_status(), fatal=True)
             out.append((str(len(v or "")), Q if quoted else EXP))
             return
         vals, is_list, star, nm = yield from self._param_values(p)
@@ -1005,10 +1016,10 @@ class Shell:
             # :? and ?
             msg = yield from self.expand_string(p.arg, True)
             self.error_now(f"{nm}: {msg if msg else 'parameter null or not set'}")
-            raise ShellAbort(127 if not self.interactive else 1, fatal=True)
+            raise ShellAbort(self.fatal_status(), fatal=True)
         if unset and "nounset" in self.opts and not (is_list and p.name in ("@", "*")):
             self.error_now(f"{nm}: unbound variable")
-            raise ShellAbort(127, fatal=True)
+            raise ShellAbort(self.fatal_status(), fatal=True)
         if op == "":
             self._emit_values(vals, is_list, star, quoted, out)
             return
@@ -1406,8 +1417,8 @@ class Shell:
                     fds[2] = w
             argv = self._literal_argv(cmd)
             child = self.spawn_subshell(cmd, fds=fds, argv=argv)
-            if procs:
-                child.pgid = procs[0].pid
+            if "monitor" in self.opts:
+                child.pgid = procs[0].pid if procs else child.pid
             procs.append(child)
             if prev_r is not None and prev_r.refs == 0:
                 prev_r.ref()
@@ -1424,7 +1435,8 @@ class Shell:
         if tty is not None and self.interactive:
             tty.fg_pgid = old_fg
         if any(p.state == "T" for p in procs):
-            job = self.add_job(procs, pl.src)
+            from .unparse import job_text
+            job = self.add_job(procs, job_text(pl))
             yield from self.err(f"\n[{job.num}]+  Stopped                 {job.text}\n")
             return 128 + SIGTSTP
         statuses = [p.status for p in procs]
@@ -1452,8 +1464,13 @@ class Shell:
         if not ao.rest and len(ao.first.cmds) == 1 and not ao.first.negate:
             argv = self._literal_argv(ao.first.cmds[0])
         child = self.spawn_subshell(ao, fds=fds, argv=argv)
+        if "monitor" in self.opts:
+            child.pgid = child.pid
+        else:
+            child.bg = True
         self.last_bg = child.pid
-        job = self.add_job([child], ao.src + " &" if not ao.src.endswith("&") else ao.src)
+        from .unparse import job_text
+        job = self.add_job([child], job_text(ao) + " &")
         if self.interactive:
             yield from self.err(f"[{job.num}] {child.pid}\n")
         return 0
@@ -1467,8 +1484,21 @@ class Shell:
         job = Job(num, procs, text)
         self.jobs[num] = job
         self.job_order.append(num)
+
+        def ended(_p, job=job):
+            if job.report_at is None and job.state() == "Done":
+                # bash notices a dead child at once while it waits (for a foreground job or in `wait`); otherwise the
+                # SIGCHLD arrives after the next prompt is already up, so the notice comes one prompt later
+                me = self.proc
+                blocked = me.state == "S" and bool(me.waiting) and me.waiting[0] == "wait"
+                job.report_at = self.prompt_no + (1 if blocked else 2)
+                job.died_in_wait = blocked and self._in_wait_builtin
+                # a death we caused this instant (kill) only lands once the command line has moved on: a `wait`
+                # later on the same line still sees the job alive and reaps it
+                job.died_line = None if blocked else self.prompt_no
         for p in procs:
             p.job = job
+            p.on_exit.append(ended)
         return job
 
     def run_command(self, cmd):
@@ -1954,14 +1984,16 @@ class Shell:
                         cur = self.get(n) if ap else None
                         var = Var((cur or "") + v if ap else v, "x")
                         self.scopes[-1][n] = var
+            if name == "exec" and len(args) == 1:
+                for old in saved.values():      # redirections stay in effect
+                    if old is not None:
+                        old.unref(self.kernel)
+                saved = {}
             try:
                 status = yield from b(self, [a if isinstance(a, str) else a for a in args])
             finally:
                 if pushed:
-                    top = self.scopes.pop()
-                    if name in ("export", "readonly", "declare", "typeset", "local"):
-                        pass
-                    _ = top
+                    self.scopes.pop()
                 self.restore_redirs(saved)
             return status if status is not None else 0
         return (yield from self.run_external(args, tmp, redirs, exec_ok))
@@ -2058,7 +2090,9 @@ class Shell:
         child = self.kernel.spawn(self.host, args, None, self.proc, fds=fds, env=env)
         if saved is not None:
             self.restore_redirs(saved)
-        child.gen = exec_program(child, path, args, env, self)
+        self.kernel.start(child, exec_program(child, path, args, env, self))
+        if "monitor" in self.opts:
+            child.pgid = child.pid
         tty = self.world.tty_of(self.proc)
         old_fg = tty.fg_pgid if tty else None
         if tty is not None and self.interactive:
@@ -2244,7 +2278,7 @@ class Shell:
 
     def eval_string(self, src: str, what="eval"):
         """Parse and run a string in this shell (eval, trap actions, source, bash -c)."""
-        p = Parser(src, self.aliases if "expand_aliases" in self.shopts else None)
+        p = Parser(src, self.aliases if "expand_aliases" in self.shopts else None, line=self.lineno or 1)
         status = 0
         while True:
             try:
@@ -2271,7 +2305,8 @@ class Shell:
                     if "unexpected token" in e.msg:
                         yield from self.err(f"{self.prefix()}`{bad.strip()}'\n")
                 return 2
-            for w in p.warnings:
+            for wl, w in p.warnings:
+                self.lineno = wl
                 yield from self.error(w)
             p.warnings.clear()
             if cmd is None:
@@ -2284,6 +2319,120 @@ class Shell:
                 self.status = status
                 if e.fatal and not self.interactive:
                     raise ExitShell(status)
+
+    # ------------------------------------------------------------ the interactive prompt
+
+    def add_history(self, line: str):
+        ctl = (self.get("HISTCONTROL") or "").split(":")
+        if ("ignorespace" in ctl or "ignoreboth" in ctl) and line.startswith(" "):
+            return
+        if ("ignoredups" in ctl or "ignoreboth" in ctl) and self.history and self.history[-1] == line:
+            return
+        if "erasedups" in ctl:
+            self.history = [h for h in self.history if h != line]
+        if line.strip():
+            self.history.append(line)
+
+    def repl(self, history: bool = True, idle: bool = True, persistent: bool = False):
+        """Read `src` line by line like a terminal: history expansion, job notices, one command at a time."""
+        from .builtins import notify_jobs
+        from .history import HistError, expand, join_lines
+        tty = self.world.tty_of(self.proc)
+
+        def fresh():
+            return Parser("", self.aliases if "expand_aliases" in self.shopts else None, interactive=True)
+        p = fresh()
+        pending: list[str] = []
+        while True:
+            if tty.input:      # leftover typeahead from a program that read less than a line
+                raw = tty.input.decode("utf-8", "surrogateescape").rstrip("\n")
+                tty.input.clear()
+            elif tty.lines:
+                raw = tty.lines.popleft()
+            elif tty.source is not None and tty.source.lines:
+                raw = tty.source.lines.popleft()
+            elif persistent:
+                yield ("tty", tty)
+                continue
+            else:
+                break
+            if self.interactive and not pending:
+                if self.jobs:
+                    # background work that is ready (not sleeping) runs "while the prompt is drawn"
+                    for _ in range(64):
+                        yield ("yield",)
+                        if not any(q is not self.proc and q.state == "R" for q in self.kernel.runq):
+                            break
+                self.prompt_no += 1
+                if self.jobs:
+                    msg = notify_jobs(self)
+                    if msg:
+                        yield from self.err(msg)
+            line = raw
+            if self.interactive and "histexpand" in self.opts and ("!" in line or line.startswith("^")):
+                try:
+                    new, changed, print_only = expand(line, self.history + ([join_lines(pending)] if False else []),
+                                                      quick=not pending)
+                except HistError as e:
+                    yield from self.err(f"bash: {e}\n")
+                    p, pending = fresh(), []
+                    continue
+                if changed:
+                    yield from self.err(new + "\n")
+                    line = new
+                if print_only:
+                    if history:
+                        self.add_history(line)
+                    continue
+            pending.append(line)
+            p.aliases = self.aliases if "expand_aliases" in self.shopts else None
+            p.feed(line + "\n")
+            while True:
+                m = p.mark()
+                try:
+                    cmd = p.parse_next()
+                except Incomplete:
+                    p.reset(m)
+                    break
+                except ParseError as e:
+                    yield from self.err(f"bash: {e.msg}\n")
+                    if history and pending:
+                        self.add_history(join_lines(pending))
+                    p, pending = fresh(), []
+                    break
+                if cmd is None:
+                    break
+                if pending:
+                    if history:
+                        self.add_history(join_lines(pending))
+                    pending = []
+                try:
+                    yield from self.run_list(cmd)
+                except ExitShell as e:
+                    status = yield from self.run_exit_trap(e.status)
+                    self.status = status
+                    self._exited = True
+                    return status
+                except ShellAbort as e:
+                    self.status = e.status
+                except (BreakLoop, ContinueLoop, ReturnFunc):
+                    pass
+                if self.pending_traps:
+                    yield from self.run_pending_traps()
+                p.aliases = self.aliases if "expand_aliases" in self.shopts else None
+        if pending and any(x.strip() for x in pending):
+            text = "\n".join(pending) + "\n"
+            try:
+                Parser(text).parse_all()
+            except ParseError as e:
+                yield from self.err(f"bash: {e.msg}\n")
+                if "matching" in e.msg:
+                    yield from self.err("bash: syntax error: unexpected end of file\n")
+            if history:
+                self.add_history(join_lines(pending))
+        if idle:
+            yield ("idle",)
+        return self.status
 
     def prompt_expand(self, s: str) -> str:
         user = self.host.user_name(self.proc.uid)
