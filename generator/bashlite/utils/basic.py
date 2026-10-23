@@ -691,7 +691,7 @@ def u_which(ctx):
                     node = ctx.fs.lookup(cand, ctx.cwd)
                 except FSError:
                     continue
-                if node.type == "f" and node.mode & 0o111 and cand not in found:
+                if node.type == "f" and node.mode & 0o111:
                     found.append(cand)
                     if not all_:
                         break

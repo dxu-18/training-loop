@@ -101,8 +101,14 @@ SORT_KEYS = {"pid": lambda p: p.pid, "ppid": lambda p: p.ppid, "%cpu": lambda p:
              "comm": lambda p: comm_of(p), "user": lambda p: p.uid, "time": lambda p: p.cputime, "uid": lambda p: p.uid}
 
 
-def table(rows, rights, sep=" "):
-    widths = [max(len(r[i]) for r in rows) for i in range(len(rows[0]))]
+# procps-ng's minimum column widths for `ps -o` (pid_max 4194304 -> 7-digit PIDs)
+MIN_WIDTH = {"pid": 7, "ppid": 7, "pgid": 7, "user": 8, "uid": 5, "%cpu": 4, "pcpu": 4, "%mem": 4, "pmem": 4,
+             "rss": 5, "vsz": 6, "etime": 11, "time": 8, "stat": 4, "tty": 8, "tt": 8, "start": 8, "stime": 5,
+             "nice": 3, "ni": 3, "etimes": 7}
+
+
+def table(rows, rights, sep=" ", mins=None):
+    widths = [max([(mins or [0] * len(rows[0]))[i]] + [len(r[i]) for r in rows]) for i in range(len(rows[0]))]
     out = []
     for r in rows:
         cells = []
@@ -138,6 +144,41 @@ def u_ps(ctx):
             all_ = all_ or "a" in x or "x" in x
             i += 1
             continue
+        if x.startswith("-") and not x.startswith("--") and len(x) > 2 and not x[1:].isdigit() \
+                and set(x[1:2]) <= set("eAfFlyjHwopuUC"):
+            # a cluster of UNIX options: -ef, -eo pid,cmd, -eopid,cmd, -fu ada
+            j, ok = 1, True
+            while j < len(x):
+                c = x[j]
+                if c in "eA":
+                    all_ = True
+                elif c in "fF":
+                    full = True
+                elif c in "lyjHw":
+                    pass
+                elif c in "opuUC":
+                    val, used_next = (x[j + 1:], False) if x[j + 1:] else (nxt, True)
+                    if val is None:
+                        ok = False
+                        break
+                    if c == "o":
+                        fmt = (fmt or []) + [f for f in val.split(",") if f]
+                    elif c == "p":
+                        pids = [int(y) for y in re.split(r"[ ,]+", val) if y.isdigit()]
+                    elif c in "uU":
+                        users = val.split(",")
+                    else:
+                        names = val.split(",")
+                    if used_next:
+                        i += 1
+                    break
+                else:
+                    ok = False
+                    break
+                j += 1
+            if ok:
+                i += 1
+                continue
         if x in ("-e", "-A", "ax", "-ax"):
             all_ = True
         elif x == "-f":
@@ -203,12 +244,12 @@ def u_ps(ctx):
             if spec is None:
                 ctx.e(f"error: unknown user-defined format specifier \"{name}\"\n\nUsage:\n ps [options]\n")
                 return 1
-            cols.append((hdr if _ else spec[0], spec[1], spec[2]))
-        rows = [[h for h, _, _ in cols]] if headers and any(h for h, _, _ in cols) else []
+            cols.append((hdr if _ else spec[0], spec[1], spec[2], MIN_WIDTH.get(name, 0)))
+        rows = [[h for h, _, _, _ in cols]] if headers and any(h for h, _, _, _ in cols) else []
         for p in procs:
-            rows.append([fn(p, ctx) for _, fn, _ in cols])
+            rows.append([fn(p, ctx) for _, fn, _, _ in cols])
         if rows:
-            out = table(rows, [r for _, _, r in cols])
+            out = table(rows, [r for _, _, r, _ in cols], mins=[m if k < len(cols) - 1 else 0 for k, (_, _, _, m) in enumerate(cols)])
     elif bsd:
         rows = [["USER", "PID", "%CPU", "%MEM", "VSZ", "RSS", "TTY", "STAT", "START", "TIME", "COMMAND"]]
         for p in procs:
@@ -850,6 +891,11 @@ def u_lsof(ctx):
                         continue
                     mode = "w" if of.wr and not of.rd else ("u" if of.wr else "r")
                     rows.append((comm_of(p)[:9], p.pid, user, f"{fd}{mode}", "REG", "259,2", str(of.inode.size), str(of.inode.ino), path))
+            for g, _ in p.gpu:
+                dev = f"/dev/nvidia{g}"
+                if files and not any(ctx.abspath(f) == dev for f in files):
+                    continue
+                rows.append((comm_of(p)[:9], p.pid, user, f"{40 + g}u", "CHR", f"195,{g}", "0t0", str(900 + g), dev))
     if not rows:
         return 1
     if terse:

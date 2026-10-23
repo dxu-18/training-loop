@@ -121,6 +121,8 @@ details .inner { margin-top: 10px; padding: 14px; border-left: 2px solid var(--l
 .out { font-size: 0.85rem; color: var(--ink); }
 .out .err { color: var(--bad); }
 .out .dim { color: var(--muted); }
+.out .cmd { color: var(--muted); }
+.out .typed { color: var(--ink); font-style: italic; }
 .tier { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
 
 .loading { color: var(--muted); padding: 48px 0; text-align: center; }

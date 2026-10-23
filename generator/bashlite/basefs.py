@@ -98,7 +98,11 @@ def build_base(host) -> None:
     # users
     users = sorted(host.users.values(), key=lambda u: u.uid)
     f("/etc/passwd", "".join(f"{u.name}:x:{u.uid}:{u.gid}:{u.gecos}:{u.home}:{u.shell}\n" for u in users))
+    host.groups.setdefault(42, ("shadow", set()))
     f("/etc/group", "".join(f"{n}:x:{g}:{','.join(sorted(m))}\n" for g, (n, m) in sorted(host.groups.items())))
+    shadow = f("/etc/shadow", "".join(f"{u.name}:{'$y$j9T$' + 'x' * 43 if u.uid >= 1000 or u.uid == 0 else '*'}:"
+                                      f"19800:0:99999:7:::\n" for u in users), 0o640)
+    shadow.gid = 42
     f("/etc/hostname", host.name + "\n")
     f("/etc/hosts", f"127.0.0.1\tlocalhost\n127.0.1.1\t{host.name}\n\n::1\tip6-localhost ip6-loopback\n")
     f("/etc/os-release", OS_RELEASE)

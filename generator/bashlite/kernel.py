@@ -134,6 +134,7 @@ class TTY:
         else:
             self.out.append([stream, text])
 
+    echo = False        # show typed lines (after a prompt) in the transcript
     source = None       # a pane bridged to another terminal reads that terminal's typed lines
     mirror = None       # ... and copies its output there
     on_starve = None
@@ -145,10 +146,13 @@ class TTY:
                 self.input += (self.source.lines.popleft() + "\n").encode("utf-8", "surrogateescape")
                 return True
             return False
-        self.input += (self.lines.popleft() + "\n").encode("utf-8", "surrogateescape")
+        line = self.lines.popleft()
+        if self.echo:
+            self.write("in", (line + "\n").encode("utf-8", "surrogateescape"))
+        self.input += (line + "\n").encode("utf-8", "surrogateescape")
         return True
 
-    def text(self, streams=("out", "err", "echo")) -> str:
+    def text(self, streams=("out", "err", "echo", "cmd", "in")) -> str:
         return "".join(t for s, t in self.out if s in streams)
 
 
@@ -365,10 +369,16 @@ class Kernel:
         self.wake(p)
 
     def _resume_stopped(self, p: Proc) -> None:
-        p.state = "R"
+        saved = p.saved_wait
         p.term_sig = 0
         p.saved_wait = None
-        self.runq.append(p)
+        if saved is not None and saved[0] == "S" and saved[1]:
+            # it was blocked (sleeping, reading, waiting): it goes back to that, like a restarted system call
+            p.state = "R"
+            self._block(p, saved[1])
+        else:
+            p.state = "R"
+            self.runq.append(p)
         self.wake(p)
 
     # ------------------------------------------------------------ scheduling
@@ -404,11 +414,13 @@ class Kernel:
             obj.waiters.append((p, tok))
         elif kind == "wait":
             procs, until = req[1], req[2] if len(req) > 2 else None
-            if any(c.state in ("Z", "T") for c in procs):
+            # children that already exited don't count: block on the live ones (else `true | sleep 1` spins)
+            live = [c for c in procs if c.state != "Z"]
+            if not live or any(c.state == "T" for c in live):
                 p.state = "R"
                 self.runq.append(p)
                 return
-            for c in procs:
+            for c in live:
                 c.waiters.append((p, tok))
             if until is not None:
                 heapq.heappush(self.timers, (until, next(Proc._seq), tok, p))

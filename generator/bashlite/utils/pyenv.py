@@ -1174,6 +1174,7 @@ def _stub(top, version, ctx, env, sb):
                 if not x.isdigit() or int(x) >= len(gpus):
                     break           # CUDA stops at the first invalid entry
                 visible.append(int(x))
+        m._visible = visible
         cuda = types.ModuleType("torch.cuda")
 
         def need(i):
@@ -1255,6 +1256,7 @@ class _Importer:
     def __init__(self, sb, ctx, env, have, search):
         self.sb, self.ctx, self.env, self.have, self.search = sb, ctx, env, have, search
         self.orig = builtins.__import__
+        self.cuda_visible = []   # physical GPUs this run's torch can see
         self.added = []          # sys.modules entries created for this run
         self.patched = []        # (module, old __version__)
         self.ready = set()
@@ -1302,6 +1304,8 @@ class _Importer:
         else:
             saved = {k: sys.modules[k] for k in sys.modules if k == top or k.startswith(top + ".")}
             mod, subs = _stub(top, version, self.ctx, self.env, self.sb)
+            if top == "torch":
+                self.cuda_visible = getattr(mod, "_visible", [])
             self.added.append((top, saved))
             sys.modules[top] = mod
             for k, v in subs.items():
@@ -1483,6 +1487,12 @@ def run_python(ctx, code, filename, argv, env, root, kind, stdin_text=None, modu
         except BaseException as e:  # noqa: BLE001
             run.err.write(format_traceback(e, code, filename))
             status = 1
+    # code that imported torch and talks about CUDA holds memory on its (first visible) GPU while it runs
+    vis = run.importer.cuda_visible
+    if vis and re.search(r"cuda|\.to\(\s*device|device\s*=", code):
+        rank = int(env.get("LOCAL_RANK", "0") or 0) if str(env.get("LOCAL_RANK", "0")).isdigit() else 0
+        mib = 2048 + 512 * (len(code) % 7)
+        ctx.gpu_claim = getattr(ctx, "gpu_claim", []) + [(vis[rank % len(vis)], mib)]
     return status, run.sb.events, run.sb.offset
 
 
@@ -1597,11 +1607,22 @@ def _exec_code(ctx, code, filename, argv, env, root, kind, stdin_text=None):
         elif of is None or of.kind != "tty":
             stdin_text = ""
     start = ctx.now
+    ctx.gpu_claim = []
     status, events, offset = run_python(ctx, code, filename, argv, env, root, kind, stdin_text)
-    yield from replay(ctx, events, start)
-    end = start + int(offset * NS)
-    if end > ctx.now:
-        yield ("sleep", end)
+    return (yield from _play(ctx, events, start, offset, status))
+
+
+def _play(ctx, events, start, offset, status):
+    """Release a finished run's output at its simulated times, holding its GPU memory meanwhile."""
+    held = ctx.proc.gpu
+    ctx.proc.gpu = held + ctx.gpu_claim
+    try:
+        yield from replay(ctx, events, start)
+        end = start + int(offset * NS)
+        if end > ctx.now:
+            yield ("sleep", end)
+    finally:
+        ctx.proc.gpu = held
     return status
 
 
@@ -1896,6 +1917,7 @@ def u_torchrun(ctx):
     start = ctx.now
     all_events = []
     longest = 0.0
+    ctx.gpu_claim = []
     for rank in range(nproc):
         env = dict(ctx.env, RANK=str(rank), LOCAL_RANK=str(rank), WORLD_SIZE=str(nproc), LOCAL_WORLD_SIZE=str(nproc),
                    MASTER_ADDR="127.0.0.1", MASTER_PORT="29500", GROUP_RANK="0", ROLE_RANK=str(rank), OMP_NUM_THREADS="1")
@@ -1904,11 +1926,7 @@ def u_torchrun(ctx):
         all_events += events
         longest = max(longest, off)
     all_events.sort(key=lambda e: e[0])
-    yield from replay(ctx, all_events, start)
-    end = start + int(longest * NS)
-    if end > ctx.now:
-        yield ("sleep", end)
-    return status
+    return (yield from _play(ctx, all_events, start, longest, status))
 
 
 # ---------------------------------------------------------------------------- uv
@@ -2498,9 +2516,10 @@ def u_conda(ctx):
             new.append((norm(n), vv))
         listed = ([("python", pyver)] if pyver else []) + new
         ctx.w(channels_block(chans) + plan_block(path, specs, listed + ([("pip", "25.2")] if pyver else [])))
-        ok = yield from confirm()
-        if not ok:
-            return 1
+        if not from_file:                # `conda env create` never asks
+            ok = yield from confirm()
+            if not ok:
+                return 1
         ctx.w("\nDownloading and Extracting Packages:\n\nPreparing transaction: done\nVerifying transaction: done\nExecuting transaction: done\n")
         if pyver:
             make_conda_env(fs, path, pyver, ctx.uid, ctx.proc.gid)

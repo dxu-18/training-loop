@@ -185,14 +185,116 @@ def report(section: str, seeds: int, only: str = "") -> dict:
     return result
 
 
+# ---------------------------------------------------------------- bash (section 7)
+# The guide's bash is commands, options and syntax rather than Python APIs, so each module lists what it uses
+# (bashlite.features names: "grep -c", "tar -x", "<(", "param:%", "[[ -f", ...); 7.17 also lists keys (C-r, M-.).
+# A feature is practised when some reference solution of that module uses it.
+GUIDE_BASH = {
+    "7.01": "echo, $name, bash --version, man, ls --help, help, type, which, command -v, whatis, apropos, tldr, clear, "
+            "history, tail, exit, |, sed -i, date -v, date -d",
+    "7.02": "pwd, ls, ls -l, ls -a, ls -h, ls -t, ls -S, ls -1, ls -d, tree -L, cd, cd -, pushd, popd, mkdir, mkdir -p, "
+            "{,}, touch, rmdir, cp, cp -r, cp -i, cp -p, mv, mv -n, rm, rm -i, rm -r, rm -f, ln -s, readlink, realpath, "
+            "basename, dirname, file, stat, wc -l, glob, ~",
+    "7.03": "cat, cat -n, tac, nl, less, head, head -n, head -c, tail -n, tail -f, tail -F, diff, diff -u, diff -r, cmp, "
+            "comm, <(, sort, md5sum, sha256sum, xxd, strings, column -s, column -t, less -S, |",
+    "7.04": "ls -l, chmod, chmod -R, chown, sudo, $name, tar -c, tar -z, tar -v, tar -f, tar -x, tar -C, tar -t, tar -J, "
+            "zip -r, unzip -d, unzip -l, gzip, gunzip, zcat, zgrep, du -s, du -h, du -d, sort -h, df -h, head",
+    "7.05": "find -name, find -iname, find -type, find -size, find -mtime, find -maxdepth, find -not, find -path, "
+            "find -delete, find -exec, find -print0, xargs -0, xargs -n, cp -t, grep, grep -i, grep -n, grep -v, grep -c, "
+            "grep -l, grep -w, grep -o, grep -r, grep --include, grep --exclude-dir, grep -E, grep -A, grep -B, grep -F, "
+            "grep -P, rg, rg -t, rg -l, wc -l",
+    "7.06": "cut -d, cut -f, cut -c, sort, sort -n, sort -r, sort -u, sort -h, sort -t, sort -k, uniq -c, uniq -d, tr, "
+            "tr -d, tr -s, sed, sed -i, sed -n, sed -E, awk, awk -F, awk -v, paste -d, paste -s, bc, join -t, split -l, "
+            "jq, jq -r, jq -s, jq -c, seq, xargs -I{}, xargs -n, xargs -P, wget -q, <, |",
+    "7.07": ">, >>, 2>, 2>&1, &>, <, |, tee, tee -a, <<, param::-, <<<, <(, set -o, diff, grep, python",
+    "7.08": "$name, ${, echo, readonly, unset, export, $(, date, wc -l, ls, :, param::-, param::=, param::?, param:len, "
+            "param:sub, param:#, param:##, param:%, param:/, param://, param:^^, param:,,, {..}, {,}, mkdir -p, glob, "
+            "shopt -s, **, printf",
+    "7.09": "arr=(, +=, array, array[@], param:len, param:!, param:sub, for, declare -A, mapfile -t, $((, ((, bc, awk, "
+            "python -c",
+    "7.10": "if, [[ -f, [[ -d, ((, [[ !, &&, ||, case, for, for((, while, read -r, <(, until, ping -c, sleep, {..}, "
+            "[[ -eq, continue, break, exit, tail -n, mkdir -p, cd",
+    "7.11": "set -e, set -u, set -o, function, >&2, exit, printf, $(, date, $*, getopts, case, shift, $((, [[ -eq, $#, "
+            "||, mktemp -d, trap, local, python, chmod, bash -x, shellcheck, source, $1, $0, $?",
+    "7.12": "ps, grep, pgrep -a, pgrep -f, top, htop, kill, kill -9, pkill -f, &, jobs -l, fg, bg, disown -h, wait, "
+            "nohup, 2>&1, $!, time, timeout, sleep, watch -n, nvidia-smi, lsof -i, lsof -t, nice -n, uptime, free -h, "
+            "nproc, lscpu, uname -a, whoami, hostname, python",
+    "7.13": "env, printenv, tr, export, $name, alias, unalias, set -a, set +a, source, crontab, crontab -e, date, python",
+    "7.14": "ssh, ssh -p, ssh -i, ssh-keygen -t, ssh-keygen -C, ssh-copy-id, eval, ssh-agent, ssh-agent -s, ssh-add, "
+            "ssh -L, ssh -N, ssh -f, ssh -J, scp, scp -r, rsync -a, rsync -v, rsync -z, rsync -P, rsync --exclude, "
+            "rsync -n, rsync --delete, curl -O, curl -L, curl -o, curl -s, jq, curl -X, curl -H, curl -d, wget -c, "
+            "tmux new, tmux ls, tmux attach, tmux kill-session, tmux -s, tmux -t",
+    "7.15": "python3 -m venv, source, deactivate, which, python -m pip, pip install, pip -U, pip install -r, "
+            "pip install -e, pip freeze, pip list, pip --outdated, pip show, pip uninstall, pip -y, uv venv, "
+            "uv pip install, uv init, uv add, uv sync, uv run, uv python, uv lock, conda create, conda activate, "
+            "conda install, conda -c, conda env, conda env create, conda remove, conda --all, python -c, jupyter, "
+            "python -m ipykernel",
+    "7.16": "nvidia-smi, nvidia-smi -l, nvtop, nvidia-smi --query-gpu, nvidia-smi --format, "
+            "nvidia-smi --query-compute-apps, python, torchrun, nohup, date, $(, for, xargs -P, xargs -I{}, seq, sh -c, "
+            "grep -h, sort -t, sort -k, tail, grep -o, cut -d, tail -f, grep --line-buffered, du -sh, ls -t, rm -f, "
+            "tensorboard, python -m http.server",
+    "7.17": "Tab, C-a, C-e, M-b, M-f, C-u, C-k, C-w, C-y, C-r, Enter, Esc, C-l, C-c, C-d, C-z, M-., !!, sudo, !$, !str, "
+            "^^, set -o",
+}
+# guide features no problem practises, with the reason
+EXCLUDED_BASH = {"7.13": {"crontab -e": "needs an interactive editor (crontab - is practised instead)"}}
+
+
+def bash_features(p) -> set[str]:
+    from generator.bashlite.features import features
+    from generator.bashlite.keys import key_features, parse_keys
+    if "#: keys" in p.setup:
+        out = key_features(p.solution)
+        typed = []
+        for kind, v in parse_keys(p.solution):
+            if kind == "text":
+                typed.append(v)
+            elif v == "Enter":
+                typed.append("\n")
+        return out | features("".join(typed))
+    out = features(p.solution)
+    return out | {f.replace("python3", "python", 1) for f in out if f.startswith("python3")}
+
+
+def report_bash(seeds: int, only: str = "") -> dict:
+    import generator  # noqa: F401
+    from generator import core
+    from generator.core import build, templates
+    result = {}
+    for mid, spec in GUIDE_BASH.items():
+        if only and mid != only:
+            continue
+        want = {x.strip() for x in spec.split(", ")} - set(EXCLUDED_BASH.get(mid, {}))
+        have: set[str] = set()
+        for t in templates("bash", mid):
+            try:
+                core._PICKED.clear()
+                core._FORCE_ITEM[0] = None
+                have |= bash_features(build(t, 0))
+                n_items = core._PICKED[0] if core._PICKED else 0
+                for i in range(n_items):
+                    core._FORCE_ITEM[0] = i
+                    try:
+                        for s in range(2):
+                            have |= bash_features(build(t, s))
+                    finally:
+                        core._FORCE_ITEM[0] = None
+                for s in range(1, seeds if t.tier != "challenge" else 3):
+                    have |= bash_features(build(t, s))
+            except Exception as e:  # noqa: BLE001
+                CRASHES.append(f"{mid} {t.name}: {type(e).__name__}: {e}")
+        result[mid] = {"api": len(want), "api_missing": sorted(want - have), "kw": 0, "kw_missing": []}
+    return result
+
+
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("section", choices=sorted(SECTIONS))
+    ap.add_argument("section", choices=sorted(SECTIONS) + ["bash"])
     ap.add_argument("--seeds", type=int, default=150)
     ap.add_argument("--module", default="")
     ap.add_argument("--kw", action="store_true", help="also list missing keyword arguments")
     args = ap.parse_args()
-    rep = report(args.section, args.seeds, args.module)
+    rep = report_bash(args.seeds, args.module) if args.section == "bash" else report(args.section, args.seeds, args.module)
     tot = sum(r["api"] for r in rep.values())
     miss = sum(len(r["api_missing"]) for r in rep.values())
     ktot = sum(r["kw"] for r in rep.values())

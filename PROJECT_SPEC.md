@@ -171,7 +171,7 @@ NumPy (537), pandas (473) and PyTorch (855); browser-impossible names are listed
 `tests/test_coverage.py` keeps it at 100%. `scripts/diff_torch.py --torch-python <real-torch venv>` compares every
 deterministic PyTorch problem with real PyTorch (1,384 agree). Extra page packages: 2.03 jinja2, 2.11 tzdata.
 
-### Session 7 (2026-10-20): Bash, in progress (not live yet)
+### Session 7 (2026-10-20 → 10-23): Bash, live
 Request: "skip scikit-learn for now, and do bash first. ensure everything in comp_guide.md is included for bash."
 Decision: instead of the planned shlex `command` checker, build **bash-lite** (`generator/bashlite/`), a simulated
 bash running in Pyodide. User code really runs, so the console shows real output, and grading compares stdout (or a
@@ -197,9 +197,23 @@ bash running in Pyodide. User code really runs, so the console shows real output
     command is reported at the next prompt, one killed by `kill` a prompt later.
   - Differential corpora (`tests/bash_corpus/`, `scripts/diff_bash.py`) agree with real bash/GNU tools except jq
     1.8 vs Ubuntu's 1.7.1 wording (bash-lite follows 1.7.1).
-- **Next:** `gpu.py` (nvidia-smi, nvtop), `directives.py` (`#:` setup lines), `keys.py` (readline and tmux keys for
-  7.17), `features.py` (AST features for `require`), grader `kind="bash"`, frontend (hide `#:` lines, stderr in red,
-  clear-screen, ANSI colours), then `s07_bash` templates and coverage of every guide command and flag.
+- **Finished 2026-10-23 (live):**
+  - `utils/gpu.py` (nvidia-smi table/queries/`-l`, nvtop, fuser; Python code that touches CUDA holds GPU memory
+    while it runs), `directives.py` (`#:` setup lines: GPUs, date, hosts, URL fixtures, long-running processes, venvs,
+    conda, history, script mode ...), `keys.py` (a readline editor in emacs and vi mode with kill ring, history search,
+    completion, plus tmux prefix keys), `features.py` (what a solution uses: commands, `cmd -flag`, syntax), and
+    `check.py`, the `kind="bash"` grader: setup runs quietly in the user's interactive session, the answer is typed
+    line by line, and stdout (or stderr, exit status, or a `post` check) is compared with the reference solution's.
+  - `generator/sections/s07_bash/`: 170 templates for 7.01–7.17 (≥ 2 per tier, 2 challenges per module), ~500
+    distinct tasks. Every curated guide feature (469: commands, flags, syntax, 7.17 keys) is practised
+    (`scripts/guide_coverage.py bash`, enforced by tests/test_coverage.py). Every challenge is cross-checked
+    against an independent Python brute force (tests/test_bash_challenges.py).
+  - Frontend: `#:` lines hidden, a terminal transcript in the console (prompts, typed input, stderr in red, ANSI
+    colours, clear-screen), shell highlighting, plain-text editor for keystroke answers.
+  - Lesson: a simulator bug can make the reference and the answer fail identically, so "the reference passes" proves
+    little. The templates were reviewed transcript by transcript, and a scan flags reference solutions that print
+    errors; that found a dozen simulator bugs (e.g. `true | sleep 1` spinning, `a[$k]=v` not parsed as an assignment,
+    `set -euo pipefail`, fd leaks with `2>&1 >/dev/null` in pipelines, sed on empty input).
 - **Reference behaviour checked against real bash 5.2.37** (assoc-array order is FNV-1 hash bucket order, xtrace,
   `type`/`declare -f` printing, `printf`, `read`, `getopts`). Recreate the reference tools with micromamba:
   `micromamba create -p <dir> -c conda-forge bash coreutils sed gawk grep findutils diffutils tar gzip jq bc xz zip unzip file`.
@@ -221,6 +235,9 @@ generator/            Python package: question generation + grading (runs locall
     s01_numpy/        _common.py (helpers, challenge()) + one file per subsection: m01_printing.py … m18_ml_patterns.py
     s02_pandas/       _common.py (themed DataFrame builder `frame()`, challenge()) + m01_core.py … m19_performance.py
     s03_pytorch/      _common.py (HEADER imports torch/nn/F, tensor literals, challenge()) + m01_tensors.py … m19_dpo.py
+    s07_bash/         _common.py (P/K problem helpers, files() heredocs, catalog(), challenge()) + m01_basics.py … m17_keys_history.py
+  bashlite/           bash-lite: a simulated Ubuntu machine in pure Python (vfs, parser, kernel, shell, builtins, utils/ commands,
+                      world/basefs, directives, check = the bash grader, keys = readline/tmux simulator, features)
   shims/torch/        torch-lite: NumPy-backed torch (core in __init__.py, more ops in _extra.py; nn, optim, utils, func,
                       autograd, amp, profiler, distributed (+ fsdp, checkpoint), library, _compile, ...)
   shims/triton/       triton-lite: @triton.jit kernels interpreted on the CPU
@@ -257,7 +274,7 @@ Legend: ✅ done · 🟡 partial · ⬜ not started
 | 4 | scikit-learn | ⬜ | exec | |
 | 5 | Matplotlib | ⬜ | exec + figure inspection | |
 | 6 | Hugging Face | ⬜ | **open problem** | |
-| 7 | Bash | 🟡 bash-lite shell and most commands written, no templates yet | simulated shell (bash-lite) | next up |
+| 7 | Bash | ✅ **all 17 modules live**: 170 templates in `generator/sections/s07_bash/` (every module ≥ 2 templates per tier, 2 challenges each) | bash-lite: simulated Ubuntu machine (`generator/bashlite/`), output comparison; keystroke simulator for 7.17 | session 7 |
 | 8 | Git & GitHub | ⬜ | command | |
 | 9 | Vim | ⬜ | keystrokes | |
 | 10 | SQL | ⬜ | sqlite3 exec | |
@@ -295,7 +312,7 @@ Legend: ✅ done · 🟡 partial · ⬜ not started
 ### Next steps (suggested order)
 1. scikit-learn (exec checker; add `"scikit-learn"` packages, already listed in `docs/app.js`) and
    Matplotlib (reuse the 2.18 figure-inspection `post` pattern).
-2. SQL section (sqlite3 checker), then the `command` checker for Bash, Git and Docker.
+2. SQL section (sqlite3 checker); Git and Docker on top of bash-lite (a simulated `git` and `docker`).
 3. Hugging Face (§2 open problem; torch-lite is a starting point).
 4. Medal art, then the style pass.
 

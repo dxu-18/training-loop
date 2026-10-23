@@ -17,3 +17,10 @@ def test_every_guide_api_is_practised(section):
     missing = {m: r["api_missing"] for m, r in rep.items() if r["api_missing"]}
     assert not missing, missing
     assert not coverage.CRASHES, coverage.CRASHES[:5]
+
+
+def test_every_guide_bash_feature_is_practised():
+    rep = coverage.report_bash(seeds=20)
+    missing = {m: r["api_missing"] for m, r in rep.items() if r["api_missing"]}
+    assert not missing, missing
+    assert not coverage.CRASHES, coverage.CRASHES[:5]

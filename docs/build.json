@@ -1,5 +1,5 @@
 {
- "hash": "84a6bb5a767f",
+ "hash": "54418507f7b7",
  "topics": {
   "numpy": {
    "title": "NumPy",
@@ -1285,205 +1285,205 @@
     {
      "id": "7.01",
      "title": "Shell basics & getting help",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 2,
+      "hard": 2,
+      "challenge": 2
      }
     },
     {
      "id": "7.02",
      "title": "Navigating & managing files",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 2,
+      "hard": 2,
+      "challenge": 2
      }
     },
     {
      "id": "7.03",
      "title": "Viewing & comparing files",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 2,
+      "hard": 2,
+      "challenge": 2
      }
     },
     {
      "id": "7.04",
      "title": "Permissions, archives & disk usage",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 2,
+      "hard": 2,
+      "challenge": 2
      }
     },
     {
      "id": "7.05",
      "title": "Finding files & searching text",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 2,
+      "hard": 2,
+      "challenge": 2
      }
     },
     {
      "id": "7.06",
      "title": "Text processing: cut, sort, uniq, tr, sed, awk, jq",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 2,
+      "hard": 2,
+      "challenge": 2
      }
     },
     {
      "id": "7.07",
      "title": "Pipes & redirection",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 2,
+      "hard": 2,
+      "challenge": 2
      }
     },
     {
      "id": "7.08",
      "title": "Variables, quoting & expansion",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 2,
+      "hard": 2,
+      "challenge": 2
      }
     },
     {
      "id": "7.09",
      "title": "Arrays & arithmetic",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 2,
+      "hard": 2,
+      "challenge": 2
      }
     },
     {
      "id": "7.10",
      "title": "Conditionals & loops",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 2,
+      "hard": 2,
+      "challenge": 2
      }
     },
     {
      "id": "7.11",
      "title": "Functions & scripts",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 2,
+      "hard": 2,
+      "challenge": 2
      }
     },
     {
      "id": "7.12",
      "title": "Processes & jobs",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 2,
+      "hard": 2,
+      "challenge": 2
      }
     },
     {
      "id": "7.13",
      "title": "Environment, PATH & config files",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 2,
+      "hard": 2,
+      "challenge": 2
      }
     },
     {
      "id": "7.14",
      "title": "Remote work: ssh, scp, rsync, curl & tmux",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 2,
+      "hard": 2,
+      "challenge": 2
      }
     },
     {
      "id": "7.15",
      "title": "Python environments",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 2,
+      "hard": 2,
+      "challenge": 2
      }
     },
     {
      "id": "7.16",
      "title": "ML workflow one-liners",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 2,
+      "hard": 2,
+      "challenge": 2
      }
     },
     {
      "id": "7.17",
      "title": "Keyboard shortcuts & history",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 2,
+      "hard": 2,
+      "challenge": 2
      }
     }
    ]

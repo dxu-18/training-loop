@@ -1024,11 +1024,12 @@ class Parser:
 
     @staticmethod
     def _assign_ok(w: Word) -> bool:
-        """`name=` must be unquoted up to the `=`."""
+        """`name=` / `name[subscript]=` must be unquoted up to the `=` (the subscript may hold expansions)."""
         if not w.parts or not isinstance(w.parts[0], Lit):
             return False
-        m = ASSIGN_RE.match(w.raw)
-        return m is not None and ("=" in w.parts[0].text)
+        shape = "".join(p.text if isinstance(p, Lit) else "\x00" for p in w.parts)
+        m = ASSIGN_RE.match(shape)
+        return m is not None and ASSIGN_RE.match(w.raw) is not None
 
     def _make_assign(self, t: Tok) -> Assign:
         w = t.word
@@ -1037,23 +1038,29 @@ class Parser:
         idx_word = self._sub_word(index[1:-1], "arith") if index else None
         if w.array is not None:
             return Assign(name, idx_word, None, w.array, append, t.val)
-        # strip "name[...]+=" from the parts
+        # strip "name[...]+=" from the parts: the value starts after the first unquoted "=" that ends the
+        # prefix (after "]" when there is a subscript, whose parts may be expansions)
         prefix_len = m.end()
         parts = []
-        consumed = 0
+        found = False
+        depth = 0
         for p in w.parts:
-            if consumed >= prefix_len:
+            if found:
                 parts.append(p)
                 continue
-            if isinstance(p, Lit):
-                take = prefix_len - consumed
-                if len(p.text) > take:
-                    parts.append(Lit(p.text[take:]))
-                consumed += len(p.text)
-            else:
-                # the subscript itself contained an expansion: keep the rest after the "="
-                consumed = prefix_len
-                parts.append(p)
+            if not isinstance(p, Lit):
+                continue                     # part of the subscript
+            text = p.text
+            for j, ch in enumerate(text):
+                if ch == "[":
+                    depth += 1
+                elif ch == "]":
+                    depth -= 1
+                elif ch == "=" and depth <= 0:
+                    found = True
+                    if text[j + 1:]:
+                        parts.append(Lit(text[j + 1:]))
+                    break
         return Assign(name, idx_word, Word(parts, t.val[prefix_len:]), None, append, t.val)
 
     def _is_funcdef(self) -> bool:

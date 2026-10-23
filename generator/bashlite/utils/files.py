@@ -1098,7 +1098,7 @@ def _targets(ctx, ops, target_dir, no_target_dir, name):
 @util("cp")
 def u_cp(ctx):
     try:
-        opts, ops = gnu_getopt(ctx.argv[1:], "abdfHilLnPprRsStTuvx", [
+        opts, ops = gnu_getopt(ctx.argv[1:], "abdfHilLnPprRsSt:Tuvx", [
             "archive", "backup=?", "force", "interactive", "link", "dereference", "no-clobber", "no-dereference",
             "preserve=?", "recursive", "symbolic-link", "target-directory=", "no-target-directory", "update=?",
             "verbose", "one-file-system", "parents", "help", "version", "suffix=", "sparse=", "reflink=?",
@@ -1170,7 +1170,7 @@ def u_cp(ctx):
 @util("mv")
 def u_mv(ctx):
     try:
-        opts, ops = gnu_getopt(ctx.argv[1:], "bfinStTuvZ", ["backup=?", "force", "interactive", "no-clobber",
+        opts, ops = gnu_getopt(ctx.argv[1:], "bfinSt:TuvZ", ["backup=?", "force", "interactive", "no-clobber",
                                                             "target-directory=", "no-target-directory", "update=?",
                                                             "verbose", "help", "version", "suffix=",
                                                             "strip-trailing-slashes"], name="mv")
@@ -1393,7 +1393,7 @@ def u_rm(ctx):
 @util("ln")
 def u_ln(ctx):
     try:
-        opts, ops = gnu_getopt(ctx.argv[1:], "bdfFinrsStTvL P", ["backup=?", "force", "interactive", "no-dereference",
+        opts, ops = gnu_getopt(ctx.argv[1:], "bdfFinrsSt:TvLP", ["backup=?", "force", "interactive", "no-dereference",
                                                                  "relative", "symbolic", "target-directory=",
                                                                  "no-target-directory", "verbose", "logical", "physical",
                                                                  "help", "version", "suffix="], name="ln")
@@ -2303,7 +2303,9 @@ def u_df(ctx):
                                                           else ["1K-blocks", "Used", "Available", "Use%", "Mounted on"])
     allrows = [head] + rows
     nc = len(head)
-    widths = [max(len(r[i]) for r in allrows) for i in range(nc)]
+    # coreutils' minimum field widths: Filesystem 14, Type 4, sizes 5, Use% 4
+    minw = [14] + ([4] if typ else []) + [5, 5, 5, 4, 0]
+    widths = [max([minw[i]] + [len(r[i]) for r in allrows]) for i in range(nc)]
     out = []
     for r in allrows:
         cells = []

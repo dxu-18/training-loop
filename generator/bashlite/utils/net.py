@@ -34,6 +34,26 @@ def pub_blob(kind: str, raw: bytes) -> bytes:
     return len(name).to_bytes(4, "big") + name + b"\x00\x00\x00\x03\x01\x00\x01" + (len(body) + 1).to_bytes(4, "big") + b"\x00" + body
 
 
+def write_keypair(fs, path, comment, uid, gid, seed, kind="ed25519"):
+    """An ssh key pair at `path` and `path`.pub (as ssh-keygen writes them). Returns the public key line."""
+    raw = key_material(seed)
+    blob = pub_blob(kind, raw)
+    name = "ssh-ed25519" if kind == "ed25519" else "ssh-rsa"
+    pub_line = f"{name} {base64.b64encode(blob).decode()} {comment}\n"
+    body = base64.b64encode(b"openssh-key-v1\x00" + raw * 8).decode()
+    priv = "-----BEGIN OPENSSH PRIVATE KEY-----\n" + "\n".join(body[k:k + 70] for k in range(0, len(body), 70)) + \
+           "\n-----END OPENSSH PRIVATE KEY-----\n"
+    d = path.rsplit("/", 1)[0]
+    if not fs.exists(d):
+        fs.mkdir(d, "/", 0o700, uid, gid, parents=True)
+    node = fs.write_file(path, priv, "/", 0o600, uid, gid)
+    node.mode = 0o600
+    node.xattr = {"pub": base64.b64encode(blob).decode()}
+    node = fs.write_file(path + ".pub", pub_line, "/", 0o644, uid, gid)
+    node.mode = 0o644
+    return pub_line
+
+
 def fingerprint(blob: bytes) -> str:
     return "SHA256:" + base64.b64encode(hashlib.sha256(blob).digest()).decode().rstrip("=")
 
@@ -93,9 +113,12 @@ def identity_pubs(ctx, idfiles):
                     out.append(p)
                     break
             elif "BEGIN OPENSSH PRIVATE KEY" in text:
+                node = ctx.fs.lookup(cand, ctx.cwd)
+                pub = (getattr(node, "xattr", None) or {}).get("pub")
                 m = re.search(r"pubkey:([A-Za-z0-9+/=]+)", text)
-                if m:
-                    out.append(("ssh-ed25519", base64.b64decode(m.group(1)), ""))
+                if pub or m:
+                    blob = base64.b64decode(pub or m.group(1))
+                    out.append(("ssh-ed25519" if b"ssh-ed25519" in blob[:20] else "ssh-rsa", blob, ""))
                 break
     sock = ctx.env.get("SSH_AUTH_SOCK")
     agent = ctx.world.__dict__.get("agents", {}).get(sock) if sock else None
@@ -199,7 +222,44 @@ def connect(ctx, dest, opts):
         pw = host.extra.get("password")
         if pw is None:
             raise SshError(f"{user}@{hostname}: Permission denied (publickey).")
+        ask_password(ctx, f"{user}@{hostname}'s password: ", pw, f"{user}@{hostname}")
     return host, user, alias
+
+
+def read_password(ctx, prompt):
+    """Prompt on the terminal and read the next typed line without echoing it (None at end of input)."""
+    tty = ctx.world.tty_of(ctx.proc)
+    ctx.e(prompt)
+    if tty is None:
+        return None
+    saved, tty.echo = tty.echo, False
+    try:
+        while b"\n" not in tty.input:
+            if not tty.take_line():
+                break
+        if not tty.input:
+            line = None
+        else:
+            j = tty.input.find(b"\n")
+            j = len(tty.input) if j < 0 else j
+            line = bytes(tty.input[:j]).decode("utf-8", "replace")
+            del tty.input[:j + 1]
+    finally:
+        tty.echo = saved
+    ctx.e("\n")
+    return line
+
+
+def ask_password(ctx, prompt, password, who):
+    """Up to three tries, like ssh. Raises SshError when they all fail."""
+    for _ in range(3):
+        got = read_password(ctx, prompt)
+        if got is None:
+            break
+        if got == password:
+            return
+        ctx.e("Permission denied, please try again.\n")
+    raise SshError(f"{who}: Permission denied (publickey,password).")
 
 
 def remote_proc(ctx, host, user, argv, fds):
@@ -558,7 +618,17 @@ def u_ssh_copy_id(ctx):
               "\t\t(if you think this is a mistake, you may want to use -f option)\n\n")
         return 0
     ctx.e("/usr/bin/ssh-copy-id: INFO: 1 key(s) remain to be installed -- if you are prompted now it is to install the new keys\n")
-    ctx.e(f"{user}@{hostname}'s password: \n")
+    keys = identity_pubs(ctx, None)
+    try:
+        allowed = {parse_pub(line)[1] for line in existing.splitlines() if parse_pub(line)}
+        if not any(k[1] in allowed for k in keys):
+            pw = host.extra.get("password")
+            if pw is None:
+                raise SshError(f"{user}@{hostname}: Permission denied (publickey).")
+            ask_password(ctx, f"{user}@{hostname}'s password: ", pw, f"{user}@{hostname}")
+    except SshError as e:
+        ctx.e(e.msg + "\n")
+        return 1
     d = host.fs.mkdir(f"{rhome}/.ssh", "/", 0o700, uid, host.users[uid].gid, parents=True)
     d.mode = 0o700
     node = host.fs.write_file(auth_path, existing + pub_text, "/", 0o600, uid, host.users[uid].gid)
@@ -729,7 +799,7 @@ def u_scp(ctx):
             target = full_d.rstrip("/") + "/" + base if dn.type == "d" else full_d
         except FSError:
             parent = full_d.rstrip("/").rsplit("/", 1)[0] or "/"
-            if not dst_host.fs.exists(parent):
+            if not dst_host.fs.exists(parent) or full_d.endswith("/"):
                 ctx.e(f"scp: dest open \"{dpath}\": No such file or directory\nscp: failed to upload file {spath} to {dpath}\n")
                 status = 1
                 continue
@@ -1061,7 +1131,9 @@ def http_request(ctx, url, method="GET", headers=None, body=b""):
     port = int(port) if port else (443 if scheme == "https" else 80)
     world = ctx.world
     full = f"{scheme}://{h}{path}{query}"
-    fixed = world.web.get(full) or world.web.get(f"{scheme}://{h}{path}") or world.web.get(f"{h}{path}")
+    hp = f"{h}:{m.group(3)}" if m.group(3) else h
+    fixed = (world.web.get(f"{scheme}://{hp}{path}{query}") or world.web.get(f"{scheme}://{hp}{path}") or
+             world.web.get(full) or world.web.get(f"{scheme}://{h}{path}") or world.web.get(f"{h}{path}"))
     if fixed is not None:
         res = fixed(method, path, headers, body) if callable(fixed) else fixed
         return res if isinstance(res, HttpResult) else HttpResult(200, {}, res if isinstance(res, bytes) else str(res).encode())

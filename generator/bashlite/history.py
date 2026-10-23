@@ -98,6 +98,9 @@ def expand(line: str, history: list[str], quick=True):
             out.append(c)
             i += 1
             continue
+        if c == "#" and not in_sq and line[:i].count('"') % 2 == 0 and (i == 0 or line[i - 1] in " \t;|&("):
+            out.append(line[i:])        # a comment: history_comment_char stops expansion
+            break
         if in_sq or c != "!":
             if c == "\\" and i + 1 < n and line[i + 1] == "!":
                 out.append("\\!")   # bash keeps the backslash for !

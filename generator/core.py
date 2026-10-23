@@ -46,10 +46,12 @@ class Problem:
     tests: list[str] = field(default_factory=list)    # extra hidden setups the code must also pass
     require: list[str] = field(default_factory=list)  # names that must appear in the code; "a|b" = either
     no_loops: bool = False                # forbid for/while/comprehensions
+    forbid: list[str] = field(default_factory=list)   # bash features that must not be used (see bashlite.features)
+    unordered: bool = False               # bash: compare output lines as a set (order-free)
     check_dtype: bool = False             # compare array dtypes too
     post: str = ""                        # check code run after the user's; its value is graded
     tol: float = 1e-6                     # relative/absolute tolerance for floats
-    kind: str = "python"                  # python | sql | command | text
+    kind: str = "python"                  # python | bash | sql | text
     lang: str = "python"                  # editor mode
     timeout: float = 8.0                  # seconds the whole grading run may take
     # filled in by generate()

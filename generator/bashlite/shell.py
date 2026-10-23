@@ -157,6 +157,7 @@ class Shell:
         self.pending_traps: list[int] = []
         self.jobs: dict[int, Job] = {}
         self.prompt_no = 0                 # primary prompts shown so far (job notices are timed by them)
+        self.typed_log: list[str] = []
         self._in_wait_builtin = False
         self.job_order: list[int] = []     # most recent last (+ = current, - = previous)
         self.dirstack: list[str] = []
@@ -1018,7 +1019,8 @@ class Shell:
             self.error_now(f"{nm}: {msg if msg else 'parameter null or not set'}")
             raise ShellAbort(self.fatal_status(), fatal=True)
         if unset and "nounset" in self.opts and not (is_list and p.name in ("@", "*")):
-            self.error_now(f"{nm}: unbound variable")
+            # bash names an unbraced positional parameter with its dollar: "$1: unbound variable"
+            self.error_now(f"{'$' if nm.isdigit() and not p.braced else ''}{nm}: unbound variable")
             raise ShellAbort(self.fatal_status(), fatal=True)
         if op == "":
             self._emit_values(vals, is_list, star, quoted, out)
@@ -1437,6 +1439,7 @@ class Shell:
         if any(p.state == "T" for p in procs):
             from .unparse import job_text
             job = self.add_job(procs, job_text(pl))
+            job.reported_state = "Stopped"
             yield from self.err(f"\n[{job.num}]+  Stopped                 {job.text}\n")
             return 128 + SIGTSTP
         statuses = [p.status for p in procs]
@@ -2076,6 +2079,9 @@ class Shell:
                 saved = yield from self.apply_redirs(redirs)
                 if saved is None:
                     return 1
+                for old in saved.values():      # never restored: drop the saved descriptors (pipe ends!)
+                    if old is not None:
+                        old.unref(self.kernel)
             self.proc.argv = list(args)
             self.proc.env = env
             st = yield from exec_program(self.proc, path, args, env, self)
@@ -2102,10 +2108,11 @@ class Shell:
             tty.fg_pgid = old_fg
         if child.state == "T":
             job = self.add_job([child], " ".join(args))
+            job.reported_state = "Stopped"
             yield from self.err(f"\n[{job.num}]+  Stopped                 {job.text}\n")
             return 128 + SIGTSTP
         if self.interactive and child.term_sig == SIGINT:
-            pass
+            yield from self.err("\n")         # after the terminal's ^C
         elif child.term_sig and child.term_sig not in (SIGINT, 13):
             msg = SIG_DESC.get(child.term_sig, f"Signal {child.term_sig}")
             yield from self.err(f"{msg}\n" if self.interactive else f"{self.prefix()}{child.pid} {msg}" +
@@ -2343,6 +2350,7 @@ class Shell:
             return Parser("", self.aliases if "expand_aliases" in self.shopts else None, interactive=True)
         p = fresh()
         pending: list[str] = []
+        hd_delims: list = []           # here-documents whose bodies are still being typed
         while True:
             if tty.input:      # leftover typeahead from a program that read less than a line
                 raw = tty.input.decode("utf-8", "surrogateescape").rstrip("\n")
@@ -2368,8 +2376,17 @@ class Shell:
                     msg = notify_jobs(self)
                     if msg:
                         yield from self.err(msg)
+            if tty.echo and self.interactive:
+                # the transcript shows each typed line after its prompt, like a terminal
+                ps = self.get("PS1", "") if not pending else self.get("PS2", "> ")
+                tty.write("cmd", (self.prompt_expand(ps or "") + raw + "\n").encode("utf-8", "surrogateescape"))
             line = raw
-            if self.interactive and "histexpand" in self.opts and ("!" in line or line.startswith("^")):
+            in_body = bool(hd_delims)
+            if in_body:                 # a here-document line: no history expansion; maybe its end
+                d, strip = hd_delims[0]
+                if (line.lstrip("\t") if strip else line) == d:
+                    hd_delims.pop(0)
+            if not in_body and self.interactive and "histexpand" in self.opts and ("!" in line or line.startswith("^")):
                 try:
                     new, changed, print_only = expand(line, self.history + ([join_lines(pending)] if False else []),
                                                       quick=not pending)
@@ -2384,7 +2401,11 @@ class Shell:
                     if history:
                         self.add_history(line)
                     continue
+            if not in_body:
+                for m_ in re.finditer(r"<<(-?)[ \t]*(['\"]?)([^\s'\";|&<>()]+)\2", line.replace("<<<", "   ")):
+                    hd_delims.append((m_.group(3), m_.group(1) == "-"))
             pending.append(line)
+            self.typed_log.append(line)     # what was run, after history expansion (the keys simulator reads it)
             p.aliases = self.aliases if "expand_aliases" in self.shopts else None
             p.feed(line + "\n")
             while True:
