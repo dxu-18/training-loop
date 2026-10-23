@@ -135,8 +135,9 @@ class World:
         self.toplevel_ppid: dict[int, int] = {}
         self.ctrl_c_after = 10                 # seconds a run-until-Ctrl-C command runs in the foreground
         self.local = self.add_host(hostname, "192.168.1.23", pid_base=4000 + self.rng.randrange(800), os_name=os_name)
-        for i in range(gpus):
-            self.local.gpus.append(GPU(i))
+        if gpus:
+            from .utils.gpu import setup_gpus
+            setup_gpus(self.local, gpus)
 
     def add_host(self, name, ip, pid_base=None, os_name="linux") -> Host:
         from .basefs import build_base

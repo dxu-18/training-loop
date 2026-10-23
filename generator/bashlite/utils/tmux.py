@@ -10,6 +10,7 @@ from ..timeutil import local_dt, strftime
 class Pane:
     def __init__(self, pid, tty, proc):
         self.id, self.tty, self.proc = pid, tty, proc
+        self.w, self.h = 80, 23
 
 
 class Window:
@@ -72,6 +73,7 @@ def new_pane(ctx, srv, sess, command=None, cwd=None):
     k = ctx.k
     tty = TTY(name=f"pts/{2 + srv.next_pane}")
     tty.input_eof = False
+    tty.echo = True              # a pane is a screen: prompts and typed commands show up on it
     tty.limit = 400_000
     fds = {0: OpenFile("tty", rd=True, tty=tty, stream="in"), 1: OpenFile("tty", wr=True, tty=tty, stream="out"),
            2: OpenFile("tty", wr=True, tty=tty, stream="err")}
@@ -115,6 +117,14 @@ def new_pane(ctx, srv, sess, command=None, cwd=None):
                     sess.active = max(0, min(sess.active, len(sess.windows) - 1))
                 else:
                     w.active = max(0, min(w.active, len(w.panes) - 1))
+                    if len(w.panes) == 1:
+                        w.panes[0].w, w.panes[0].h = 80, 23
+                    else:              # the neighbour takes the space back
+                        nb = w.panes[w.active]
+                        if nb.h == pane.h:
+                            nb.w += pane.w + 1
+                        else:
+                            nb.h += pane.h + 1
         if not sess.windows:
             srv.sessions.pop(sess.name, None)
             if sess.client is not None:
@@ -332,8 +342,16 @@ def u_tmux(ctx):
         return 0
     if cmd == "split-window":
         w = sess.windows[sess.active]
-        w.panes.append(new_pane(ctx, srv, sess, " ".join(rest) if rest else None, opts.get("c")))
-        w.active = len(w.panes) - 1
+        cur = w.panes[w.active]
+        pane = new_pane(ctx, srv, sess, " ".join(rest) if rest else None, opts.get("c"))
+        if opts.get("h"):          # side by side: the new pane takes the right half (one column is the border)
+            pane.w, pane.h = (cur.w - 1) // 2, cur.h
+            cur.w = cur.w - 1 - pane.w
+        else:                      # one above the other
+            pane.w, pane.h = cur.w, (cur.h - 1) // 2
+            cur.h = cur.h - 1 - pane.h
+        w.panes.insert(w.active + 1, pane)
+        w.active = w.active + 1
         return 0
     if cmd in ("select-window", "next-window", "previous-window"):
         if cmd == "next-window":
@@ -358,7 +376,7 @@ def u_tmux(ctx):
     if cmd == "list-panes":
         w = sess.windows[sess.active]
         for k2, p in enumerate(w.panes):
-            ctx.w(f"{k2}: [80x23] [history 0/2000, 0 bytes] %{p.id}" + (" (active)" if k2 == w.active else "") + "\n")
+            ctx.w(f"{k2}: [{p.w}x{p.h}] [history 0/2000, 0 bytes] %{p.id}" + (" (active)" if k2 == w.active else "") + "\n")
         return 0
     if cmd in ("kill-pane", "kill-window"):
         w = sess.windows[sess.active]
@@ -405,6 +423,11 @@ def u_tmux(ctx):
         if opts.get("Z") or cmd == "resize-pane" and opts.get("Z"):
             w.zoomed = not w.zoomed
         elif w.panes:
-            w.active = (w.active + 1) % len(w.panes)
+            if opts.get("L") or opts.get("U"):
+                w.active = (w.active - 1) % len(w.panes)
+            elif target and "%" in target:
+                w.active = next((k2 for k2, p in enumerate(w.panes) if f"%{p.id}" == target.split(".")[-1]), w.active)
+            else:
+                w.active = (w.active + 1) % len(w.panes)
         return 0
     return 0

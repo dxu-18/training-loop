@@ -7,8 +7,8 @@ Needs: pip install playwright && playwright install chromium
 Without base-url it serves docs/ on 127.0.0.1:8765. Covers: topic list -> topic page -> module
 practice, problem render, syntax error, Run, infinite-loop time limit, correct -> next, wrong ->
 reroll, a challenge with hidden tests, the medal at 250, answer reveal at 251, counters on the
-topic and home pages, the phone layout, and (unless --selftest-seeds 0) grading every NumPy
-template's own solution inside Pyodide.
+topic and home pages, the phone layout, the Bash pages (terminal transcript, stderr, keystroke
+answers), and (unless --selftest-seeds 0) grading every template's own solution inside Pyodide.
 """
 
 import argparse
@@ -205,6 +205,32 @@ try:
         pg.reload()
         pg.wait_for_selector(".prompt", timeout=120000)
         selftest("pytorch")
+
+        # bash (bash-lite, no extra packages): topic page, practice rounds incl. a keystroke problem, the terminal
+        # transcript (prompts + output), then every template inside Pyodide
+        pg.goto(BASE + "/#/bash")
+        pg.reload()
+        pg.wait_for_selector(".modules")
+        n_mod = pg.locator(".modules a.topic").count()
+        check(n_mod == 17, f"bash page lists 17 live modules (got {n_mod})")
+        for mod in ("7.01", "7.06", "7.14", "7.17"):
+            pg.goto(BASE + f"/#/bash/{mod}")
+            pg.wait_for_selector(".prompt", timeout=120000)
+            check("#:" not in pg.inner_text(".problem"), f"bash {mod}: directive lines are hidden")
+            pg.evaluate(SET_CODE, pg.evaluate("view.problem.solution"))
+            pg.click(".submit")
+            pg.wait_for_function(f"{VERDICT}.length > 0", timeout=60000)
+            check("Correct" in pg.inner_text(".verdict"), f"bash {mod} reference solution is graded correct")
+            out = pg.inner_text(".out")
+            check("@" in out and "$" in out, f"bash {mod}: the console shows a terminal transcript")
+            pg.screenshot(path=f"{args.out}/bash_{mod}.png", full_page=True)
+        pg.goto(BASE + "/#/bash/7.05")
+        pg.wait_for_selector(".prompt", timeout=120000)
+        pg.evaluate(SET_CODE, "ls /nonexistent")
+        pg.click(".run")
+        pg.wait_for_function("document.querySelector('.out .err') !== null", timeout=60000)
+        check("No such file" in pg.inner_text(".out .err"), "bash: stderr is shown in red")
+        selftest("bash")
 
         errors =[l for l in logs if "error" in l.lower()]
         check(not errors, f"no console errors {errors[:5]}")

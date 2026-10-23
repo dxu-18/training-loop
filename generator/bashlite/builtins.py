@@ -1051,16 +1051,24 @@ def b_set(sh, args):
                 _setopt(sh, name, on)
                 i += 2
                 continue
+            takes_name = False
             for c in arg[1:]:
                 if c in SET_LETTERS:
                     _setopt(sh, SET_LETTERS[c], on)
                 elif c == "o":
-                    pass
+                    takes_name = True       # -euo pipefail: the next word names the option
                 else:
                     yield from sh.error(f"set: {arg[0]}{c}: invalid option")
                     yield from sh.err("set: usage: set [-abefhkmnptuvxBCEHPT] [-o option-name] [--] [-] [arg ...]\n")
                     return 2
             i += 1
+            if takes_name and i < len(a):
+                name = a[i]
+                if name not in SET_OPTIONS:
+                    yield from sh.error(f"set: {name}: invalid option name")
+                    return 1
+                _setopt(sh, name, on)
+                i += 1
             continue
         sh.positional = a[i:]
         return 0
@@ -1809,7 +1817,9 @@ def b_fg(sh, args):
     del sh.jobs[job.num]
     sh.job_order = [n for n in sh.job_order if n in sh.jobs]
     last = job.procs[-1]
-    if last.term_sig and last.term_sig != 2:
+    if last.term_sig == 2 and sh.interactive:
+        yield from sh.err("\n")
+    elif last.term_sig:
         yield from sh.err(SIG_DESC.get(last.term_sig, "Killed") + "\n")
     return last.status
 
@@ -2129,8 +2139,8 @@ def _all_paths(sh, name):
             node = sh.fs.lookup(cand, sh.proc.cwd)
         except FSError:
             continue
-        if node.type == "f" and node.mode & 0o111 and cand not in out:
-            out.append(cand)
+        if node.type == "f" and node.mode & 0o111:
+            out.append(cand)            # a directory listed twice in PATH is reported twice, like bash
     return out
 
 

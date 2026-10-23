@@ -1,6 +1,6 @@
 """Simulated commands. Importing this package registers every one in exec.UTILS."""
 
-from . import shells, basic, files, text, grep, sed, findx, awk, bc, jq, archives, procs, misc, net, tmux, pyenv  # noqa: F401
+from . import shells, basic, files, text, grep, sed, findx, awk, bc, jq, archives, procs, misc, net, tmux, pyenv, gpu  # noqa: F401
 from ..exec import UTILS
 
 UTILS.setdefault("awk", UTILS["gawk"])

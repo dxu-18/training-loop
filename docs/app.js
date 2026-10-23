@@ -122,6 +122,50 @@ function md(text) {
     return `<p>${inline(block).replace(/\n/g, "<br>")}</p>`;
   }).join("");
 }
+// `#:` lines in a bash setup configure the simulated machine; they are not shown
+const shownSetup = (setup) => setup.split("\n").filter((l) => !/^\s*#:/.test(l)).join("\n").trim();
+// editor / highlighting mode for a problem ("keys" answers are keystrokes, not code)
+const modeOf = (p, topic) => (/^\s*#: keys/m.test(p.setup || "") ? null : p.lang === "bash" ? "shell" : topic.mode);
+
+// ------------------------------------------------------------ terminal transcript (bash problems)
+const ANSI_FG = { 30: "#555", 31: "#c0392b", 32: "#2e8b57", 33: "#b8860b", 34: "#2f6fb5", 35: "#9b59b6", 36: "#16a2a2", 37: "#888",
+  90: "#777", 91: "#e74c3c", 92: "#27ae60", 93: "#d4a017", 94: "#3a7bd5", 95: "#b06ab3", 96: "#1abc9c", 97: "#aaa" };
+function ansiHTML(text) {
+  // SGR colours/bold become spans; other escape sequences (cursor moves) are dropped
+  let out = "", open = false, i = 0;
+  const re = /\x1b\[([0-9;?]*)([A-Za-z])/g;
+  let m;
+  while ((m = re.exec(text))) {
+    out += esc(text.slice(i, m.index));
+    i = re.lastIndex;
+    if (m[2] !== "m") continue;
+    if (open) { out += "</span>"; open = false; }
+    const codes = m[1].split(";").filter(Boolean).map(Number);
+    const style = [];
+    for (const c of codes) {
+      if (c === 1) style.push("font-weight:600");
+      else if (ANSI_FG[c]) style.push(`color:${ANSI_FG[c]}`);
+    }
+    if (style.length) { out += `<span style="${style.join(";")}">`; open = true; }
+  }
+  out += esc(text.slice(i));
+  if (open) out += "</span>";
+  return out;
+}
+function consoleHTML(segments) {
+  // a clear-screen (Ctrl-L, `clear`) wipes everything before it
+  let segs = segments.map(([s, t]) => [s, t]);
+  for (let k = segs.length - 1; k >= 0; k--) {
+    const j = segs[k][1].lastIndexOf("\x1b[2J");
+    if (j >= 0) { segs = [[segs[k][0], segs[k][1].slice(j + 4)], ...segs.slice(k + 1)]; break; }
+  }
+  const cls = { err: "err", cmd: "cmd", in: "typed" };
+  return segs.map(([s, t]) => {
+    const body = ansiHTML(t.replace(/\x1b\[H/g, ""));
+    return cls[s] ? `<span class="${cls[s]}">${body}</span>` : body;
+  }).join("").replace(/\n$/, "");
+}
+
 function codeBlock(code, mode = "python") {
   const pre = document.createElement("pre");
   pre.className = "code-block cm-s-default";
@@ -206,7 +250,7 @@ async function renderPractice(topic, mod, topicTitle) {
       <span class="qnum" title="Question number"></span></div>
     <div class="practice">
       <section>
-        <article class="problem"><div class="loading">Starting Python… (the first load takes a few seconds)</div></article>
+        <article class="problem"><div class="loading">Starting ${topic.mode === "shell" ? "the terminal" : "Python"}… (the first load takes a few seconds)</div></article>
         <div class="editor"><textarea></textarea></div>
         <div class="actions">
           <button class="btn run" disabled>Run</button>
@@ -269,12 +313,14 @@ async function loadProblem() {
 
 function drawProblem(p, n) {
   $(".qnum").textContent = n;
-  const mode = view.topic.mode;
+  const mode = modeOf(p, view.topic);
+  view.editor.setOption("mode", mode);
   const el = $(".problem");
   el.innerHTML = `<div class="prompt">${md(p.prompt)}</div>`;
-  if (p.setup.trim()) {
+  const given = shownSetup(p.setup);
+  if (given) {
     el.insertAdjacentHTML("beforeend", `<div class="label">Given</div>`);
-    el.appendChild(codeBlock(p.setup, mode));
+    el.appendChild(codeBlock(given, mode));
   }
   if (p.example) {
     const d = document.createElement("details");
@@ -282,7 +328,8 @@ function drawProblem(p, n) {
     d.open = n <= EXAMPLE_UNTIL;
     d.innerHTML = `<summary>Example</summary><div class="inner"><div class="prompt">${md(p.example.prompt)}</div></div>`;
     const inner = d.querySelector(".inner");
-    if (p.example.setup.trim()) { inner.insertAdjacentHTML("beforeend", `<div class="label">Given</div>`); inner.appendChild(codeBlock(p.example.setup, mode)); }
+    const exGiven = shownSetup(p.example.setup);
+    if (exGiven) { inner.insertAdjacentHTML("beforeend", `<div class="label">Given</div>`); inner.appendChild(codeBlock(exGiven, mode)); }
     inner.insertAdjacentHTML("beforeend", `<div class="label">Solution</div>`);
     inner.appendChild(codeBlock(p.example.solution, mode));
     el.appendChild(d);
@@ -304,7 +351,8 @@ function setBusy(busy) {
 
 function showOutput(res, timedOut) {
   const parts = [];
-  if (res.stdout) parts.push(esc(res.stdout.replace(/\n$/, "")));
+  if (res.console && res.console.length) parts.push(consoleHTML(res.console));
+  else if (res.stdout) parts.push(esc(res.stdout.replace(/\n$/, "")));
   if (res.value != null) parts.push(`<span class="dim">Out:</span> ${esc(res.value)}`);
   if (res.error) parts.push(`<span class="err">${esc(res.error)}</span>`);
   if (timedOut) parts.push(`<span class="err">Time limit exceeded: your code ran too long (infinite loop?).</span>`);

@@ -525,6 +525,8 @@ class Runner:
         """inputs: list of (name, text). Returns output text (for one in-place file or the whole stream)."""
         lines = []
         for name, text in inputs:
+            if not text:
+                continue                 # an empty input has no lines at all
             parts = text.split(self.nl)
             trailing = text.endswith(self.nl)
             if trailing:

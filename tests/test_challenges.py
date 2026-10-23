@@ -8,7 +8,8 @@ import pytest
 
 from generator.core import REGISTRY, build, templates
 
-CHALLENGES = [t for s in REGISTRY for t in templates(s) if t.tier == "challenge"]
+# Python challenges (bash ones are checked against their brute forces in test_bash_challenges.py)
+CHALLENGES = [t for s in REGISTRY for t in templates(s) if t.tier == "challenge" and build(t, 0).kind == "python"]
 BRUTE = {}
 
 

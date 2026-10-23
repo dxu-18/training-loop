@@ -60,6 +60,14 @@ def test_numpy_modules_complete():
             assert len(templates("numpy", m, tier)) >= 2, (m, tier)
 
 
+def test_bash_modules_complete():
+    assert modules("bash") == [f"7.{i:02d}" for i in range(1, 18)]
+    for m in modules("bash"):
+        assert is_live("bash", m), m
+        for tier in TIERS:
+            assert len(templates("bash", m, tier)) >= 2, (m, tier)
+
+
 def test_template_names_unique():
     for s in REGISTRY:
         names = [t.name for t in templates(s)]
