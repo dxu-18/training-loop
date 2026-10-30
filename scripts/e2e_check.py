@@ -64,7 +64,9 @@ try:
         pg.wait_for_selector(".prompt", timeout=120000)
         check(pg.inner_text(".qnum") == "1", "practice starts at question 1")
         check("1.05" in pg.inner_text(".bar"), "practice bar shows the module")
-        check(pg.evaluate("document.querySelector('details.example').open"), "example is open for question 1")
+        check(pg.evaluate("document.querySelector('details.instructions').open"), "Instructions are open for question 1")
+        check(0 < pg.locator("details.instructions .fn-list li").count() <= 4,
+              "Instructions list 1-4 functions, each with a description")
         pg.screenshot(path=f"{args.out}/practice.png", full_page=True)
 
         # syntax error keeps the problem
@@ -96,6 +98,10 @@ try:
         pg.evaluate(SET_CODE, "result = None")
         pg.click(".submit")
         pg.wait_for_function(f"{VERDICT}.includes('Wrong')")
+        sol_shown = pg.evaluate("!document.querySelector('.solution-box').hidden && "
+                                "document.querySelector('.solution-box pre').textContent.trim() === view.problem.solution.trim()")
+        check(sol_shown and "Solution:" in pg.inner_text(".solution-box"), "a wrong answer shows Solution: with the reference")
+        pg.screenshot(path=f"{args.out}/wrong_solution.png", full_page=True)
         pg.click(".next")
         pg.wait_for_function(f"view.problem && view.problem.seed !== {before[0]}")
         check(pg.inner_text(".qnum") == "2" and pg.evaluate("view.problem.tier") == before[1],
@@ -117,7 +123,8 @@ try:
         pg.click(".next")
         pg.wait_for_function("document.querySelector('.qnum').textContent === '251'", timeout=30000)
         check(pg.locator("details.answer").count() == 1, "question 251 offers Show answer")
-        check(not pg.evaluate("document.querySelector('details.example').open"), "example is collapsed after question 10")
+        check(not pg.evaluate("document.querySelector('details.instructions')?.open"),
+              "Instructions are folded after question 10")
 
         # counters on the topic page and the home page
         pg.goto(BASE + "/#/numpy")

@@ -212,3 +212,14 @@ details.setup { margin-top: 14px; }
 .ic .fold { fill: none !important; }
 .ic.exe .mark { stroke: var(--good); fill: none !important; stroke-width: 1.3; }
 .ic.link .mark { stroke: var(--accent); fill: none !important; stroke-width: 1.3; }
+
+/* ---------------------------------------------------------- Instructions and the solution after a wrong answer */
+.fn-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.fn-list li { display: grid; gap: 2px; }
+.fn code { font-size: 0.86rem; }
+.fn code.sig { background: none; color: var(--muted); padding: 0; }
+.fn-desc { color: var(--muted); font-size: 0.92rem; line-height: 1.45; }
+.fn-desc code { font-size: 0.82rem; }
+.solution-box { margin: 4px 0 14px; }
+.solution-box .label { margin: 0 0 6px; color: var(--ink); text-transform: none; letter-spacing: 0; font: 600 0.95rem var(--sans); }
+.solution-box .code-block { font-size: 0.85rem; max-height: 50vh; overflow: auto; }

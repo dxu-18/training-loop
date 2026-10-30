@@ -81,6 +81,57 @@ def test_schedule():
     assert 0 < later.count("challenge") < 300  # ~2% of draws
 
 
-def test_generate_attaches_example():
+def test_generate_attaches_instructions():
     p = generate("numpy", "1.05", "easy", 123)
-    assert p["example"]["solution"] and p["tier"] == "easy" and p["module"] == "1.05"
+    assert p["tier"] == "easy" and p["module"] == "1.05" and "example" not in p
+    assert 1 <= len(p["instructions"]) <= 4
+    assert all(it["name"] and it["desc"] for it in p["instructions"])
+
+
+@pytest.mark.parametrize("section", sorted(REGISTRY))
+def test_instructions_are_short_and_described(section):
+    """Every problem lists at most a few functions, each with a description; almost none list nothing."""
+    from generator.instructions import MAX_ITEMS, instructions
+    empty = total = 0
+    for tpl in templates(section):
+        for seed in range(2):
+            items = instructions(build(tpl, seed))
+            total += 1
+            empty += not items
+            assert len(items) <= MAX_ITEMS, (tpl.name, items)
+            assert all(it["name"] and it["desc"] and len(it["desc"]) < 260 for it in items), (tpl.name, items)
+    assert empty <= 0.03 * total, f"{empty}/{total} {section} problems have no Instructions"
+
+
+@pytest.mark.parametrize("section", sorted(REGISTRY))
+def test_instructions_list_what_is_new(section):
+    """When a problem uses names that are new at its module (introduced there or later), only those are listed;
+    names from earlier modules appear only when nothing new is used."""
+    from generator.instructions import _required, canon, data, instructions
+    intro = data()[section]["intro"]
+    rank = {m: i for i, m in enumerate(data()[section]["modules"])}
+    for tpl in templates(section):
+        p = build(tpl, 0)
+        here = rank[tpl.module]
+        need = _required(p.to_dict(), section)
+        new = [rank[intro.get(canon(x["key"], section), [tpl.module])[0]] >= here
+               for x in instructions(p, with_keys=True) if canon(x["key"], section) not in need]
+        assert all(new) or not any(new), (tpl.name, new)
+    tree = [it["name"] for it in generate("bash", "7.02", "lite", 10)["instructions"]]
+    assert tree[0] == "mkdir" and any(n.startswith("touch") for n in tree), tree
+
+
+@pytest.mark.parametrize("section", sorted(REGISTRY))
+def test_instructions_list_required_names(section):
+    """What a problem requires (the grader insists on it) is always in its Instructions, if it can be described."""
+    from generator.instructions import _required, canon, describe, instructions, names_of
+    for tpl in templates(section):
+        p = build(tpl, 1)
+        need = _required(p.to_dict(), section)
+        used = [k for k in names_of(p) if canon(k, section) in need and describe(section, k)]
+        listed = {canon(x["key"], section) for x in instructions(p, with_keys=True)}
+
+        def shown(k):   # `wc` is shown as `wc -l`; an accessor (.str) inside its method's name (s.str.title())
+            c = canon(k, section)
+            return c in listed or any(x.startswith(c + " ") for x in listed) or c in ("str", "dt", "cat")
+        assert all(shown(k) for k in used[:4]), (tpl.name, used, listed)
