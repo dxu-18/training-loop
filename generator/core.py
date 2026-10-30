@@ -17,15 +17,15 @@ from typing import Callable
 
 TIERS = ("lite", "easy", "medium", "hard", "challenge")
 
-# (last question number, tier) for questions 1..250 of a module
-SCHEDULE = ((50, "lite"), (120, "easy"), (200, "medium"), (245, "hard"), (250, "challenge"))
+# (last question number, tier) for questions 1..100 of a module
+SCHEDULE = ((10, "lite"), (35, "easy"), (70, "medium"), (95, "hard"), (100, "challenge"))
 
-# after question 250, tiers keep the same share they had in 1..250
-WEIGHTS = {"lite": 50, "easy": 70, "medium": 80, "hard": 45, "challenge": 5}
+# after question 100, tiers keep the same share they had in 1..100
+WEIGHTS = {"lite": 10, "easy": 25, "medium": 35, "hard": 25, "challenge": 5}
 
 INSTRUCTIONS_UNTIL = 10    # questions 1..10 show the Instructions open
-MEDAL_AT = 250        # solved count that earns the section medal
-REVEAL_AFTER = 250    # answers can be revealed for questions after this number
+MEDAL_AT = 100        # solved count that earns the section medal
+REVEAL_AFTER = 100    # answers can be revealed for questions after this number
 
 
 def tier_for(n: int, seed: int | None = None) -> str:
