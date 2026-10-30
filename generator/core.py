@@ -5,8 +5,8 @@ A *template* is a function ``f(rng) -> Problem`` registered for one section
 and one tier. Every module is its own practice page with its own counter, so the
 tier schedule below applies per module. ``generate(section, module, tier, seed)``
 picks one of that cell's templates uniformly at random, builds the problem, and
-attaches an example: a second, independent instance of the same template, shown
-together with its solution.
+attaches its Instructions: the functions it is meant to practise, with what they
+do (generator/instructions.py).
 """
 
 from __future__ import annotations
@@ -23,7 +23,7 @@ SCHEDULE = ((50, "lite"), (120, "easy"), (200, "medium"), (245, "hard"), (250, "
 # after question 250, tiers keep the same share they had in 1..250
 WEIGHTS = {"lite": 50, "easy": 70, "medium": 80, "hard": 45, "challenge": 5}
 
-EXAMPLE_UNTIL = 10    # questions 1..10 show the example automatically
+INSTRUCTIONS_UNTIL = 10    # questions 1..10 show the Instructions open
 MEDAL_AT = 250        # solved count that earns the section medal
 REVEAL_AFTER = 250    # answers can be revealed for questions after this number
 
@@ -41,7 +41,7 @@ def tier_for(n: int, seed: int | None = None) -> str:
 class Problem:
     prompt: str                           # English task; `code` and ```blocks``` allowed
     setup: str                            # run before the user's code and shown as "Given"
-    solution: str                         # reference solution, shown as the example / revealed answer
+    solution: str                         # reference solution, shown after a wrong answer / revealed answer
     answer: list[str] = field(default_factory=list)   # variables to compare; [] -> `result` or last expression
     tests: list[str] = field(default_factory=list)    # extra hidden setups the code must also pass
     require: list[str] = field(default_factory=list)  # names that must appear in the code; "a|b" = either
@@ -60,7 +60,7 @@ class Problem:
     template: str = ""
     module: str = ""
     seed: int = 0
-    example: dict | None = None
+    instructions: list = field(default_factory=list)   # [{name, sig, desc}] (generator/instructions.py)
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -147,11 +147,11 @@ def build(tpl: Template, seed: int) -> Problem:
 
 
 def generate(section: str, module: str, tier: str, seed: int) -> dict:
-    """A random problem for (section, module, tier), with an example attached."""
+    """A random problem for (section, module, tier), with its Instructions attached."""
+    from .instructions import instructions
     tier = available_tier(section, module, tier)
     rng = random.Random(seed)
     tpl = rng.choice(templates(section, module, tier))
     problem = build(tpl, seed)
-    ex = build(tpl, rng.randrange(2**31))
-    problem.example = {"prompt": ex.prompt, "setup": ex.setup, "solution": ex.solution}
+    problem.instructions = instructions(problem)
     return problem.to_dict()

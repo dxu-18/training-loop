@@ -21,7 +21,7 @@ const TOPICS = [
   { id: "docker", part: 2, mode: "shell", packages: [] },
 ];
 const TOPIC = Object.fromEntries(TOPICS.map((t) => [t.id, t]));
-const EXAMPLE_UNTIL = 10;
+const INSTRUCTIONS_UNTIL = 10;   // the Instructions start open for questions 1..10
 const MEDAL_AT = 250;
 const REVEAL_AFTER = 250;
 
@@ -263,6 +263,7 @@ async function renderPractice(topic, mod, topicTitle) {
       <aside class="console">
         <div class="head"><div class="verdict"></div><span class="tier"></span></div>
         <div class="verdict-msg"></div>
+        <div class="solution-box" hidden><div class="label">Solution:</div></div>
         <pre class="out"><span class="dim">Output appears here.</span></pre>
       </aside>
     </div>`;
@@ -308,6 +309,7 @@ async function renderTerminalPractice(topic, mod, topicTitle) {
       <aside class="console side">
         <div class="head"><div class="verdict"></div><span class="tier"></span></div>
         <div class="verdict-msg"></div>
+        <div class="solution-box" hidden><div class="label">Solution:</div></div>
         <div class="files"></div>
       </aside>
     </div>`;
@@ -354,6 +356,7 @@ async function loadProblem() {
   $(".verdict").textContent = "";
   $(".verdict").className = "verdict";
   $(".verdict-msg").textContent = "";
+  showSolution(null);
   $(".tier").textContent = p.tier;
   $(".next").hidden = true;
   setBusy(false);
@@ -376,22 +379,13 @@ function drawProblem(p, n) {
     el.insertAdjacentHTML("beforeend", `<div class="label">Given</div>`);
     el.appendChild(codeBlock(given, mode));
   }
-  if (p.example) {
+  if (p.instructions && p.instructions.length) {   // the functions this problem practises (generator/instructions.py)
     const d = document.createElement("details");
-    d.className = "example";
-    d.open = n <= EXAMPLE_UNTIL;
-    d.innerHTML = `<summary>Example</summary><div class="inner"><div class="prompt">${md(p.example.prompt)}</div></div>`;
-    const inner = d.querySelector(".inner");
-    const exGiven = shownSetup(p.example.setup);
-    if (exGiven && view.topic.terminal) {
-      const s = document.createElement("details");
-      s.className = "setup";
-      s.innerHTML = `<summary>Setup</summary><div class="inner"></div>`;
-      s.querySelector(".inner").appendChild(codeBlock(exGiven, mode));
-      inner.appendChild(s);
-    } else if (exGiven) { inner.insertAdjacentHTML("beforeend", `<div class="label">Given</div>`); inner.appendChild(codeBlock(exGiven, mode)); }
-    inner.insertAdjacentHTML("beforeend", `<div class="label">Solution</div>`);
-    inner.appendChild(codeBlock(p.example.solution, mode));
+    d.className = "instructions";
+    d.open = n <= INSTRUCTIONS_UNTIL;
+    const items = p.instructions.map((it) => `<li><div class="fn"><code>${esc(it.name)}</code>` +
+      (it.sig ? ` <code class="sig">${esc(it.sig)}</code>` : "") + `</div><div class="fn-desc">${inline(it.desc)}</div></li>`);
+    d.innerHTML = `<summary>Instructions</summary><div class="inner"><ul class="fn-list">${items.join("")}</ul></div>`;
     el.appendChild(d);
   }
   if (n > REVEAL_AFTER) {
@@ -483,6 +477,7 @@ async function doSubmit() {
     $(".verdict").textContent = "✗ Wrong";
     $(".verdict").className = "verdict bad";
     $(".next").textContent = "New problem →";
+    showSolution(problem);
   }
   $(".verdict-msg").textContent = res.correct ? (res.message || "") : (res.message || (res.error ? "Your code raised an error." : ""));
   ms.draft = null;
@@ -492,6 +487,17 @@ async function doSubmit() {
   $(".next").focus();
   setBusy(false);
   if (res.correct && ms.solved >= MEDAL_AT && !ms.medal) { ms.medal = true; save(); showMedal(view.topic, view.mod); }
+}
+
+// after a wrong answer: the reference solution, under the verdict
+function showSolution(p) {
+  const box = $(".solution-box");
+  if (!box) return;
+  box.querySelectorAll("pre").forEach((x) => x.remove());
+  box.hidden = !p;
+  if (!p) return;
+  const keys = /^\s*#: keys/m.test(p.setup || "");
+  box.appendChild(codeBlock(p.solution, keys ? null : view.topic.terminal ? "shell" : modeOf(p, view.topic)));
 }
 
 function showMedal(topic, mod) {

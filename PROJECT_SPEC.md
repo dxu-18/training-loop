@@ -30,7 +30,8 @@ can wait.
 **Question generation.**
 - Each question says in plain English which feature or concept to type out or use.
 - **Only the first 10 questions of a section show an example**, until the pattern
-  sinks in. After that, an **"Example"** button reveals the example on demand.
+  sinks in. After that, an **"Example"** button reveals the example on demand. (Session 9 replaced the example with
+  an **Instructions** dropdown, same open/closed rule: see §2, session 9.)
 - Questions are **randomly generated**, with as much variety as possible while still
   testing the same syntax. To get that variety, the repo ships themed datasets, such
   as AI companies, pets and household appliances, plus data concepts, speech tech
@@ -96,7 +97,7 @@ NumPy/pandas standard, running in the browser.
 | How the answer is read | A variable named in the problem (default `result`), or else the value of the **last expression** in the code | Feels like a REPL, and short syntax answers can be one line. |
 | Syntax enforcement | Optional `require` (names that must appear in the code, `a\|b` = either) and `no_loops` (AST check) | Stops "right value, wrong skill" answers, e.g. hard-coding `(3, 4)` instead of `.shape`. |
 | Anti-hard-coding | `tests`: extra hidden setups the code must also pass. Used for every challenge problem. | Works like Codeforces hidden tests. |
-| Examples | An example is **another random instance of the same template**, shown with its solution | Every template gets examples for free, and the example never gives away the current answer. |
+| Instructions (was: Examples) | The functions a problem practises, each with a one-line description, only the new ones (session 9). Until then: another random instance of the same template, with its solution | Examples were long and often unrelated to the problem at hand; the function list says what to reach for without solving it. |
 | Template registry | `REGISTRY[section][module][tier]`, registered with `@template(module, tier)` (the section is fixed per package). A module is **live** once all 5 tiers have templates. | Matches the one-page-per-subsection structure (session 3). |
 | Template choice | Uniform over the templates registered for (section, module, tier), then a uniform theme, then random parameters | Gives every template an equal chance and keeps the questions varied. |
 | State | `localStorage` key `training-loop:v2`: per module (`"numpy/1.05"`) solved count, current seed and tier, medal, code draft | A static site has no accounts. The session-1 key `training-loop:v1` (one counter per topic) is left untouched but no longer read. |
@@ -262,6 +263,29 @@ problem; more hands-on problems (build this tree from `~`, turn tree A into tree
 - Tests: `tests/test_bash_terminal.py` (every template's reference as a session, exploring first, wrong and empty
   sessions, Ctrl-C, nano, quotas, reload). The in-browser self-test grades bash solutions as sessions.
 
+### Session 9 (2026-10-30): Instructions instead of examples; the solution after a wrong answer
+Request: "instead of long, often unrelated example problems, change it to an Instructions dropdown to show the user
+what functions they are intended to use and a description of that function ... only list the new functions that are
+recently introduced"; and "when Wrong is displayed, show the correct solution (labeled Solution: ...)".
+- `generator/instructions.py` reads the names a reference solution uses, in order: APIs as written (`np.cumsum`,
+  `.reshape`, `F.softmax`), indexing and operator syntax from the AST (`a[:, None]`, masks, `@`, `len(df)` …), and for
+  Bash the features (`grep -c`, `|`, `${var%pat}`, `[[ -f`, 7.17 keys). It lists **only what is new**: the names
+  introduced at this problem's module and at its tier or the one before; else every name the module introduces;
+  else (a problem that only reuses older names) the two most recent. At most 4. "Introduced" = the first module whose
+  COMP_GUIDE code lists the name (else whose solutions use it), and the first tier there whose solutions use it.
+  A Bash command and its option read as one entry (`ls -l`: both descriptions).
+- `generator/data/instructions.json` (~340 KB, in the bundle): names, where they are introduced, and descriptions.
+  Built by `scripts/make_instructions.py --python <venv with numpy, pandas, torch, matplotlib>`: the real libraries'
+  docstrings (first sentence; signatures cut to 3 parameters; "Alias for …" followed), bash-lite's manual pages and
+  `help` for commands, options and builtins, and `scripts/instruction_notes.py` (syntax, constants, keys, Bash
+  syntax, commands without a manual page; an empty note hides a name). Rerun it after adding templates; names it
+  can't describe simply aren't listed.
+- The page: an **Instructions** dropdown (open for questions 1–10, like the example was), and after ✗ Wrong the
+  reference solution under **Solution:** in the verdict panel. The example (a second instance of the template) is
+  gone, which also halves generation work.
+- Tests: every problem lists ≤ 4 described names, under 3% of problems list none, and a problem never mixes new and
+  older names (tests/test_templates.py); e2e checks the dropdown and the Solution box.
+
 ### Open problem: Hugging Face in the browser
 Pyodide has no `transformers`. Options: extend the shim idea (a tiny tokenizer/pipeline layer over torch-lite),
 AST and pattern checks, or an optional "run locally" mode. **Not decided yet.**
@@ -328,7 +352,7 @@ Legend: ✅ done · 🟡 partial · ⬜ not started
 | 12 | Docker | ⬜ | command / Dockerfile | |
 
 ### What exists (as of session 5; the Bash topic and its terminal are described in §2, sessions 7–8)
-- `generator/`: core (tiers, registry, examples), grader (answer comparison, AST checks,
+- `generator/`: core (tiers, registry, Instructions), grader (answer comparison, AST checks,
   hidden tests, clean tracebacks), themes (20 themes, 10 axes, 10 label sets), and the NumPy section.
 - `tests/`: 2,463 tests. Every template × 25 seeds (6 for challenges) must pass its own grader,
   obviously wrong answers must fail, and variety is checked. Every challenge (112: 36 NumPy, 38 pandas,
@@ -336,7 +360,7 @@ Legend: ✅ done · 🟡 partial · ⬜ not started
   ≥ 2 templates per tier for NumPy, pandas and PyTorch.
 - `docs/`: the live site, three levels: topic list (`#/`: total solved + medal count per topic,
   "soon" for topics with no live module) → topic page (`#/numpy`: its modules with per-module
-  count and medal) → practice (`#/numpy/1.05`: problem, Given, Example, editor, Run/Submit,
+  count and medal) → practice (`#/numpy/1.05`: problem, Given, Instructions, editor, Run/Submit,
   console, verdict). Pyodide worker with a time limit, per-module localStorage state, a
   placeholder medal per module and the surprise modal at 250.
 - **Verified in a real browser (session 2)** with `scripts/e2e_check.py` (Playwright + bundled
@@ -345,8 +369,8 @@ Legend: ✅ done · 🟡 partial · ⬜ not started
 
 ### UX decisions made in session 1 (change if you disagree)
 - Submitting code that **doesn't parse** (SyntaxError) does not use up the problem. The user
-  fixes it and resubmits. Any other wrong submission shows ✗ and a **"New problem →"** button,
-  which rerolls at the same number and tier.
+  fixes it and resubmits. Any other wrong submission shows ✗, the reference solution under **"Solution:"**
+  (session 9), and a **"New problem →"** button, which rerolls at the same number and tier.
 - **Run** (⌘/Ctrl+Enter) executes without grading. **Submit** is Shift+Enter. On the Bash pages there is no Run (the
   terminal runs everything) and no editor: Submit (or ⌘Enter) grades the session, Reset starts the problem's
   machine over, and "nothing to check yet" (no commands, no script file) keeps the problem like a syntax error.

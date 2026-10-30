@@ -8,8 +8,8 @@ if _ilu.find_spec("torch") is None:  # no PyTorch (e.g. in the browser): use the
     _sys.path.append(_os.path.join(_os.path.dirname(__file__), "shims"))
 
 from . import sections  # noqa: E402,F401  (registers every template)
-from .core import EXAMPLE_UNTIL, MEDAL_AT, REVEAL_AFTER, TIERS, generate, modules, templates, tier_for  # noqa: E402
+from .core import INSTRUCTIONS_UNTIL, MEDAL_AT, REVEAL_AFTER, TIERS, generate, modules, templates, tier_for  # noqa: E402
 from .grader import grade, run  # noqa: E402
 
-__all__ = ["EXAMPLE_UNTIL", "MEDAL_AT", "REVEAL_AFTER", "TIERS", "generate", "grade", "modules", "run",
+__all__ = ["INSTRUCTIONS_UNTIL", "MEDAL_AT", "REVEAL_AFTER", "TIERS", "generate", "grade", "modules", "run",
            "templates", "tier_for"]
