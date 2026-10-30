@@ -22,8 +22,8 @@ const TOPICS = [
 ];
 const TOPIC = Object.fromEntries(TOPICS.map((t) => [t.id, t]));
 const INSTRUCTIONS_UNTIL = 10;   // the Instructions start open for questions 1..10
-const MEDAL_AT = 250;
-const REVEAL_AFTER = 250;
+const MEDAL_AT = 100;      // generator/core.py: questions 1-100 (lite 10, easy 25, medium 35, hard 25, challenge 5)
+const REVEAL_AFTER = 100;
 
 // ------------------------------------------------------------ catalog (docs/build.json)
 let catalogPromise = null;
@@ -233,7 +233,7 @@ async function renderTopic(topic) {
   app().innerHTML = `<div class="home">
     <a class="back" href="#/">← Topics</a>
     <h1>${esc(info.title)}</h1>
-    <p class="tag">${info.modules.length} modules. Each has its own counter, 250-problem medal and endless questions.</p>
+    <p class="tag">${info.modules.length} modules. Each has its own counter, ${MEDAL_AT}-problem medal and endless questions.</p>
     <ol class="topics modules">${info.modules.map(row).join("")}</ol>
   </div>`;
 }

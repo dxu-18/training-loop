@@ -38,12 +38,10 @@ can wait.
   and image/video creation and recognition. The questions draw on these real-world
   things, since this is an ML practice tool.
 - **Difficulty rises within each section, gently**, by question number:
-  - 1–50: **lite**
-  - 51–120: **easy**
-  - 121–200: **medium**
-  - 201–245: **hard**
-  - 246–250: **challenge**
-  - 251 onward: random, using the same distribution, so a challenge still turns up
+  - 1–10: **lite**, 11–35: **easy**, 36–70: **medium**, 71–95: **hard**, 96–100: **challenge**, then the medal
+    (session 10, 2026-10-30: cut from 250 questions, 1–50 lite … 246–250 challenge, because the templates are too
+    few for 250 without repeats; the medal, answer reveal and the rest below that say 250 now mean 100)
+  - 101 onward: random, using the same distribution, so a challenge still turns up
     now and then.
   - Difficulty means more logical complexity, so a problem needs more thinking.
     Lite to medium are still syntax questions, with medium a bit harder. Hard is

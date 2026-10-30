@@ -75,10 +75,12 @@ def test_template_names_unique():
 
 
 def test_schedule():
-    assert [tier_for(n) for n in (1, 50, 51, 120, 121, 200, 201, 245, 246, 250)] == [
+    assert [tier_for(n) for n in (1, 10, 11, 35, 36, 70, 71, 95, 96, 100)] == [
         "lite", "lite", "easy", "easy", "medium", "medium", "hard", "hard", "challenge", "challenge"]
-    later = [tier_for(250 + i, seed=i) for i in range(5000)]
-    assert 0 < later.count("challenge") < 300  # ~2% of draws
+    first = [tier_for(n) for n in range(1, 101)]
+    assert [first.count(t) for t in ("lite", "easy", "medium", "hard", "challenge")] == [10, 25, 35, 25, 5]
+    later = [tier_for(100 + i, seed=i) for i in range(5000)]
+    assert 100 < later.count("challenge") < 400  # ~5% of draws
 
 
 def test_generate_attaches_instructions():

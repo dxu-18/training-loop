@@ -6,7 +6,7 @@ Needs: pip install playwright && playwright install chromium
 
 Without base-url it serves docs/ on 127.0.0.1:8765. Covers: topic list -> topic page -> module
 practice, problem render, syntax error, Run, infinite-loop time limit, correct -> next, wrong ->
-reroll, a challenge with hidden tests, the medal at 250, answer reveal at 251, counters on the
+reroll, a challenge with hidden tests, the medal at 100, answer reveal at 101, counters on the
 topic and home pages, the phone layout, the Bash pages (the live terminal: typed answers, keystrokes,
 nano scripts, Ctrl-C, stderr, the Files panel, reload and Reset), and (unless --selftest-seeds 0) grading every template's own solution inside Pyodide.
 """
@@ -107,11 +107,11 @@ try:
         check(pg.inner_text(".qnum") == "2" and pg.evaluate("view.problem.tier") == before[1],
               "wrong answer -> same number and tier, new problem")
 
-        # jump to question 250 of this module: a challenge, then the medal
-        pg.evaluate("() => { state.modules['numpy/1.05'] = {solved: 249, medal: false, current: {n: 250, seed: 7, tier: null}}; save(); }")
+        # jump to question 100 of this module: a challenge, then the medal
+        pg.evaluate("() => { state.modules['numpy/1.05'] = {solved: 99, medal: false, current: {n: 100, seed: 7, tier: null}}; save(); }")
         pg.reload()
         pg.wait_for_selector(".prompt", timeout=120000)
-        check(pg.evaluate("view.problem.tier") == "challenge", "question 250 is a challenge")
+        check(pg.evaluate("view.problem.tier") == "challenge", "question 100 is a challenge")
         pg.evaluate(SET_CODE, pg.evaluate("view.problem.solution"))
         t0 = time.time()
         pg.click(".submit")
@@ -121,8 +121,8 @@ try:
         pg.screenshot(path=f"{args.out}/medal.png")
         pg.click(".modal button")
         pg.click(".next")
-        pg.wait_for_function("document.querySelector('.qnum').textContent === '251'", timeout=30000)
-        check(pg.locator("details.answer").count() == 1, "question 251 offers Show answer")
+        pg.wait_for_function("document.querySelector('.qnum').textContent === '101'", timeout=30000)
+        check(pg.locator("details.answer").count() == 1, "question 101 offers Show answer")
         check(not pg.evaluate("document.querySelector('details.instructions')?.open"),
               "Instructions are folded after question 10")
 
@@ -130,7 +130,7 @@ try:
         pg.goto(BASE + "/#/numpy")
         pg.wait_for_selector(".modules")
         row = pg.inner_text("a[href='#/numpy/1.05']")
-        check("250" in row and pg.locator("a[href='#/numpy/1.05'] svg").count() == 1, "topic page: 250 + medal on 1.05")
+        check("100" in row and pg.locator("a[href='#/numpy/1.05'] svg").count() == 1, "topic page: 100 + medal on 1.05")
         pg.screenshot(path=f"{args.out}/topic_after.png", full_page=True)
         pg.goto(BASE + "/#/")
         pg.wait_for_selector(".topic")
