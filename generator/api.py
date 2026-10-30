@@ -23,6 +23,43 @@ def grade(problem_json: str, code: str) -> str:
     return json.dumps(grader.grade(json.loads(problem_json), code))
 
 
+def term_start(problem_json: str, log_json: str, real_ms: float) -> str:
+    """Open the live terminal for a bash problem (log: an earlier session from the browser's storage)."""
+    from .bashlite import live
+    from .bashlite.check import SetupError
+    from .bashlite.directives import DirectiveError
+    try:
+        return json.dumps(live.start(json.loads(problem_json), json.loads(log_json or "[]"), real_ms))
+    except (SetupError, DirectiveError) as e:
+        return json.dumps({"error": f"The problem's setup failed: {e}"})
+
+
+def term_keys(events_json: str, real_ms: float) -> str:
+    from .bashlite import live
+    return json.dumps(live.keys(json.loads(events_json), real_ms))
+
+
+def term_pump(real_ms: float) -> str:
+    from .bashlite import live
+    return json.dumps(live.pump(real_ms))
+
+
+def term_edit(action: str, content, name, real_ms: float) -> str:
+    from .bashlite import live
+    return json.dumps(live.edit(action, content, real_ms, name or None))
+
+
+def term_resize(cols: int, real_ms: float) -> str:
+    from .bashlite import live
+    return json.dumps(live.resize(cols, real_ms))
+
+
+def term_answer(real_ms: float) -> str:
+    """The session as the answer to grade (JSON with the key log)."""
+    from .bashlite import live
+    return live.answer(real_ms)
+
+
 def info() -> str:
     return json.dumps({
         s: {m: {t: len(core.templates(s, m, t)) for t in core.TIERS} for m in core.modules(s)}
@@ -34,7 +71,8 @@ def self_test(section: str, seeds: int = 2, only: str = "", skip: str = "") -> s
     """Grade every template's own solution in this runtime (used to check Pyodide).
 
     `only` / `skip` are comma-separated module ids, so each module can be checked with
-    exactly the packages its page loads."""
+    exactly the packages its page loads. Bash solutions are sent the way the page sends them: as a session
+    typed into the live terminal."""
     want = set(filter(None, only.split(",")))
     drop = set(filter(None, skip.split(",")))
     failures, count, timings = [], 0, []
@@ -53,8 +91,13 @@ def self_test(section: str, seeds: int = 2, only: str = "", skip: str = "") -> s
         try:
             p = core.build(tpl, random.Random(seed).randrange(2**31)).to_dict()
             t0 = time.perf_counter()
-            res = grader.grade(p, p["solution"])
-            timings.append((time.perf_counter() - t0, tpl.module, tpl.name, p["timeout"]))
+            if p.get("kind") == "bash":
+                from .bashlite.live import reference_session
+                res = grader.grade(p, reference_session(p))
+            else:
+                res = grader.grade(p, p["solution"])
+            limit = 60.0 if p.get("kind") == "bash" else p["timeout"]   # the page allows a terminal session more
+            timings.append((time.perf_counter() - t0, tpl.module, tpl.name, limit))
             if not res["correct"]:
                 failures.append({"template": tpl.name + (f"[{item}]" if item is not None else ""), "module": tpl.module,
                                  "seed": seed, "message": res["message"], "error": res["error"]})

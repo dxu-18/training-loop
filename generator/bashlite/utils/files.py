@@ -587,7 +587,7 @@ def version_key(s: str):
 def u_tree(ctx):
     a = ctx.argv[1:]
     level = None
-    show_all = dirs_only = full = noreport = False
+    show_all = dirs_only = full = noreport = classify = False
     ignore = []
     pattern = None
     paths = []
@@ -618,7 +618,9 @@ def u_tree(ctx):
                     dirs_only = True
                 elif c == "f":
                     full = True
-                elif c in "CnhsFpug":
+                elif c == "F":
+                    classify = True
+                elif c in "Cnhspug":
                     pass
                 else:
                     ctx.e(f"tree: Invalid argument -`{c}'.\n")
@@ -669,8 +671,13 @@ def u_tree(ctx):
             for k, (name, child, target, is_dir) in enumerate(items):
                 last = k == len(items) - 1
                 shown = _join(path, name) if full else name
+                mark = ""
+                if classify and target is not None:      # -F: / for directories, * for executables
+                    mark = "/" if is_dir else "*" if target.type == "f" and target.mode & 0o111 else ""
                 if child.type == "l":
-                    shown += " -> " + child.target
+                    shown += " -> " + child.target + mark
+                else:
+                    shown += mark
                 ctx.w(prefix + ("└── " if last else "├── ") + shown + "\n")
                 if is_dir:
                     ndirs += 1
@@ -2473,7 +2480,7 @@ def u_dd(ctx):
             partial += 1
         total += len(data)
         chunks.append(data)
-        if total > 512 * 1024 * 1024:
+        if total > 512 * 1024 * 1024 or ctx.fs.quota_bytes is not None and total > ctx.fs.quota_bytes:
             break
     blob = b"".join(chunks)
     conv = params.get("conv", "")
@@ -2493,6 +2500,7 @@ def u_dd(ctx):
         node = of.inode
         if node is not None:
             start = seek * bs
+            ctx.fs.charge(max(0, start + len(blob) - len(node.data)))
             if len(node.data) < start:
                 node.data.extend(b"\0" * (start - len(node.data)))
             node.data[start:start + len(blob)] = blob
@@ -2554,6 +2562,7 @@ def u_truncate(ctx):
         if new < cur:
             del node.data[new:]
         else:
+            ctx.fs.charge(new - cur)
             node.data.extend(b"\0" * (new - cur))
         node.mtime = ctx.now
     return 0

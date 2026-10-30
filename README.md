@@ -9,7 +9,8 @@ Every topic is split into its COMP_GUIDE subsections (NumPy has 18), and each su
 page with its own counter, a medal at 250, and endless randomly generated questions that get harder
 as you go. Your code runs in the browser (Pyodide), so there is nothing to install. Live now: NumPy,
 pandas, PyTorch (on torch-lite, a NumPy-backed `torch` that runs in the browser) and Bash (on bash-lite,
-a simulated Ubuntu machine with its own shell, files, processes, GPUs, ssh hosts and Python environments);
+a simulated Ubuntu machine with its own shell, files, processes, GPUs, ssh hosts and Python environments, used
+through a Terminal.app-style terminal with nano and a live view of your files);
 the other topics are listed as "soon". Topics come from [COMP_GUIDE.md](COMP_GUIDE.md); the design and roadmap are in
 [PROJECT_SPEC.md](PROJECT_SPEC.md).
 

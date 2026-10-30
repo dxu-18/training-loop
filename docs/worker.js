@@ -32,6 +32,13 @@ const commands = {
   generate: ({ section, module, n, seed, tier }) => JSON.parse(api.generate(section, module, n, seed, tier ?? null)),
   run: ({ problem, code }) => JSON.parse(api.run(JSON.stringify(problem), code)),
   grade: ({ problem, code }) => JSON.parse(api.grade(JSON.stringify(problem), code)),
+  // the Bash topic's live terminal (generator/bashlite/live.py); `real` is the page's clock in ms
+  termStart: ({ problem, log, real }) => JSON.parse(api.term_start(JSON.stringify(problem), JSON.stringify(log || []), real)),
+  termKeys: ({ events, real }) => JSON.parse(api.term_keys(JSON.stringify(events), real)),
+  termPump: ({ real }) => JSON.parse(api.term_pump(real)),
+  termEdit: ({ action, content, name, real }) => JSON.parse(api.term_edit(action, content ?? null, name ?? null, real)),
+  termResize: ({ cols, real }) => JSON.parse(api.term_resize(cols, real)),
+  termAnswer: ({ real }) => api.term_answer(real),
   // grade every template's own solution inside Pyodide (used by scripts/e2e_check.py)
   selftest: ({ section, seeds, only, skip }) => JSON.parse(api.self_test(section, seeds ?? 2, only ?? "", skip ?? "")),
 };

@@ -7,8 +7,8 @@ Needs: pip install playwright && playwright install chromium
 Without base-url it serves docs/ on 127.0.0.1:8765. Covers: topic list -> topic page -> module
 practice, problem render, syntax error, Run, infinite-loop time limit, correct -> next, wrong ->
 reroll, a challenge with hidden tests, the medal at 250, answer reveal at 251, counters on the
-topic and home pages, the phone layout, the Bash pages (terminal transcript, stderr, keystroke
-answers), and (unless --selftest-seeds 0) grading every template's own solution inside Pyodide.
+topic and home pages, the phone layout, the Bash pages (the live terminal: typed answers, keystrokes,
+nano scripts, Ctrl-C, stderr, the Files panel, reload and Reset), and (unless --selftest-seeds 0) grading every template's own solution inside Pyodide.
 """
 
 import argparse
@@ -206,30 +206,112 @@ try:
         pg.wait_for_selector(".prompt", timeout=120000)
         selftest("pytorch")
 
-        # bash (bash-lite, no extra packages): topic page, practice rounds incl. a keystroke problem, the terminal
-        # transcript (prompts + output), then every template inside Pyodide
+        # bash (bash-lite, no extra packages): the topic page, then practice rounds in the live terminal: the
+        # reference solution typed (or its keys pressed, or its script written in nano), Ctrl-C, stderr, the Files
+        # panel, a reload that rebuilds the session; then every template inside Pyodide, graded as sessions
+        sys.path.insert(0, ".")
+        from generator.bashlite.directives import parse as parse_dirs
+        from generator.bashlite.keys import parse_keys
+        from generator.bashlite.live import split_setup
+        KEYMAP = {"Enter": "Enter", "Tab": "Tab", "BSpace": "Backspace", "Delete": "Delete", "Esc": "Escape",
+                  "Left": "ArrowLeft", "Right": "ArrowRight", "Up": "ArrowUp", "Down": "ArrowDown", "Home": "Home",
+                  "End": "End", "Space": " "}
+        SCREEN = """() => { const b = view.term.mt.term.buffer.active; const out = [];
+            for (let i = 0; i < b.length; i++) out.push(b.getLine(i).translateToString(true)); return out.join('\\n'); }"""
+
+        def settle(timeout=4.0):
+            """Wait until the terminal is back at a prompt (or nano is open); False if a command still runs."""
+            t_end = time.time() + timeout
+            while time.time() < t_end:
+                time.sleep(0.15)
+                if pg.evaluate("!view.term.inflight && !view.term.queue.length && view.term.lastView && "
+                               "view.term.lastView.mode !== 'running'"):
+                    return True
+            return False
+
+        def press(kind, val):
+            if kind == "text":
+                pg.keyboard.type(val)
+            elif val in KEYMAP:
+                pg.keyboard.press(KEYMAP[val])
+            elif val.startswith("C-") and len(val) == 3:
+                pg.keyboard.press("Control+" + val[2])
+            elif val.startswith("M-") and len(val) == 3:
+                pg.keyboard.press("Alt+" + val[2])
+            else:
+                raise ValueError(val)
+
+        def answer_in_terminal(prob):
+            pg.click(".mt-screen")
+            setup = prob["setup"]
+            if "#: keys" in setup:
+                for kind, val in parse_keys(prob["solution"]):
+                    press(kind, val)
+                    time.sleep(0.05)
+                settle()
+                return
+            keep, _, _ = split_setup(setup)
+            spec = parse_dirs(keep)
+            if spec.script:      # written in nano: type it, ^O Enter saves, ^X exits
+                pg.keyboard.type(f"nano {spec.script}")
+                pg.keyboard.press("Enter")
+                pg.wait_for_function("view.term.nano !== null", timeout=10000)
+                for line in prob["solution"].split("\n"):
+                    pg.keyboard.type(line)
+                    pg.keyboard.press("Enter")
+                pg.keyboard.press("Control+o")
+                pg.keyboard.press("Enter")
+                time.sleep(0.5)
+                pg.keyboard.press("Control+x")
+                pg.wait_for_function("view.term.nano === null", timeout=10000)
+                settle()
+                return
+            for line in prob["solution"].split("\n") + list(spec.typed):
+                pg.keyboard.type(line)
+                pg.keyboard.press("Enter")
+                if not settle():               # runs until Ctrl-C (tail -f, watch ...): stop it
+                    pg.keyboard.press("Control+c")
+                    settle()
+
         pg.goto(BASE + "/#/bash")
         pg.reload()
         pg.wait_for_selector(".modules")
         n_mod = pg.locator(".modules a.topic").count()
         check(n_mod == 17, f"bash page lists 17 live modules (got {n_mod})")
-        for mod in ("7.01", "7.06", "7.14", "7.17"):
+        for mod in ("7.01", "7.02", "7.06", "7.11", "7.14", "7.17"):
             pg.goto(BASE + f"/#/bash/{mod}")
-            pg.wait_for_selector(".prompt", timeout=120000)
+            pg.wait_for_function("view && view.term && view.term.alive", timeout=120000)
             check("#:" not in pg.inner_text(".problem"), f"bash {mod}: directive lines are hidden")
-            pg.evaluate(SET_CODE, pg.evaluate("view.problem.solution"))
+            check("@" in pg.evaluate(SCREEN) and "$" in pg.evaluate(SCREEN), f"bash {mod}: the terminal shows a prompt")
+            answer_in_terminal(pg.evaluate("view.problem"))
             pg.click(".submit")
-            pg.wait_for_function(f"{VERDICT}.length > 0", timeout=60000)
-            check("Correct" in pg.inner_text(".verdict"), f"bash {mod} reference solution is graded correct")
-            out = pg.inner_text(".out")
-            check("@" in out and "$" in out, f"bash {mod}: the console shows a terminal transcript")
+            pg.wait_for_function(f"{VERDICT}.length > 0", timeout=180000)
+            ok = "Correct" in pg.inner_text(".verdict")
+            check(ok, f"bash {mod}: the reference solution, entered in the terminal, is graded correct"
+                      + ("" if ok else f" ({pg.inner_text('.verdict-msg')} / {pg.evaluate('view.problem.solution')!r})"))
             pg.screenshot(path=f"{args.out}/bash_{mod}.png", full_page=True)
         pg.goto(BASE + "/#/bash/7.05")
-        pg.wait_for_selector(".prompt", timeout=120000)
-        pg.evaluate(SET_CODE, "ls /nonexistent")
-        pg.click(".run")
-        pg.wait_for_function("document.querySelector('.out .err') !== null", timeout=60000)
-        check("No such file" in pg.inner_text(".out .err"), "bash: stderr is shown in red")
+        pg.wait_for_function("view && view.term && view.term.alive", timeout=120000)
+        pg.click(".mt-screen")
+        pg.keyboard.type("ls /nonexistent; mkdir e2e_dir")
+        pg.keyboard.press("Enter")
+        settle()
+        check("No such file" in pg.evaluate(SCREEN), "bash: stderr is shown in the terminal")
+        check("e2e_dir" in pg.inner_text(".files") and "NEW" in pg.inner_text(".files").upper(),
+              "bash: the Files panel shows a new directory")
+        pg.keyboard.type("while true; do sleep 1; done")
+        pg.keyboard.press("Enter")
+        time.sleep(1.5)
+        pg.keyboard.press("Control+c")
+        check(settle(), "bash: Ctrl-C stops a running loop")
+        pg.reload()
+        pg.wait_for_function("view && view.term && view.term.alive", timeout=120000)
+        time.sleep(0.5)
+        check("ls /nonexistent" in pg.evaluate(SCREEN), "bash: a reload rebuilds the terminal session")
+        pg.click(".reset")
+        pg.wait_for_function("view && view.term && view.term.alive", timeout=120000)
+        time.sleep(0.5)
+        check("ls /nonexistent" not in pg.evaluate(SCREEN), "bash: Reset starts a fresh session")
         selftest("bash")
 
         errors =[l for l in logs if "error" in l.lower()]

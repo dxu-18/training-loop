@@ -208,8 +208,8 @@ bash running in Pyodide. User code really runs, so the console shows real output
     distinct tasks. Every curated guide feature (469: commands, flags, syntax, 7.17 keys) is practised
     (`scripts/guide_coverage.py bash`, enforced by tests/test_coverage.py). Every challenge is cross-checked
     against an independent Python brute force (tests/test_bash_challenges.py).
-  - Frontend: `#:` lines hidden, a terminal transcript in the console (prompts, typed input, stderr in red, ANSI
-    colours, clear-screen), shell highlighting, plain-text editor for keystroke answers.
+  - Frontend (replaced in session 8 by the live terminal): `#:` lines hidden, a terminal transcript in the
+    console, shell highlighting, plain-text editor for keystroke answers.
   - Lesson: a simulator bug can make the reference and the answer fail identically, so "the reference passes" proves
     little. The templates were reviewed transcript by transcript, and a scan flags reference solutions that print
     errors; that found a dozen simulator bugs (e.g. `true | sleep 1` spinning, `a[$k]=v` not parsed as an assignment,
@@ -217,6 +217,50 @@ bash running in Pyodide. User code really runs, so the console shows real output
 - **Reference behaviour checked against real bash 5.2.37** (assoc-array order is FNV-1 hash bucket order, xtrace,
   `type`/`declare -f` printing, `printf`, `read`, `getopts`). Recreate the reference tools with micromamba:
   `micromamba create -p <dir> -c conda-forge bash coreutils sed gawk grep findutils diffutils tar gzip jq bc xz zip unzip file`.
+
+### Session 8 (2026-10-30): the Bash terminal
+Request: replace the code box on the Bash pages with "an actual box to emulate the font, functionality, of an actual
+Linux terminal ... with the fonts and styles of a mac m1 cli"; keep the files people create in the browser (with
+safeguards); check that a task's commands were all used, in any order; a directory-tree display beside it, reset per
+problem; more hands-on problems (build this tree from `~`, turn tree A into tree B ...).
+- **The look** is Terminal.app's Basic profile, read from the local profile plist (SF Mono, block cursor, 80×24,
+  the Basic light and dark colours), in a window with the title bar and traffic lights; the title follows
+  Terminal's `dir — process — cols×rows`. SF Mono can't be served as a web font (licence), so the font stack is
+  SF Mono / ui-monospace / Menlo, then JetBrains Mono (Google Fonts) elsewhere. Rendering: xterm.js 5.5 (DOM
+  renderer), Option as Meta; ⌘K clears, ⌘+/− resize the font, ⌘. is Ctrl-C, ⌘Enter submits.
+- **One engine for typing and grading** (`generator/bashlite/live.py`, `LiveTerm`): the page sends keys; the
+  shell's line editing is keys.Editor (the same readline the 7.17 grader uses), programs get a cooked-mode line
+  (echo, Ctrl-C/Z/D/\\), and the machine runs on the real clock in slices (`Kernel.run_slice`), so `sleep 3` takes
+  3 s and `tail -f` runs until Ctrl-C. Ctrl-C now does what bash does: it abandons the running command line
+  (`Interrupted`), including loops of builtins, `read` and `wait`; at the `>` prompt it drops the unfinished command.
+- **nano** (`utils/editor.py` + the page's `Nano` in `docs/terminal.js`): GNU nano 7.2's screen on xterm's
+  alternate screen, with ^O/^S/^X/^K/^U/^W/^C; saves (whole text, maybe a new name) go to the machine. vim and
+  emacs say "edit files with nano instead".
+- **Every key is logged** with where it went: the prompt, a running program (with the ms since the command
+  started), or nano. The log is kept per module in localStorage (capped at 1.5 MB, oldest sessions evicted), so a
+  reload rebuilds the session by replaying it at the recorded times. Safeguards: 3000 inodes and 8 MB of file data
+  per session (`VFS.set_quota`: commands fail with "No space left on device"), 20,000 log events, bounded
+  transcripts; a command that hangs the worker is dropped from the log and the session rebuilt without it.
+- **Grading a session** (`check.term_checker`): the log is replayed on the visible machine and on every hidden one,
+  as fast as the commands allow (prompt keys as soon as the prompt is back, keys for a running program at the same
+  moment of that command), so thinking time doesn't change `ls -l` times. Everything typed counts for
+  require/forbid, in any order. The expected output must come from some commands in a row (exploring first is
+  fine); if it doesn't, the reference is retyped at each of the last 12 commands of the session, so exploring that
+  shifted process ids, history or the directory still passes. A command stopped with Ctrl-C passes with a prefix of
+  the output. `post` checks run in the session's shell afterwards; script problems are written in the terminal
+  (nano) and run by the grader. 7.17 sessions are graded like keys answers (commands run, line left, tmux state).
+  Typed-text answers (tests, the old path) still work.
+- **Files panel** (right column): the problem's start directory, live, with folder/file/executable/link icons,
+  "you are here", new items in green, deleted ones struck through, hidden files behind a toggle.
+- **New 7.02 problems**: build a tree from `~` (lite: `mkdir`/`touch`; easy: `mkdir -p`), find your way through a
+  maze with `cd`, reshape/reorganize a project (tree A → tree B with `mkdir touch rm rmdir mv cp cp -r rm -r`, each
+  required, any order; contents checked by md5), and clean-up tasks that also run on hidden trees. Trees are drawn
+  `tree -F` style in the prompt; a test checks each drawing against what the reference builds.
+- Fixed on the way: aliases inside `$( )` in double quotes broke parsing (the parser rewrote its text in place);
+  comment-only lines left the shell at the `>` prompt; Ubuntu's `.bashrc` colour prompt and `ls`/`grep` aliases;
+  `tree -F`.
+- Tests: `tests/test_bash_terminal.py` (every template's reference as a session, exploring first, wrong and empty
+  sessions, Ctrl-C, nano, quotas, reload). The in-browser self-test grades bash solutions as sessions.
 
 ### Open problem: Hugging Face in the browser
 Pyodide has no `transformers`. Options: extend the shim idea (a tiny tokenizer/pipeline layer over torch-lite),
@@ -237,7 +281,8 @@ generator/            Python package: question generation + grading (runs locall
     s03_pytorch/      _common.py (HEADER imports torch/nn/F, tensor literals, challenge()) + m01_tensors.py … m19_dpo.py
     s07_bash/         _common.py (P/K problem helpers, files() heredocs, catalog(), challenge()) + m01_basics.py … m17_keys_history.py
   bashlite/           bash-lite: a simulated Ubuntu machine in pure Python (vfs, parser, kernel, shell, builtins, utils/ commands,
-                      world/basefs, directives, check = the bash grader, keys = readline/tmux simulator, features)
+                      world/basefs, directives, check = the bash grader, keys = readline/tmux simulator, features,
+                      live = the live terminal: key-by-key sessions on the real clock, logs, replays)
   shims/torch/        torch-lite: NumPy-backed torch (core in __init__.py, more ops in _extra.py; nn, optim, utils, func,
                       autograd, amp, profiler, distributed (+ fsdp, checkpoint), library, _compile, ...)
   shims/triton/       triton-lite: @triton.jit kernels interpreted on the CPU
@@ -248,7 +293,8 @@ scripts/
   e2e_check.py        Playwright click-through of the site + Pyodide self-test of every template
 ci/pages.yml          optional GitHub Actions deploy (inactive, see its header)
 tests/                pytest: every template passes its own grader; every challenge matches a brute force
-docs/                 the static website (GitHub Pages root)
+docs/                 the static website (GitHub Pages root): app.js (pages), terminal.js (the Bash terminal, nano,
+                      Files panel), worker.js (Pyodide), style.css
 ```
 
 Local dev:
@@ -274,14 +320,14 @@ Legend: ✅ done · 🟡 partial · ⬜ not started
 | 4 | scikit-learn | ⬜ | exec | |
 | 5 | Matplotlib | ⬜ | exec + figure inspection | |
 | 6 | Hugging Face | ⬜ | **open problem** | |
-| 7 | Bash | ✅ **all 17 modules live**: 170 templates in `generator/sections/s07_bash/` (every module ≥ 2 templates per tier, 2 challenges each) | bash-lite: simulated Ubuntu machine (`generator/bashlite/`), output comparison; keystroke simulator for 7.17 | session 7 |
+| 7 | Bash | ✅ **all 17 modules live**: 176 templates in `generator/sections/s07_bash/` (every module ≥ 2 templates per tier, 2 challenges each), answered in a live terminal | bash-lite: simulated Ubuntu machine (`generator/bashlite/`); the terminal session is replayed and its output / files compared; keystrokes for 7.17 | sessions 7, 8 |
 | 8 | Git & GitHub | ⬜ | command | |
 | 9 | Vim | ⬜ | keystrokes | |
 | 10 | SQL | ⬜ | sqlite3 exec | |
 | 11 | LaTeX | ⬜ | normalized / KaTeX | |
 | 12 | Docker | ⬜ | command / Dockerfile | |
 
-### What exists (after session 5)
+### What exists (as of session 5; the Bash topic and its terminal are described in §2, sessions 7–8)
 - `generator/`: core (tiers, registry, examples), grader (answer comparison, AST checks,
   hidden tests, clean tracebacks), themes (20 themes, 10 axes, 10 label sets), and the NumPy section.
 - `tests/`: 2,463 tests. Every template × 25 seeds (6 for challenges) must pass its own grader,
@@ -301,7 +347,9 @@ Legend: ✅ done · 🟡 partial · ⬜ not started
 - Submitting code that **doesn't parse** (SyntaxError) does not use up the problem. The user
   fixes it and resubmits. Any other wrong submission shows ✗ and a **"New problem →"** button,
   which rerolls at the same number and tier.
-- **Run** (⌘/Ctrl+Enter) executes without grading. **Submit** is Shift+Enter.
+- **Run** (⌘/Ctrl+Enter) executes without grading. **Submit** is Shift+Enter. On the Bash pages there is no Run (the
+  terminal runs everything) and no editor: Submit (or ⌘Enter) grades the session, Reset starts the problem's
+  machine over, and "nothing to check yet" (no commands, no script file) keeps the problem like a syntax error.
 - The number shown on the practice page is the current question number of that module
   (solved + 1). The topic page shows each module's solved count and medal; the home page shows
   the topic's total solved and how many module medals it holds (`×N`).

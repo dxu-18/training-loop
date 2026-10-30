@@ -8,6 +8,7 @@ stdout is compared with the reference solution's (see bashlite/check.py).
 from __future__ import annotations
 
 import random
+import re
 import shlex
 
 from ...core import Problem, pick, template as _template
@@ -33,7 +34,13 @@ def template(module: str, tier: str):
 
 def P(prompt: str, setup: str, solution: str, **kw) -> Problem:
     kw.setdefault("timeout", 10.0)
-    return Problem(prompt=prompt.strip(), setup=setup.strip("\n"), solution=solution.strip("\n"), kind="bash",
+    prompt = prompt.strip()
+    m = re.search(r"^\s*#: script (\S+)", setup, re.M)
+    if m:   # the answer is a file the user writes in the terminal
+        name = m.group(1)
+        prompt += (f"\n\nWrite `{name}` in the terminal, for example with `nano {name}` (type the script, Ctrl-O Enter "
+                   f"saves, Ctrl-X exits). Submit runs it as described; you can try it yourself first.")
+    return Problem(prompt=prompt, setup=setup.strip("\n"), solution=solution.strip("\n"), kind="bash",
                    lang="bash", **kw)
 
 

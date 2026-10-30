@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import random
 
-from .kernel import SIGPIPE, OpenFile, Signal
+from .kernel import SIGPIPE, Interrupted, OpenFile, Signal
 from .vfs import FSError
 
 
@@ -19,9 +19,13 @@ def write(kernel, of: OpenFile | None, data: bytes):
         node = of.inode
         if of.append:
             of.pos = len(node.data)
+        end = of.pos + len(data)
+        if of.fs is not None or node is not None:
+            fs = of.fs or getattr(kernel.current, "host", None) and kernel.current.host.fs
+            if fs is not None:
+                fs.charge(max(0, end - len(node.data)))
         if of.pos > len(node.data):
             node.data.extend(b"\0" * (of.pos - len(node.data)))
-        end = of.pos + len(data)
         node.data[of.pos:end] = data
         of.pos = end
         node.mtime = node.ctime = kernel.now
@@ -115,6 +119,10 @@ def read(kernel, of: OpenFile | None, n: int = -1):
                 continue
             if tty.input_eof:
                 return b""
+            if tty.eof_pending:
+                tty.eof_pending = False
+                return b""
+            _check_interrupt(kernel)
             yield ("tty", tty)
     if k == "dir":
         raise FSError("EISDIR")
@@ -183,9 +191,21 @@ def readline(kernel, of, delim: bytes = b"\n"):
                 continue
             if tty.input_eof:
                 return bytes(out)
+            if tty.eof_pending:
+                tty.eof_pending = False
+                return bytes(out)
+            _check_interrupt(kernel)
             yield ("tty", tty)
     data = yield from read(kernel, of, 1 << 16)
     return data
+
+
+def _check_interrupt(kernel):
+    """`read` in an interactive shell: Ctrl-C abandons it (and the command line)."""
+    sh = getattr(kernel.current, "shell", None)
+    if sh is not None and sh.interrupted:
+        sh.interrupted = False
+        raise Interrupted()
 
 
 def _background_reader(kernel, tty) -> bool:

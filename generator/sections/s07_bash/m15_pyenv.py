@@ -181,7 +181,7 @@ def editable_and_kernel(rng):
                  f"python -m ipykernel install --user --name {name}\njupyter kernelspec list",
                  require=["python -m ipykernel|python3 -m ipykernel"])
     port = rng.choice([8888, 8889, 9999])
-    return P(f"Start JupyterLab without opening a browser on port {port} (it runs until Ctrl-C, after 10 s here); then "
+    return P(f"Start JupyterLab without opening a browser on port {port} (it runs until you press Ctrl-C); then "
              f"check that nothing listens on port {port} anymore (`lsof -i :{port} || echo free`).",
              f"#: venv {env} jupyterlab\n#: activate {env}", f"jupyter lab --no-browser --port {port}\nlsof -i :{port} || echo free",
              answer=["<stdout>"], require=["jupyter"])

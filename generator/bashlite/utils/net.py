@@ -202,7 +202,7 @@ def connect(ctx, dest, opts):
         raise SshError(f"ssh: Could not resolve hostname {hostname}: Name or service not known")
     via = None
     if jump and jump != "none":
-        via_host, via_user, _ = connect(ctx, jump, {})
+        via_host, via_user, _ = yield from connect(ctx, jump, {})
         via = via_host
     if host.extra.get("private") and (via is None or via.name not in host.extra.get("reachable_from", [])):
         raise SshError(f"ssh: connect to host {hostname} port {port}: Connection timed out")
@@ -222,7 +222,7 @@ def connect(ctx, dest, opts):
         pw = host.extra.get("password")
         if pw is None:
             raise SshError(f"{user}@{hostname}: Permission denied (publickey).")
-        ask_password(ctx, f"{user}@{hostname}'s password: ", pw, f"{user}@{hostname}")
+        yield from ask_password(ctx, f"{user}@{hostname}'s password: ", pw, f"{user}@{hostname}")
     return host, user, alias
 
 
@@ -233,10 +233,15 @@ def read_password(ctx, prompt):
     if tty is None:
         return None
     saved, tty.echo = tty.echo, False
+    tty.noecho = True
     try:
         while b"\n" not in tty.input:
-            if not tty.take_line():
+            if tty.take_line():
+                continue
+            if tty.input_eof or tty.eof_pending:
+                tty.eof_pending = False
                 break
+            yield ("tty", tty)
         if not tty.input:
             line = None
         else:
@@ -246,6 +251,7 @@ def read_password(ctx, prompt):
             del tty.input[:j + 1]
     finally:
         tty.echo = saved
+        tty.noecho = False
     ctx.e("\n")
     return line
 
@@ -253,7 +259,7 @@ def read_password(ctx, prompt):
 def ask_password(ctx, prompt, password, who):
     """Up to three tries, like ssh. Raises SshError when they all fail."""
     for _ in range(3):
-        got = read_password(ctx, prompt)
+        got = yield from read_password(ctx, prompt)
         if got is None:
             break
         if got == password:
@@ -358,7 +364,7 @@ def u_ssh(ctx):
             ctx.w(f"proxyjump {cfg['proxyjump']}\n")
         return 0
     try:
-        host, user, alias = connect(ctx, dest, opts)
+        host, user, alias = yield from connect(ctx, dest, opts)
     except SshError as e:
         ctx.e(e.msg + "\n")
         return e.status
@@ -625,7 +631,7 @@ def u_ssh_copy_id(ctx):
             pw = host.extra.get("password")
             if pw is None:
                 raise SshError(f"{user}@{hostname}: Permission denied (publickey).")
-            ask_password(ctx, f"{user}@{hostname}'s password: ", pw, f"{user}@{hostname}")
+            yield from ask_password(ctx, f"{user}@{hostname}'s password: ", pw, f"{user}@{hostname}")
     except SshError as e:
         ctx.e(e.msg + "\n")
         return 1
@@ -726,7 +732,7 @@ def resolve_side(ctx, spec, opts):
     dest, path = split_remote(spec)
     if dest is None:
         return ctx.host, ctx.uid, ctx.proc.gid, ctx.cwd, path
-    host, user, alias = connect(ctx, dest, opts)
+    host, user, alias = yield from connect(ctx, dest, opts)
     uid = host.uid_of(user)
     home = host.users[uid].home
     if path == "":
@@ -771,14 +777,14 @@ def u_scp(ctx):
         ctx.e("usage: scp [-346ABCOpqRrsTv] [-c cipher] [-D sftp_server_path] [-F ssh_config]\n           [-i identity_file] [-J destination] [-l limit] [-o ssh_option]\n           [-P port] [-S program] [-X sftp_option] source ... target\n")
         return 1
     try:
-        dst_host, duid, dgid, dcwd, dpath = resolve_side(ctx, ops[-1], opts)
+        dst_host, duid, dgid, dcwd, dpath = yield from resolve_side(ctx, ops[-1], opts)
     except SshError as e:
         ctx.e(e.msg + "\n")
         return 255
     status = 0
     for src in ops[:-1]:
         try:
-            s_host, suid, sgid, scwd, spath = resolve_side(ctx, src, opts)
+            s_host, suid, sgid, scwd, spath = yield from resolve_side(ctx, src, opts)
         except SshError as e:
             ctx.e(e.msg + "\n")
             return 255
@@ -912,7 +918,7 @@ def u_rsync(ctx):
               "rsync  version 3.2.7  protocol version 31\nUsage: rsync [OPTION]... SRC [SRC]... DEST\n")
         return 1
     try:
-        dst_host, duid, dgid, dcwd, dpath = resolve_side(ctx, ops[-1], opts)
+        dst_host, duid, dgid, dcwd, dpath = yield from resolve_side(ctx, ops[-1], opts)
     except SshError as e:
         ctx.e(e.msg + "\nrsync: connection unexpectedly closed (0 bytes received so far) [sender]\n"
               "rsync error: unexplained error (code 255) at io.c(232) [sender=3.2.7]\n")
@@ -924,7 +930,7 @@ def u_rsync(ctx):
     status = 0
     for src in ops[:-1]:
         try:
-            s_host, suid, sgid, scwd, spath = resolve_side(ctx, src, opts)
+            s_host, suid, sgid, scwd, spath = yield from resolve_side(ctx, src, opts)
         except SshError as e:
             ctx.e(e.msg + "\n")
             return 255

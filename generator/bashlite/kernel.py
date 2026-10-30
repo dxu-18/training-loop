@@ -57,6 +57,10 @@ class Deadlock(Exception):
     pass
 
 
+class Interrupted(BaseException):
+    """Ctrl-C reached an interactive shell running a command: it abandons the rest of the command line."""
+
+
 # ---------------------------------------------------------------------------- pipes & open files
 
 class Pipe:
@@ -135,6 +139,8 @@ class TTY:
             self.out.append([stream, text])
 
     echo = False        # show typed lines (after a prompt) in the transcript
+    noecho = False      # a password prompt is reading: the terminal must not show what is typed
+    eof_pending = False # Ctrl-D typed at a program's input: its next read returns end of file
     source = None       # a pane bridged to another terminal reads that terminal's typed lines
     mirror = None       # ... and copies its output there
     on_starve = None
@@ -484,6 +490,40 @@ class Kernel:
             self.runq.append(p)
             return
         self._block(p, req)
+
+    def run_slice(self, until: int, max_steps: int = 20000):
+        """Live mode: run what is runnable and the timers due by `until` (ns), at most `max_steps` steps.
+        The clock follows `until` (real time). -> ("busy", None) when the steps ran out with work left,
+        ("wait", t) when the next timer is at t > until, ("idle", None) when everything waits for input."""
+        n = 0
+        while True:
+            if self.runq:
+                n += 1
+                if n > max_steps:
+                    self.now = max(self.now, until)
+                    return "busy", None
+                self._step(self.runq.popleft())
+                continue
+            while self.timers:
+                when, _, tok, obj = self.timers[0]
+                alive = callable(obj) and not isinstance(obj, Proc) or (obj.state == "S" and obj.token == tok)
+                if not alive:
+                    heapq.heappop(self.timers)
+                    continue
+                if when > until:
+                    self.now = max(self.now, until)
+                    return "wait", when
+                heapq.heappop(self.timers)
+                self.now = max(self.now, when)
+                if callable(obj) and not isinstance(obj, Proc):
+                    obj()
+                else:
+                    obj.state = "R"
+                    self.runq.append(obj)
+                break
+            else:
+                self.now = max(self.now, until)
+                return "idle", None
 
     def run(self, done) -> None:
         """Run processes until done() is true. Raises Deadlock if nothing can make progress."""
