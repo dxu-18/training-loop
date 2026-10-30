@@ -1,5 +1,5 @@
 {
- "hash": "54418507f7b7",
+ "hash": "d08c6744891b",
  "topics": {
   "numpy": {
    "title": "NumPy",
@@ -1299,10 +1299,10 @@
      "title": "Navigating & managing files",
      "live": true,
      "templates": {
-      "lite": 2,
-      "easy": 2,
-      "medium": 2,
-      "hard": 2,
+      "lite": 3,
+      "easy": 4,
+      "medium": 3,
+      "hard": 4,
       "challenge": 2
      }
     },

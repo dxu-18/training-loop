@@ -476,6 +476,7 @@ class Parser:
         saved_tok = self._tok
         self._tok = None
         start = self.i
+        orig, outer = self.s, len(self._alias_end)
         body = self.parse_compound_list({close}, allow_empty=True)
         t = self.peek()
         if t.kind != "op" or t.val != close:
@@ -483,6 +484,14 @@ class Parser:
         src = self.s[start:t.start]
         self._tok = None
         self.i = t.end
+        if self.s is not orig:
+            # aliases expanded inside rewrote the text; the callers (a word, a "..." string) still read the
+            # original, so go back to it: the text after the ")" is unchanged
+            delta = len(self.s) - len(orig)
+            self.s, self.n = orig, len(orig)
+            self.i = t.end - delta
+            self._alias_end = [(a, e - delta if e >= t.end else e) for a, e in self._alias_end[:outer]]
+            self._index_lines()
         self._tok = saved_tok
         return body, src
 

@@ -7,8 +7,8 @@ History problems are ordinary bash, typed into a shell whose history is preloade
 from ._common import DATASETS, MODELS, NAMES, WORDS, K, P, catalog, challenge, files, q, template
 
 M = "7.17"
-KEYS_HINT = ("Answer with keys separated by spaces, e.g. `C-a \"sudo \" Enter` (Ctrl-A, type `sudo `, Enter); "
-             "`M-b` is Alt-B.")
+KEYS_HINT = ("Press the keys in the terminal: `C-a` is Ctrl-A, `M-b` is Option-B (Alt-B), and `C-b d` means Ctrl-B, "
+             "then d. Only what you press counts, so if a key goes wrong, press Reset and try again.")
 
 
 def _cmd(rng):

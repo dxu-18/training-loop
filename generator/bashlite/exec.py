@@ -445,13 +445,17 @@ def exec_program(proc, path, argv, env, shell=None, depth=0):
             if e.code == "EBADF":
                 ctx.e(f"{ctx.name}: write error: Bad file descriptor\n")
                 return 1
+            if e.code == "ENOSPC":
+                ctx._buf.clear()
+                ctx.e(f"{ctx.name}: write error: No space left on device\n")
+                return 1
             raise
         except ProcExit as e:
             status = e.status
         try:
             yield from ctx.flush()
-        except FSError:
-            ctx.e(f"{ctx.name}: write error: Bad file descriptor\n")
+        except FSError as e:
+            ctx.e(f"{ctx.name}: write error: {'No space left on device' if e.code == 'ENOSPC' else 'Bad file descriptor'}\n")
             return 1
         return status if isinstance(status, int) else 0
     if data.startswith(b"#!"):

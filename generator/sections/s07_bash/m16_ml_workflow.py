@@ -49,9 +49,9 @@ def gpus(rng):
          {"require": ["nvidia-smi --query-gpu", "nvidia-smi --format"]}),
         ("nvidia-smi --query-compute-apps", "Which processes hold GPU memory? Print their PID and used memory as CSV.",
          "nvidia-smi --query-compute-apps=pid,used_memory --format=csv"),
-        ("nvidia-smi -l", "Refresh the GPU table every second with `nvidia-smi -l 1` (it runs until Ctrl-C, after 3 s "
-                          "here).", "nvidia-smi -l 1", {"setup": "#: ctrlc 3"}),
-        ("nvtop", "Watch the GPUs with `nvtop` (runs until Ctrl-C, after 2 s here).", "nvtop", {"setup": "#: ctrlc 2"}),
+        ("nvidia-smi -l", "Refresh the GPU table every second with `nvidia-smi -l 1` (it runs until you press Ctrl-C).",
+         "nvidia-smi -l 1", {"setup": "#: ctrlc 3"}),
+        ("nvtop", "Watch the GPUs with `nvtop` (it runs until you press Ctrl-C).", "nvtop", {"setup": "#: ctrlc 2"}),
         ("python", f"Run `python train.py` pinned to GPU {g} only (`CUDA_VISIBLE_DEVICES` for that one command).",
          f"CUDA_VISIBLE_DEVICES={g} python train.py", {"setup": env + script, "require": ["python"]}),
         ("torchrun", f"Launch `ddp.py` on {k} GPUs of this machine with `torchrun --nproc_per_node={k}`.",
@@ -83,7 +83,7 @@ def log_oneliners(rng):
                   "xargs rm -f`.", "ls -t checkpoints/*.pt | tail -n +4 | xargs rm -f", {"post": "ls checkpoints",
                                                                                          "require": ["ls -t", "tail", "xargs"]}),
         ("tail -f", "Follow all the logs and show only lines containing `epoch`, as they arrive "
-                    "(`tail -f ... | grep --line-buffered`). It runs until Ctrl-C (after 2 s here).",
+                    "(`tail -f ... | grep --line-buffered`). It runs until you press Ctrl-C.",
          'tail -f logs/*.log | grep --line-buffered "epoch"', {"setup": "#: ctrlc 2",
                                                               "require": ["tail -f", "grep --line-buffered"]}),
     ]
@@ -109,7 +109,7 @@ def launch(rng):
                  f"fetch `http://localhost:{port}/{cfg}` with `curl -s`.", setup,
                  f"python3 -m http.server {port} &\nsleep 1\ncurl -s http://localhost:{port}/{cfg}",
                  require=["python3 -m http.server|python -m http.server", "curl"])
-    return P("Start TensorBoard on the `runs` directory, port 6006 (it runs until Ctrl-C; after 10 s here).",
+    return P("Start TensorBoard on the `runs` directory, port 6006 (it runs until you press Ctrl-C).",
              "#: venv .venv tensorboard\n#: activate .venv\nmkdir -p runs", "tensorboard --logdir runs --port 6006",
              require=["tensorboard"], answer=["<stdout>"])
 

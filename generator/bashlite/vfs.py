@@ -100,11 +100,34 @@ class FS:
     def __init__(self, clock):
         self.clock = clock
         self._ino = 1
+        self.quota_inodes = None
+        self.quota_bytes = None
+        self.ino_base = 0
+        self.used_bytes = 0
         self.root = self._new("d", 0o755, 0, 0)
         self.root.parent = self.root
         self.mounts: list[tuple[str, str, str, int]] = []   # (device, mountpoint, fstype, size bytes)
+        # quotas for the live terminal (off by default): files/directories created and bytes written after
+        # set_quota(); going over raises ENOSPC ("No space left on device"), like a full disk
+        self.quota_inodes = None
+        self.quota_bytes = None
+        self.ino_base = 0
+        self.used_bytes = 0
+
+    def set_quota(self, inodes: int | None, nbytes: int | None) -> None:
+        self.quota_inodes, self.quota_bytes = inodes, nbytes
+        self.ino_base = self._ino
+        self.used_bytes = 0
+
+    def charge(self, delta: int) -> None:
+        """Account `delta` more bytes of file data (negative frees). Raises ENOSPC over the quota."""
+        if delta > 0 and self.quota_bytes is not None and self.used_bytes + delta > self.quota_bytes:
+            raise FSError("ENOSPC")
+        self.used_bytes = max(0, self.used_bytes + delta)
 
     def _new(self, type_: str, mode: int, uid: int, gid: int) -> Inode:
+        if self.quota_inodes is not None and self._ino - self.ino_base >= self.quota_inodes:
+            raise FSError("ENOSPC")
         self._ino += 1
         return Inode(self._ino, type_, mode, uid, gid, self.clock())
 
@@ -285,6 +308,7 @@ class FS:
         head = posixpath.dirname(posixpath.join(cwd, path))
         self.mkdir(head, "/", 0o755, uid, gid, parents=True)
         node = self.create(path, cwd, mode, uid, gid)
+        self.charge(len(data) - len(node.data))
         node.data[:] = data
         node.mtime = node.ctime = self.clock() if mtime is None else mtime
         return node
@@ -329,6 +353,8 @@ class FS:
         self._check_delete(d, node, uid, gids)
         del d.entries[name]
         node.nlink -= 1
+        if node.nlink <= 0 and node.type == "f":
+            self.charge(-len(node.data))
         d.mtime = d.ctime = self.clock()
 
     def rmdir(self, path: str, cwd: str = "/", uid: int = 0, gids=None) -> None:

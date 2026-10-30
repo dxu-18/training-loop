@@ -98,7 +98,7 @@ def follow_and_inspect(rng):
                   f">> train.log; done) & disown")
         flag = "-f" if kind == "follow" else "-F"
         return P(f"Training appends a line to `train.log` every {gap} s. Follow the log as it grows with "
-                 f"`tail {flag}` (it runs until you press Ctrl-C; here that happens after 10 s).",
+                 f"`tail {flag}` (it runs until you press Ctrl-C).",
                  "#: ctrlc 10\n: > train.log\n" + writer, f"tail {flag} train.log", require=[f"tail {flag}"])
     if kind == "xxd":
         data = "".join(rng.choice("ABCDEFGHIJKLMNOP") for _ in range(rng.randint(20, 40)))

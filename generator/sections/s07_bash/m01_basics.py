@@ -8,8 +8,8 @@ KINDS = {  # name -> what `type -t` says on the simulated Ubuntu box
     "cd": "builtin", "echo": "builtin", "pwd": "builtin", "read": "builtin", "export": "builtin", "printf": "builtin",
     "source": "builtin", "alias": "builtin", "type": "builtin", "history": "builtin", "test": "builtin",
     "if": "keyword", "for": "keyword", "while": "keyword", "case": "keyword", "then": "keyword", "[[": "keyword",
-    "ll": "alias", "la": "alias", "l": "alias",
-    "ls": "file", "grep": "file", "python3": "file", "tar": "file", "ssh": "file", "curl": "file", "awk": "file",
+    "ll": "alias", "la": "alias", "l": "alias", "ls": "alias", "grep": "alias",   # Ubuntu's .bashrc: ls --color=auto
+    "python3": "file", "tar": "file", "ssh": "file", "curl": "file", "awk": "file",
     "sed": "file", "find": "file", "git": "", "nvim": "", "conda": "",
 }
 HELP_LINES = [  # (command, phrase in its --help output, what the option does)
@@ -40,7 +40,7 @@ def basics(rng):
     builtin = rng.choice([k for k, v in KINDS.items() if v == "builtin" and k not in ("type",)])
     kw = rng.choice([k for k, v in KINDS.items() if v == "keyword" and k != "[["])
     alias = rng.choice(["ll", "la", "l"])
-    prog = rng.choice(["ls", "grep", "python3", "tar", "ssh", "curl", "sed", "find"])
+    prog = rng.choice(["python3", "tar", "ssh", "curl", "sed", "find", "awk", "head"])
     code = rng.randint(2, 9)
     items = [
         ("echo", f"Print the line `Hello, {name}. Welcome to the {word} lab`.", f'echo "Hello, {name}. Welcome to the {word} lab"'),
@@ -211,8 +211,8 @@ def kind_histogram(rng):
 @template(M, "challenge")
 def path_shadowing(rng):
     def world(rng, n_tools):
-        tools = rng.sample(["python3", "grep", "ls", "tar", "jq", "sort", "awk", "curl", "fmt", "train", "eval-model",
-                            "plot", "sync-data"], n_tools)
+        tools = rng.sample(["python3", "sed", "head", "tar", "jq", "sort", "awk", "curl", "fmt", "train", "eval-model",
+                            "plot", "sync-data"], n_tools)   # not ls/grep: ~/.bashrc makes them aliases
         dirs = ["/home/ada/bin", "/home/ada/.local/bin", "/home/ada/tools/bin"]
         spec = {}
         for t in tools:

@@ -13,7 +13,7 @@ const TOPICS = [
   { id: "sklearn", part: 1, mode: "python", packages: ["numpy", "scikit-learn"] },
   { id: "matplotlib", part: 1, mode: "python", packages: ["numpy", "matplotlib"] },
   { id: "huggingface", part: 1, mode: "python", packages: ["numpy"] },
-  { id: "bash", part: 2, mode: "shell", packages: [] },
+  { id: "bash", part: 2, mode: "shell", packages: [], terminal: true },
   { id: "git", part: 2, mode: "shell", packages: [] },
   { id: "vim", part: 2, mode: null, packages: [] },
   { id: "sql", part: 2, mode: "text/x-sql", packages: [] },
@@ -242,6 +242,7 @@ async function renderTopic(topic) {
 let view = null; // { topic, mod, ms, problem, editor, phase }
 
 async function renderPractice(topic, mod, topicTitle) {
+  if (topic.terminal) return renderTerminalPractice(topic, mod, topicTitle);
   const ms = moduleState(topic.id, mod.id);
   document.title = `${mod.id} ${mod.title} · training-loop`;
   app().innerHTML = `
@@ -285,6 +286,51 @@ async function renderPractice(topic, mod, topicTitle) {
   await loadProblem();
 }
 
+// The Bash topic: a terminal (docs/terminal.js) instead of an editor, and a Files panel beside it.
+async function renderTerminalPractice(topic, mod, topicTitle) {
+  const ms = moduleState(topic.id, mod.id);
+  document.title = `${mod.id} ${mod.title} · training-loop`;
+  app().innerHTML = `
+    <div class="bar"><a href="#/${topic.id}">← ${esc(topicTitle)}</a>
+      <span class="crumb"><span class="m-id">${esc(mod.id)}</span>${esc(mod.title)}</span>
+      <span class="qnum" title="Question number"></span></div>
+    <div class="practice term-mode">
+      <section>
+        <article class="problem"><div class="loading">Starting the terminal… (the first load takes a few seconds)</div></article>
+        <div class="term-host"></div>
+        <div class="actions">
+          <button class="btn primary submit" disabled>Submit</button>
+          <button class="btn reset" disabled title="Throw this session away and start again from the problem's machine">Reset</button>
+          <span class="hint">Your whole session is checked: explore freely · ⌘Enter submits · ⌘K clears · ⌘+/− font size</span>
+          <button class="btn primary next" hidden>Next →</button>
+        </div>
+      </section>
+      <aside class="console side">
+        <div class="head"><div class="verdict"></div><span class="tier"></span></div>
+        <div class="verdict-msg"></div>
+        <div class="files"></div>
+      </aside>
+    </div>`;
+  view = { topic, mod, ms, problem: null, editor: null, term: null, phase: "loading" };
+  $(".submit").onclick = doSubmit;
+  $(".reset").onclick = () => { if (view.term && view.phase === "answering") { view.term.reset(); view.term.focus(); } };
+  $(".next").onclick = () => loadProblem();
+  if (!py) py = new Py();
+  try { await py.init(topic.packages); }
+  catch (e) { $(".problem").innerHTML = `<div class="loading">Couldn't start the terminal: ${esc(e.message)}</div>`; return; }
+  await loadProblem();
+}
+
+function startTerminal(p) {
+  if (view.term) view.term.stop();
+  $(".term-host").innerHTML = "";
+  view.term = new TLTerminal.TermSession({
+    py, host: $(".term-host"), filesEl: $(".files"), key: `${view.topic.id}/${view.mod.id}`, problem: p,
+    onSubmit: () => doSubmit(),
+  });
+  view.term.start(false);
+}
+
 async function loadProblem() {
   const { ms, topic, mod } = view;
   if (!ms.current) ms.current = { n: ms.solved + 1, seed: newSeed(), tier: null };
@@ -300,25 +346,33 @@ async function loadProblem() {
   view.problem = p;
   view.phase = "answering";
   drawProblem(p, cur.n);
-  view.editor.setValue(ms.draft && ms.draft.seed === p.seed ? ms.draft.code : "");
-  view.editor.focus();
+  if (view.editor) {
+    view.editor.setValue(ms.draft && ms.draft.seed === p.seed ? ms.draft.code : "");
+    view.editor.focus();
+    $(".out").innerHTML = `<span class="dim">Output appears here.</span>`;
+  } else startTerminal(p);
   $(".verdict").textContent = "";
   $(".verdict").className = "verdict";
   $(".verdict-msg").textContent = "";
   $(".tier").textContent = p.tier;
-  $(".out").innerHTML = `<span class="dim">Output appears here.</span>`;
   $(".next").hidden = true;
   setBusy(false);
 }
 
 function drawProblem(p, n) {
   $(".qnum").textContent = n;
-  const mode = modeOf(p, view.topic);
-  view.editor.setOption("mode", mode);
+  const mode = view.topic.terminal ? "shell" : modeOf(p, view.topic);
+  if (view.editor) view.editor.setOption("mode", mode);
   const el = $(".problem");
   el.innerHTML = `<div class="prompt">${md(p.prompt)}</div>`;
   const given = shownSetup(p.setup);
-  if (given) {
+  if (given && view.topic.terminal) {   // already run on the machine: the terminal and Files panel show the result
+    const d = document.createElement("details");
+    d.className = "setup";
+    d.innerHTML = `<summary>Setup (already run)</summary><div class="inner"></div>`;
+    d.querySelector(".inner").appendChild(codeBlock(given, mode));
+    el.appendChild(d);
+  } else if (given) {
     el.insertAdjacentHTML("beforeend", `<div class="label">Given</div>`);
     el.appendChild(codeBlock(given, mode));
   }
@@ -329,7 +383,13 @@ function drawProblem(p, n) {
     d.innerHTML = `<summary>Example</summary><div class="inner"><div class="prompt">${md(p.example.prompt)}</div></div>`;
     const inner = d.querySelector(".inner");
     const exGiven = shownSetup(p.example.setup);
-    if (exGiven) { inner.insertAdjacentHTML("beforeend", `<div class="label">Given</div>`); inner.appendChild(codeBlock(exGiven, mode)); }
+    if (exGiven && view.topic.terminal) {
+      const s = document.createElement("details");
+      s.className = "setup";
+      s.innerHTML = `<summary>Setup</summary><div class="inner"></div>`;
+      s.querySelector(".inner").appendChild(codeBlock(exGiven, mode));
+      inner.appendChild(s);
+    } else if (exGiven) { inner.insertAdjacentHTML("beforeend", `<div class="label">Given</div>`); inner.appendChild(codeBlock(exGiven, mode)); }
     inner.insertAdjacentHTML("beforeend", `<div class="label">Solution</div>`);
     inner.appendChild(codeBlock(p.example.solution, mode));
     el.appendChild(d);
@@ -345,7 +405,8 @@ function drawProblem(p, n) {
 
 function setBusy(busy) {
   const answering = view.phase === "answering";
-  $(".run").disabled = busy || !view.problem;
+  if ($(".run")) $(".run").disabled = busy || !view.problem;
+  if ($(".reset")) $(".reset").disabled = busy || !answering;
   $(".submit").disabled = busy || !answering;
 }
 
@@ -356,6 +417,7 @@ function showOutput(res, timedOut) {
   if (res.value != null) parts.push(`<span class="dim">Out:</span> ${esc(res.value)}`);
   if (res.error) parts.push(`<span class="err">${esc(res.error)}</span>`);
   if (timedOut) parts.push(`<span class="err">Time limit exceeded: your code ran too long (infinite loop?).</span>`);
+  if (!$(".out")) return;   // the terminal shows the output itself
   $(".out").innerHTML = parts.join("\n") || `<span class="dim">(no output)</span>`;
   // on narrow screens the console sits below the editor: bring it into view
   if (window.matchMedia("(max-width: 860px)").matches) $(".console").scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -377,12 +439,22 @@ async function doRun() {
 async function doSubmit() {
   if (view.phase !== "answering" || $(".submit").disabled) return;
   const { ms, problem } = view;
-  const code = view.editor.getValue();
-  if (!code.trim()) return;
+  let code;
+  if (view.term) {
+    setBusy(true);
+    $(".verdict").textContent = "";
+    $(".verdict-msg").textContent = "Checking your session…";
+    try { code = await view.term.answer(); } catch (e) { code = null; }
+    if (!code || view.problem !== problem) { setBusy(false); $(".verdict-msg").textContent = ""; return; }
+  } else {
+    code = view.editor.getValue();
+    if (!code.trim()) return;
+  }
   setBusy(true);
-  $(".out").innerHTML = `<span class="dim">Checking…</span>`;
+  if ($(".out")) $(".out").innerHTML = `<span class="dim">Checking…</span>`;
   let res;
-  try { res = await py.call("grade", { problem, code }, (problem.timeout + 2) * 1000); }
+  const limit = view.term ? 180000 : (problem.timeout + 2) * 1000;   // a session replays on every test machine
+  try { res = await py.call("grade", { problem, code }, limit); }
   catch (e) {
     const timedOut = e instanceof TimeLimit;
     res = { correct: false, compiled: true, error: timedOut ? null : e.message, message: timedOut ? "Time limit exceeded." : "" };
@@ -391,11 +463,12 @@ async function doSubmit() {
   if (!view || view.problem !== problem) return; // navigated away meanwhile
   if (res.stdout !== undefined) showOutput(res);
 
-  if (!res.compiled) { // doesn't parse: let them fix it without losing the problem
-    $(".verdict").textContent = "Doesn't compile";
+  if (!res.compiled) { // doesn't parse (or, in the terminal, nothing to check yet): keep the problem
+    $(".verdict").textContent = view.term ? "Not yet" : "Doesn't compile";
     $(".verdict").className = "verdict bad";
-    $(".verdict-msg").textContent = "Fix the syntax error and submit again.";
+    $(".verdict-msg").textContent = view.term ? (res.message || "Keep going, then submit again.") : "Fix the syntax error and submit again.";
     setBusy(false);
+    if (view.term) view.term.focus();
     return;
   }
   view.phase = "done";
@@ -414,6 +487,7 @@ async function doSubmit() {
   $(".verdict-msg").textContent = res.correct ? (res.message || "") : (res.message || (res.error ? "Your code raised an error." : ""));
   ms.draft = null;
   save();
+  if (view.term) view.term.forget();
   $(".next").hidden = false;
   $(".next").focus();
   setBusy(false);
@@ -436,6 +510,7 @@ const $ = (sel) => app().querySelector(sel);
 
 async function route() {
   const [topicId, moduleId] = location.hash.replace(/^#\/?/, "").split("/");
+  if (view && view.term) view.term.stop();
   view = null;
   const cat = await catalog();
   const topic = TOPIC[topicId];

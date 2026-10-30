@@ -11,7 +11,7 @@ import re
 from . import pattern as P
 from .arith import ArithError, Evaluator
 from .fileio import anon_file, open_path, read, read_all, readline, write, write_nb
-from .kernel import (NS, SIG_DESC, SIGCONT, SIGHUP, SIGINT, SIGKILL, SIGNALS, SIGNUM, SIGTERM, SIGTSTP, OpenFile,
+from .kernel import (NS, Interrupted, SIG_DESC, SIGCONT, SIGHUP, SIGINT, SIGKILL, SIGNALS, SIGNUM, SIGTERM, SIGTSTP, OpenFile,
                      Pipe, ProcExit, Signal, TimeLimit)
 from .parser import ASSIGN_RE, DECLARATION, Incomplete, ParseError, Parser
 from .quoting import xtrace_word
@@ -158,6 +158,10 @@ class Shell:
         self.jobs: dict[int, Job] = {}
         self.prompt_no = 0                 # primary prompts shown so far (job notices are timed by them)
         self.typed_log: list[str] = []
+        self.awaiting = None               # "PS1"/"PS2" while a persistent REPL waits for a line
+        self.cmd_hook = None               # live terminal: called with ("start", raw line) / ("line", ..) / ("end", status)
+        self.interrupted = False           # Ctrl-C arrived while a command ran (interactive shell)
+        self.cancel_pending = False        # live terminal: Ctrl-C at the PS2 prompt
         self._in_wait_builtin = False
         self.job_order: list[int] = []     # most recent last (+ = current, - = previous)
         self.dirstack: list[str] = []
@@ -251,6 +255,9 @@ class Shell:
     def wait_for(self, procs, interruptible=False, fg=True):
         """Wait until every process exits (or one stops). Returns True if a trap interrupted the wait."""
         while True:
+            if self.interrupted:
+                self.interrupted = False
+                raise Interrupted()
             if all(p.state == "Z" for p in procs):
                 return False
             if fg and any(p.state == "T" for p in procs) and all(p.state in ("T", "Z") for p in procs):
@@ -1293,6 +1300,9 @@ class Shell:
     # ------------------------------------------------------------ execution
 
     def tick(self):
+        if self.interrupted:
+            self.interrupted = False
+            raise Interrupted()
         k = self.kernel
         k.steps += 1
         if k.steps > k.budget:
@@ -1449,6 +1459,7 @@ class Shell:
             return nz[-1] if nz else 0
         if self.interactive and procs[-1].term_sig == SIGINT:
             yield from self.err("\n")
+            raise Interrupted()
         return statuses[-1]
 
     def _literal_argv(self, cmd):
@@ -2113,6 +2124,7 @@ class Shell:
             return 128 + SIGTSTP
         if self.interactive and child.term_sig == SIGINT:
             yield from self.err("\n")         # after the terminal's ^C
+            raise Interrupted()               # like bash: `sleep 9; echo hi` + Ctrl-C doesn't print hi
         elif child.term_sig and child.term_sig not in (SIGINT, 13):
             msg = SIG_DESC.get(child.term_sig, f"Signal {child.term_sig}")
             yield from self.err(f"{msg}\n" if self.interactive else f"{self.prefix()}{child.pid} {msg}" +
@@ -2237,6 +2249,13 @@ class Shell:
                 p.token += 1
                 self.kernel.runq.append(p)
             return True
+        if self.interactive and sig == SIGINT and self.awaiting is None:
+            # bash abandons the command line it is running (a loop of builtins, `read`, `wait`)
+            self.interrupted = True
+            p = self.proc
+            if p.state == "S" and p.waiting and p.waiting[0] in ("tty", "wait"):
+                self.kernel.poke(p)
+            return True
         if self.interactive and sig in (SIGINT, SIGTERM, 3, SIGTSTP, 21, 22):
             return True
         return False
@@ -2360,7 +2379,23 @@ class Shell:
             elif tty.source is not None and tty.source.lines:
                 raw = tty.source.lines.popleft()
             elif persistent:
+                if tty.eof_pending:              # Ctrl-D on an empty line: the shell exits
+                    tty.eof_pending = False
+                    if pending:
+                        yield from self.err("bash: syntax error: unexpected end of file\n")
+                        p, pending, hd_delims = fresh(), [], []
+                        continue
+                    yield from self.err("exit\n")
+                    status = yield from self.run_exit_trap(self.status)
+                    self.status = status
+                    self._exited = True
+                    return status
+                self.awaiting = "PS2" if pending else "PS1"     # the live terminal shows this prompt
                 yield ("tty", tty)
+                self.awaiting = None
+                if self.cancel_pending:          # Ctrl-C at the > prompt drops the unfinished command
+                    self.cancel_pending = False
+                    p, pending, hd_delims = fresh(), [], []
                 continue
             else:
                 break
@@ -2376,6 +2411,9 @@ class Shell:
                     msg = notify_jobs(self)
                     if msg:
                         yield from self.err(msg)
+            self.interrupted = False
+            if self.cmd_hook is not None and not pending:
+                self.cmd_hook("start", raw)      # the live terminal attributes output to commands
             if tty.echo and self.interactive:
                 # the transcript shows each typed line after its prompt, like a terminal
                 ps = self.get("PS1", "") if not pending else self.get("PS2", "> ")
@@ -2406,6 +2444,8 @@ class Shell:
                     hd_delims.append((m_.group(3), m_.group(1) == "-"))
             pending.append(line)
             self.typed_log.append(line)     # what was run, after history expansion (the keys simulator reads it)
+            if self.cmd_hook is not None:
+                self.cmd_hook("line", line)
             p.aliases = self.aliases if "expand_aliases" in self.shopts else None
             p.feed(line + "\n")
             while True:
@@ -2422,6 +2462,12 @@ class Shell:
                     p, pending = fresh(), []
                     break
                 if cmd is None:
+                    # nothing left to run: a blank or comment-only line ends here (a comment still goes in
+                    # the history), so the next prompt is PS1 again
+                    if pending and not hd_delims and p.at_end():
+                        if history and any(x.strip() for x in pending):
+                            self.add_history(join_lines(pending))
+                        pending = []
                     break
                 if pending:
                     if history:
@@ -2438,6 +2484,15 @@ class Shell:
                     self.status = e.status
                 except (BreakLoop, ContinueLoop, ReturnFunc):
                     pass
+                except Interrupted:
+                    self.status = 130
+                    self.interrupted = False
+                    if self.cmd_hook is not None:
+                        self.cmd_hook("end", self.status)
+                    p, pending, hd_delims = fresh(), [], []
+                    break
+                if self.cmd_hook is not None:
+                    self.cmd_hook("end", self.status)
                 if self.pending_traps:
                     yield from self.run_pending_traps()
                 p.aliases = self.aliases if "expand_aliases" in self.shopts else None
@@ -2456,12 +2511,41 @@ class Shell:
         return self.status
 
     def prompt_expand(self, s: str) -> str:
+        """PS1/PS2 decoding: backslash escapes (\\u \\h \\w \\033 \\e ...), then parameter expansion (promptvars)."""
         user = self.host.user_name(self.proc.uid)
         cwd = self.get("PWD", self.proc.cwd)
         rep = {"u": user, "h": self.host.name.split(".")[0], "H": self.host.name, "w": self.tilde_short(cwd),
                "W": "~" if cwd == self.get("HOME") else (cwd.rsplit("/", 1)[-1] or "/"),
-               "$": "#" if self.proc.uid == 0 else "$", "n": "\n", "s": "bash", "v": "5.2", "V": "5.2.21", "\\": "\\"}
-        return re.sub(r"\\([uhHwW$nsvV\\])", lambda m: rep[m.group(1)], s.replace("\\[", "").replace("\\]", ""))
+               "$": "#" if self.proc.uid == 0 else "$", "n": "\n", "r": "\r", "s": "bash", "v": "5.2", "V": "5.2.21",
+               "\\": "\\", "e": "\x1b", "a": "\x07", "[": "", "]": ""}
+
+        def one(m):
+            g = m.group(1)
+            if g[0] in "01234567":
+                return chr(int(g, 8))
+            return rep.get(g, "\\" + g)
+        out = re.sub(r"\\([0-7]{1,3}|.)", one, s)
+        if "$" in out and "promptvars" in self.shopts:
+            try:
+                out = self.expand_prompt_vars(out)
+            except Exception:  # noqa: BLE001 - a broken PS1 shows as typed
+                pass
+        return out
+
+    def expand_prompt_vars(self, text: str) -> str:
+        """Parameter expansion of an already-decoded prompt (no command substitution side effects needed here)."""
+        from .parser import Parser
+        word = Parser('"' + text.replace("\\", "\\\\").replace('"', '\\"').replace("`", "\\`") + '"').parse_all()
+        cmd = word.items[0][0].first.cmds[0]
+        gen = self.expand_word(cmd.words[0]) if hasattr(self, "expand_word") else None
+        if gen is None:
+            return text
+        try:
+            while True:
+                next(gen)
+        except StopIteration as stop:
+            vals = stop.value
+        return " ".join(vals) if isinstance(vals, list) else str(vals)
 
 
 def _brace_sequence(text: str):
