@@ -3,6 +3,7 @@
 //   #/<topic>          the topic's modules (one per COMP_GUIDE subsection)
 //   #/<topic>/<module> one-problem-at-a-time practice; every module has its own counter and medal
 //   #/dsa/<tutorial>   Part III: a step-by-step Data Structures & Algorithms tutorial (docs/dsa/page.js)
+// Progress is kept in localStorage; the home page's Download / Upload save it to a .tlsave file (docs/progress.js).
 "use strict";
 
 // Per-topic editor mode and Pyodide packages (`extra`: heavy packages only some modules need).
@@ -212,11 +213,14 @@ async function renderHome() {
   // Part III: tutorials, labelled by status instead of a count
   const dsa = window.DSAPage ? `<section class="part"><h2>Part III · Data Structures & Algorithms</h2>
     <ol class="topics">${DSAPage.homeRows()}</ol></section>` : "";
-  app().innerHTML = `<div class="home">
+  // Download / Upload (docs/progress.js): progress lives in this browser, so it can be saved to a file and restored
+  const saves = window.TLProgress ? TLProgress.buttons() : "";
+  app().innerHTML = `<div class="home">${saves}
     <h1>training-loop</h1>
     <p class="tag">One problem at a time. Muscle memory for the ML stack and the tools around it.</p>
     ${part(1, "The Python ML stack")}${part(2, "Developer tools")}${dsa}
   </div>`;
+  if (saves) TLProgress.wire(app());
 }
 
 // ------------------------------------------------------------ topic page: module list
@@ -536,3 +540,4 @@ if (window.DSAPage) {
 }
 window.addEventListener("hashchange", () => { window.scrollTo(0, 0); route(); });
 route();
+if (window.TLProgress) TLProgress.afterLoad();
