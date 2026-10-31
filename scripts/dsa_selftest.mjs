@@ -26,7 +26,7 @@ const args = process.argv.slice(2);
 const flag = (f) => args.includes(f);
 const opt = (f, d) => { const i = args.indexOf(f); return i >= 0 ? args[i + 1] : d; };
 // every tutorial in docs/dsa/ (--only linked-lists,stacks to pick some)
-const TUTORIALS = Object.fromEntries(["binary-search", "mergesort", "quicksort", "linked-list", "stack", "queue", "unbounded-array"]
+const TUTORIALS = Object.fromEntries(["binary-search", "mergesort", "quicksort", "linked-list", "stack", "queue", "unbounded-array", "hash-table"]
   .filter((f) => existsSync(join(ROOT, `docs/dsa/${f}.js`)))
   .map((f) => { const t = require(join(ROOT, `docs/dsa/${f}.js`)); return [t.id, t]; })
   .filter(([id]) => !opt("--only", "") || opt("--only", "").split(",").includes(id)));
@@ -163,7 +163,8 @@ async function mutants() {
         const p = [...path, i];
         // (a block's only statement goes with the block itself)
         // (statements written only for other languages don't exist in the Python program)
-        if (st.ir && !/^(assert|free|let x = take|else)\b/.test(st.ir) && (!st.only || st.only.includes("py")) && (list.length > 1 || !path.length)) paths.push(p);
+        // (and statements a tutorial marks noMutate: equivalent in Python, or unreachable in a valid structure)
+        if (st.ir && !st.noMutate && !/^(assert|free|let x = take|else)\b/.test(st.ir) && (!st.only || st.only.includes("py")) && (list.length > 1 || !path.length)) paths.push(p);
         if (st.body) walk(st.body, [...p, "body"]);
       });
       base.forEach((st, si) => (st.fns || []).forEach((f, fi) => walk(f.steps, [si, "fns", fi, "steps"])));

@@ -92,7 +92,8 @@
         const args = [];
         if (peek() !== ")") { args.push(or()); while (peek() === ",") { next(); args.push(or()); } }
         expect(")");
-        return s === "new" ? { k: "new", arg: args[0] } : { k: "call", fn: s, args };
+        if (s === "allocn") return { k: "allocn", n: args[0] };   // a block of n null pointers (a hash table's slots)
+        return s === "new" ? { k: "new", args } : { k: "call", fn: s, args };
       }
       return { k: "id", name: s };
     };
@@ -120,6 +121,8 @@
 
   // ---------------------------------------------------------------- types
   const NODE_FIELDS = { data: "T", next: "N", prev: "N" };
+  // the node type: a tutorial can name its own (a hash table's Entry with key, value and next)
+  const nodeOf = (ctx) => ctx.node || { name: "Node", fields: NODE_FIELDS };
   const isStruct = (t) => typeof t === "string" && (t.startsWith("R:") || t.startsWith("V:"));
 
   function typeOf(e, ctx) {
@@ -128,9 +131,11 @@
       case "array": return "ArrV";
       case "vec": return "Vec";
       case "alloc": return "ArrV";
+      case "allocn": return "NArrV";
       case "len": return "int";
       case "index": {
         const ot = typeOf(e.obj, ctx);
+        if (ot === "NArrV") return "N";
         if (!["Arr", "ArrV", "Vec"].includes(ot)) throw new Error(`IR: can't index a ${ot}`);
         return "T";
       }
@@ -146,7 +151,7 @@
       }
       case "field": {
         const ot = typeOf(e.obj, ctx);
-        const t = ot === "N" ? NODE_FIELDS[e.name] : isStruct(ot) ? ((ctx.structs[ot.slice(2)] || {}).fields || {})[e.name] : null;
+        const t = ot === "N" ? nodeOf(ctx).fields[e.name] : isStruct(ot) ? ((ctx.structs[ot.slice(2)] || {}).fields || {})[e.name] : null;
         if (!t) throw new Error(`IR: no field ${e.name} on ${ot}`);
         return t;
       }
@@ -184,15 +189,16 @@
   }
 
   function defaultLit(ctx) {
+    if (ctx.strT) return { py: '""', cpp: "std::string()", java: '""', rs: "String::new()" }[ctx.lang];
     if (!ctx.generic) return "0";
     return { py: "None", cpp: `${ctx.T}{}`, java: "null", rs: `${ctx.T}::default()` }[ctx.lang];
   }
 
-  function newNode(arg, ctx) {
-    const a = expr(arg, ctx);
-    const g = ctx.generic;
-    return { py: `Node(${a})`, cpp: g ? `new Node<${ctx.T}>(${a})` : `new Node(${a})`,
-      java: g ? `new Node<>(${a})` : `new Node(${a})`, rs: `Node::new(${a})` }[ctx.lang];
+  function newNode(args, ctx) {
+    const a = args.map((x) => expr(x, ctx)).join(", ");
+    const g = ctx.generic, N = nodeOf(ctx).name;
+    return { py: `${N}(${a})`, cpp: g ? `new ${N}<${ctx.T}>(${a})` : `new ${N}(${a})`,
+      java: g ? `new ${N}<>(${a})` : `new ${N}(${a})`, rs: `${N}::new(${a})` }[ctx.lang];
   }
 
   function expr(e, ctx, need = 0) {
@@ -204,10 +210,11 @@
       case "null": return nullLit(ctx);
       case "bool": return L === "py" ? (e.v ? "True" : "False") : String(e.v);
       case "default": return defaultLit(ctx);
-      case "new": return newNode(e.arg, ctx);
+      case "new": return newNode(e.args, ctx);
       case "id": return ctx.derefs && ctx.derefs.has(e.name) ? `*${e.name}` : e.name;   // (Rust: an element passed as &T)
       case "index": {
         if (L === "java" && typeOf(e.obj, ctx) === "Vec") return `${expr(e.obj, ctx, 9)}.get(${expr(e.idx, ctx)})`;   // an ArrayList
+        if (L === "rs" && typeOf(e.idx, ctx) === "index") return `${expr(e.obj, ctx, 9)}[${expr(e.idx, ctx, 9)} as usize]`;
         return `${expr(e.obj, ctx, 9)}[${expr(e.idx, ctx)}]`;
       }
       case "vec": return { py: "[]", cpp: `std::vector<${ctx.T}>{}`, java: "new ArrayList<>()", rs: "Vec::new()" }[L];
@@ -216,6 +223,11 @@
         const param = ctx.T === "T";   // (inside a generic function, as opposed to the tests' concrete type)
         return { py: `[${ctx.generic ? "None" : "0"}] * ${n9}`, cpp: `std::vector<${ctx.T}>(${n})`,
           java: param ? `(T[]) new Object[${n}]` : `new ${ctx.T}[${n}]`, rs: `vec![${ctx.generic ? `${ctx.T}::default()` : "0"}; ${n}]` }[L];
+      }
+      case "allocn": {
+        const n = expr(e.n, ctx), N = nodeOf(ctx).name;
+        return { py: `[None] * ${expr(e.n, ctx, 9)}`, cpp: `std::vector<${N}*>(${n}, nullptr)`, java: `new ${N}[${n}]`,
+          rs: `vec![${ctx.qual ? "std::ptr" : "ptr"}::null_mut(); ${n}]` }[L];
       }
       case "len": {
         const a = expr(e.a, ctx, 9);
@@ -259,6 +271,10 @@
         // Java orders generic elements with compareTo
         if (p === 4 && L === "java" && ctx.generic && typeOf(e.a, ctx) === "T") return wrap(`${expr(e.a, ctx, 9)}.compareTo(${expr(e.b, ctx)}) ${e.op} 0`, 4);
         const op = e.op === "/" && L === "py" ? "//" : e.op;   // integer division
+        if (p === 4) {
+          const [a, b] = rsIndexSides(e, typeOf(e.a, ctx), typeOf(e.b, ctx), expr(e.a, ctx, p), expr(e.b, ctx, p + 1), ctx);
+          return wrap(`${a} ${op} ${b}`, p);
+        }
         return wrap(`${expr(e.a, ctx, p)} ${op} ${expr(e.b, ctx, p + 1)}`, p);
       }
     }
@@ -274,10 +290,19 @@
       if (L === "rs") return `${eq ? "" : "!"}${x}.is_null()`;
       return `${x} ${e.op} ${nullLit(ctx)}`;
     }
-    const a = expr(e.a, ctx, 5), b = expr(e.b, ctx, 5);
+    let a = expr(e.a, ctx, 5), b = expr(e.b, ctx, 5);
     if (ta === "N" && L === "py") return `${a} ${eq ? "is" : "is not"} ${b}`;
-    if (ta === "T" && L === "java" && ctx.generic) return `${eq ? "" : "!"}${expr(e.a, ctx, 9)}.equals(${b})`;
+    if (ta === "T" && L === "java" && (ctx.generic || ctx.strT)) return `${eq ? "" : "!"}${expr(e.a, ctx, 9)}.equals(${b})`;
+    [a, b] = rsIndexSides(e, ta, tb, a, b, ctx);
     return `${a} ${e.op} ${b}`;
+  }
+
+  // Rust: an index (isize, maybe -1) compared with a position (usize) needs the position cast
+  function rsIndexSides(e, ta, tb, a, b, ctx) {
+    if (ctx.lang !== "rs") return [a, b];
+    if (ta === "index" && tb === "int" && e.b.k !== "num") return [a, `(${b} as isize)`];
+    if (tb === "index" && ta === "int" && e.a.k !== "num") return [`(${a} as isize)`, b];
+    return [a, b];
   }
 
   // Rust can't move a generic element out of an array: copying one (into a variable, another array or a slot) clones it
@@ -303,7 +328,8 @@
   // ---------------------------------------------------------------- type names
   function typeName(t, ctx) {
     const g = ctx.generic ? `<${ctx.T}>` : "";
-    if (t === "N") return ctx.lang === "cpp" ? `Node${g}*` : `Node${g}`;
+    if (t === "N") return ctx.lang === "cpp" ? `${nodeOf(ctx).name}${g}*` : `${nodeOf(ctx).name}${g}`;
+    if (t === "NArrV") return ctx.lang === "cpp" ? `std::vector<${nodeOf(ctx).name}*>` : `${nodeOf(ctx).name}[]`;
     if (t === "ArrV") return ctx.lang === "cpp" ? `std::vector<${ctx.T}>` : `${ctx.T}[]`;
     if (t === "Vec") {
       const boxed = { int: "Integer" }[ctx.T] || ctx.T;
@@ -311,7 +337,7 @@
     }
     if (t === "index") return "int";
     if (t === "T") return ctx.T;
-    if (t === "int") return "int";
+    if (t === "int" || t === "V") return "int";
     if (t === "bool") return ctx.lang === "java" ? "boolean" : "bool";
     throw new Error(`IR: can't declare a ${t}`);
   }
@@ -332,8 +358,9 @@
         const vt = ctx.vars[s.name];
         if (L === "py") return { code: [`${s.name} = ${val}`] };
         if (L === "rs") {
-          const mut = ctx.muts.has(s.name) || vt === "Vec" || vt === "ArrV" ? "mut " : "";   // (arrays may be changed through &mut)
-          return { code: [`let ${mut}${s.name}${vt === "ArrV" || vt === "Vec" ? `: Vec<${ctx.T}>` : ""} = ${copyOut(s.e, val, ctx)};`] };
+          const mut = ctx.muts.has(s.name) || vt === "Vec" || vt === "ArrV" || vt === "NArrV" ? "mut " : "";   // (arrays may be changed through &mut)
+          const ann = vt === "ArrV" || vt === "Vec" ? `: Vec<${ctx.T}>` : vt === "NArrV" ? `: Vec<*mut ${nodeOf(ctx).name}>` : "";
+          return { code: [`let ${mut}${s.name}${ann} = ${copyOut(s.e, val, ctx)};`] };
         }
         if (vt === "Vec" && L === "cpp") return { code: [`${typeName(vt, ctx)} ${s.name};`] };
         if (vt === "Vec" && L === "java") return { code: [`${typeName(vt, ctx)} ${s.name} = new ${ctx.qual ? "java.util." : ""}ArrayList<>();`] };
@@ -549,31 +576,33 @@
     const n = fnName(name, ctx);
     const struct = (k) => k.slice(k.indexOf(":") + 1);
     const isRefK = (k) => k.startsWith("mut:") || k.startsWith("ref:");
+    const NN = nodeOf(ctx).name;
     if (L === "py") {
-      const pyType = (k) => (isRefK(k) ? `${struct(k)}${g ? "[T]" : ""}` : { N: `Node${g ? "[T]" : ""} | None`, int: "int", T: g ? "T" : "int",
-        Tref: g ? "T" : "int", Arr: g ? "list[T]" : "list[int]", ArrMut: g ? "list[T]" : "list[int]" }[k]);
+      const Tp = g ? "T" : T;
+      const pyType = (k) => (isRefK(k) ? `${struct(k)}${g ? "[T]" : ""}` : { N: `${NN}${g ? "[T]" : ""} | None`, int: "int", V: "int", T: Tp,
+        Tref: Tp, Arr: `list[${Tp}]`, ArrMut: `list[${Tp}]` }[k]);
       const ps = s.params.map(([p, k]) => (hints ? `${p}: ${pyType(k)}` : p)).join(", ");
-      const ret = hints ? ` -> ${{ void: "None", bool: "bool", int: "int", index: "int", T: g ? "T" : "int", Tpeek: g ? "T" : "int" }[s.ret]}` : "";
+      const ret = hints ? ` -> ${{ void: "None", bool: "bool", int: "int", V: "int", index: "int", T: Tp, Tpeek: Tp, N: pyType("N") }[s.ret]}` : "";
       return [`def ${n}${hints && g ? "[T]" : ""}(${ps})${ret}:`];
     }
     const tg = g ? "<T>" : "";
     if (L === "cpp") {
       const ps = s.params.map(([p, k]) => (k.startsWith("mut:") ? `${struct(k)}${tg}& ${p}` : k.startsWith("ref:") ? `const ${struct(k)}${tg}& ${p}`
-        : { N: `Node${tg}* ${p}`, int: `int ${p}`, T: `${T} ${p}`, Tref: g ? `const T& ${p}` : `${T} ${p}`, Arr: `const std::vector<${T}>& ${p}`, ArrMut: `std::vector<${T}>& ${p}` }[k])).join(", ");
-      const ret = { void: "void", bool: "bool", int: "int", index: "int", T, Tpeek: T }[s.ret];
+        : { N: `${NN}${tg}* ${p}`, int: `int ${p}`, V: `int ${p}`, T: `${T} ${p}`, Tref: g ? `const T& ${p}` : `${T} ${p}`, Arr: `const std::vector<${T}>& ${p}`, ArrMut: `std::vector<${T}>& ${p}` }[k])).join(", ");
+      const ret = { void: "void", bool: "bool", int: "int", V: "int", index: "int", T, Tpeek: T, N: `${NN}${tg}*` }[s.ret];
       return [...(g ? ["template <typename T>"] : []), `${ret} ${n}(${ps}) {`];
     }
     if (L === "java") {
-      const ps = s.params.map(([p, k]) => (isRefK(k) ? `${struct(k)}${tg} ${p}` : { N: `Node${tg} ${p}`, int: `int ${p}`, T: `${T} ${p}`, Tref: `${T} ${p}`, Arr: `${T}[] ${p}`, ArrMut: `${T}[] ${p}` }[k])).join(", ");
-      const ret = { void: "void", bool: "boolean", int: "int", index: "int", T, Tpeek: T }[s.ret];
+      const ps = s.params.map(([p, k]) => (isRefK(k) ? `${struct(k)}${tg} ${p}` : { N: `${NN}${tg} ${p}`, int: `int ${p}`, V: `int ${p}`, T: `${T} ${p}`, Tref: `${T} ${p}`, Arr: `${T}[] ${p}`, ArrMut: `${T}[] ${p}` }[k])).join(", ");
+      const ret = { void: "void", bool: "boolean", int: "int", V: "int", index: "int", T, Tpeek: T, N: `${NN}${tg}` }[s.ret];
       const gen = !g ? "" : (s.rsBounds || []).includes("PartialOrd") ? "<T extends Comparable<T>> " : "<T> ";
       return [`static ${gen}${ret} ${n}(${ps}) {`];
     }
     const ps = s.params.map(([p, k]) => (k.startsWith("mut:") ? `${p}: &mut ${struct(k)}${tg}` : k.startsWith("ref:") ? `${p}: &${struct(k)}${tg}`
-      : { N: `${p}: *mut Node${tg}`, int: `${p}: usize`, T: `${p}: ${T}`, Tref: `${p}: &${T}`, Arr: `${p}: &[${T}]`, ArrMut: `${p}: &mut [${T}]` }[k])).join(", ");
+      : { N: `${p}: *mut ${NN}${tg}`, int: `${p}: usize`, V: `${p}: i32`, T: `${p}: ${T}`, Tref: `${p}: &${T}`, Arr: `${p}: &[${T}]`, ArrMut: `${p}: &mut [${T}]` }[k])).join(", ");
     const bounds = g ? s.rsBounds : [];
     const gen = g ? `<T${bounds.length ? ": " + bounds.join(" + ") : ""}>` : "";
-    const ret = { void: "", bool: " -> bool", int: " -> usize", index: " -> isize", T: ` -> ${T}`, Tpeek: g ? " -> &T" : ` -> ${T}` }[s.ret];
+    const ret = { void: "", bool: " -> bool", int: " -> usize", V: " -> i32", index: " -> isize", T: ` -> ${T}`, Tpeek: g ? " -> &T" : ` -> ${T}`, N: ` -> *mut ${NN}${tg}` }[s.ret];
     return [`fn ${n}${gen}(${ps})${ret} {`];
   }
 

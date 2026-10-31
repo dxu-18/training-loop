@@ -17,7 +17,8 @@
 
   // ---------------------------------------------------------------- step text
   const NULLW = { py: "None", cpp: "nullptr", java: "null", rs: "ptr::null_mut()" };
-  const TEXT_VARS = { L: "R:LinkedList", S: "R:Stack", Q: "R:Queue", n: "N", p: "N", prev: "N", last: "N", d: "N", x: "T", i: "int", start: "N", end: "N" };
+  const TEXT_VARS = { L: "R:LinkedList", S: "R:Stack", Q: "R:Queue", H: "R:HashTable", A: "R:UnboundedArray", n: "N", p: "N", q: "N", e: "N", prev: "N", last: "N", d: "N",
+    x: "T", k: "T", v: "V", i: "int", j: "int", t: "int", h: "int", m: "int", start: "N", end: "N" };
   const textCtx = (c) => ({ ...c, vars: { ...TEXT_VARS }, muts: new Set() });
   // {null}, {fn:name(args)}, {e:<expression>} and {s:<statement>} in step text become code in the chosen language
   function fmt(text, c) {
@@ -102,7 +103,8 @@
   const of = (x, o) => (typeof x === "function" ? x(o) : x);
   function context(def, o, overrides = {}) {
     const T = o.type === "int" ? INT_T[o.lang] : "T";
-    return { lang: o.lang, generic: o.type === "generic", T, fns: of(def.FNS, o), structs: of(def.STRUCTS, o), vars: {}, muts: new Set(), ...overrides };
+    return { lang: o.lang, generic: o.type === "generic", T, fns: of(def.FNS, o), structs: of(def.STRUCTS, o), vars: {}, muts: new Set(),
+      ...(def.ctxExtra ? def.ctxExtra(o) : {}), ...overrides };
   }
 
   // rendered steps: [{id, title, goal, items: [display micro-steps], parts: [{code, cls|owner}], names}]
@@ -210,7 +212,8 @@
     const { ir, expected } = compileGroups(groups, def.handlers(o));
     const refCtx = context(def, o, { ref: true, qual: true });
     const helpers = def.refFns(o, names).map((f) => DL.renderFunction(f, refCtx).code).join("\n\n");
-    const mctx = context(def, o, { main: true, qual: true, T: o.type === "int" ? INT_T[o.lang] : STR_T[o.lang] });
+    const extra = def.ctxExtra ? def.ctxExtra(o) : {};
+    const mctx = context(def, o, { main: true, qual: true, T: extra.T || (o.type === "int" ? INT_T[o.lang] : STR_T[o.lang]) });
     return { helpers, main: DL.renderLines(ir, mctx).join("\n"), expected };
   }
 
