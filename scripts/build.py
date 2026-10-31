@@ -22,7 +22,8 @@ from generator.core import TIERS, is_live, templates  # noqa: E402
 
 # COMP_GUIDE section number -> topic id used by the generator and the site
 TOPIC_IDS = {1: "numpy", 2: "pandas", 3: "pytorch", 4: "sklearn", 5: "matplotlib", 6: "huggingface",
-             7: "bash", 8: "git", 9: "vim", 10: "sql", 11: "latex", 12: "docker"}
+             7: "bash", 8: "git", 9: "vim", 10: "sql", 11: "latex", 12: "docker",
+             13: "dsa"}   # Part III: tutorials in docs/dsa/, not generated problems (their status lives in the page)
 
 
 def sources() -> list[Path]:

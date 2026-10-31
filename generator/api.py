@@ -60,6 +60,42 @@ def term_answer(real_ms: float) -> str:
     return live.answer(real_ms)
 
 
+def dsa_run(user: str, tests: str = "") -> str:
+    """Data Structures tutorials (docs/dsa): run the user's Python file, then the checker's tests in the same namespace.
+
+    stdout is what the tests printed (what the user's file printed itself is dropped), or the file's own output when
+    there are no tests. A traceback lists only the user's lines (solution.py)."""
+    import contextlib
+    import io
+    import linecache
+    import traceback
+
+    res = {"compiled": True, "stdout": "", "stderr": "", "exit": 0}
+    try:
+        code = compile(user, "solution.py", "exec")
+    except SyntaxError as e:
+        res.update(compiled=False, compileOutput="".join(traceback.format_exception_only(e)).strip())
+        return json.dumps(res)
+    linecache.cache["solution.py"] = (len(user), None, user.splitlines(True), "solution.py")
+    out = io.StringIO()
+    ns = {"__name__": "__main__"}
+    try:
+        with contextlib.redirect_stdout(io.StringIO() if tests else out):
+            exec(code, ns)
+        if tests:
+            with contextlib.redirect_stdout(out):
+                exec(compile(tests, "tests.py", "exec"), ns)
+    except BaseException as e:  # noqa: BLE001  (contract failures are AssertionErrors; SystemExit too)
+        tb = traceback.TracebackException.from_exception(e)
+        lines = [f"  line {f.lineno}, in {f.name}\n    {(f.line or '').strip()}" for f in tb.stack if f.filename == "solution.py"]
+        res["stderr"] = ("Traceback (your code):\n" + "\n".join(lines) + "\n" if lines else "") + "".join(tb.format_exception_only()).strip()
+        res["exit"] = 1
+    finally:
+        linecache.cache.pop("solution.py", None)
+    res["stdout"] = out.getvalue()[:200_000]
+    return json.dumps(res)
+
+
 def info() -> str:
     return json.dumps({
         s: {m: {t: len(core.templates(s, m, t)) for t in core.TIERS} for m in core.modules(s)}

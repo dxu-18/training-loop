@@ -39,6 +39,8 @@ const commands = {
   termEdit: ({ action, content, name, real }) => JSON.parse(api.term_edit(action, content ?? null, name ?? null, real)),
   termResize: ({ cols, real }) => JSON.parse(api.term_resize(cols, real)),
   termAnswer: ({ real }) => api.term_answer(real),
+  // Part III tutorials: the user's Python file, then the checker's tests (docs/dsa/run.js)
+  dsaRun: ({ user, tests }) => JSON.parse(api.dsa_run(user, tests ?? "")),
   // grade every template's own solution inside Pyodide (used by scripts/e2e_check.py)
   selftest: ({ section, seeds, only, skip }) => JSON.parse(api.self_test(section, seeds ?? 2, only ?? "", skip ?? "")),
 };

@@ -1,6 +1,6 @@
 # COMP_GUIDE — Muscle-memory reference for the ML stack & developer tools
 
-A syntax-first practice guide covering 12 tools. **Part I** covers NumPy, pandas, PyTorch, scikit-learn, Matplotlib and Hugging Face. **Part II** covers Bash, Git, Vim, SQL, LaTeX and Docker. Within each section, numbered modules go from fundamentals to advanced usage; the PyTorch modules follow the `01_tensors` → `19_dpo_loss` curriculum. Each module has a dense, commented code block, notes on common mistakes where needed, and short **Drills**. Each `###` module is designed to become one practice page or exercise set on the companion website.
+A syntax-first practice guide covering 12 tools. **Part I** covers NumPy, pandas, PyTorch, scikit-learn, Matplotlib and Hugging Face. **Part II** covers Bash, Git, Vim, SQL, LaTeX and Docker. **Part III** is different: step-by-step tutorials that build the classic data structures and algorithms from scratch, in Python, C++, Java or Rust. Within each section, numbered modules go from fundamentals to advanced usage; the PyTorch modules follow the `01_tensors` → `19_dpo_loss` curriculum. Each module has a dense, commented code block, notes on common mistakes where needed, and short **Drills**. Each `###` module is designed to become one practice page or exercise set on the companion website.
 
 **How to practice.** Type every line yourself instead of copy-pasting, and predict each output before you run it. Trailing comments show expected results and shapes, such as `(B, T, D)` = batch, sequence, features. Do the drills from memory and check against the block only afterwards. Revisit a section a few days later and redo its drills faster.
 
@@ -25,6 +25,10 @@ A syntax-first practice guide covering 12 tools. **Part I** covers NumPy, pandas
 - **[10. SQL](#10-sql)** — [10.00 Practice schema](#1000-practice-schema) · [10.01 SELECT: filtering, sorting & limiting](#1001-select-filtering-sorting--limiting) · [10.02 Expressions: CASE, NULL handling & casting](#1002-expressions-case-null-handling--casting) · [10.03 Aggregation: GROUP BY & HAVING](#1003-aggregation-group-by--having) · [10.04 Joins](#1004-joins) · [10.05 Subqueries, CTEs & set operations](#1005-subqueries-ctes--set-operations) · [10.06 Window functions](#1006-window-functions) · [10.07 String functions](#1007-string-functions) · [10.08 Dates & times](#1008-dates--times) · [10.09 Math & numeric functions](#1009-math--numeric-functions) · [10.10 Creating & changing tables (DDL)](#1010-creating--changing-tables-ddl) · [10.11 Inserting, updating, deleting & upserting (DML)](#1011-inserting-updating-deleting--upserting-dml) · [10.12 Transactions, views & indexes](#1012-transactions-views--indexes) · [10.13 JSON & arrays](#1013-json--arrays) · [10.14 Query performance](#1014-query-performance) · [10.15 SQL from Python & the command line](#1015-sql-from-python--the-command-line) · [10.16 Analytics & ML patterns](#1016-analytics--ml-patterns)
 - **[11. LaTeX](#11-latex)** — [11.01 Document skeleton & compiling](#1101-document-skeleton--compiling) · [11.02 Structure](#1102-structure) · [11.03 Text formatting, special characters & spacing](#1103-text-formatting-special-characters--spacing) · [11.04 Lists](#1104-lists) · [11.05 Math mode basics](#1105-math-mode-basics) · [11.06 Symbols reference](#1106-symbols-reference) · [11.07 Multi-line equations & numbering](#1107-multi-line-equations--numbering) · [11.08 Matrices, cases, brackets & custom operators](#1108-matrices-cases-brackets--custom-operators) · [11.09 ML equations gallery](#1109-ml-equations-gallery) · [11.10 Figures](#1110-figures) · [11.11 Tables](#1111-tables) · [11.12 Cross-references, links & citations](#1112-cross-references-links--citations) · [11.13 Algorithms & code listings](#1113-algorithms--code-listings) · [11.14 Theorems & custom macros](#1114-theorems--custom-macros) · [11.15 Page layout, colors & boxes](#1115-page-layout-colors--boxes) · [11.16 TikZ & pgfplots: diagrams and plots](#1116-tikz--pgfplots-diagrams-and-plots) · [11.17 Beamer slides](#1117-beamer-slides) · [11.18 Troubleshooting](#1118-troubleshooting)
 - **[12. Docker](#12-docker)** — [12.01 Setup & first commands](#1201-setup--first-commands) · [12.02 Running containers](#1202-running-containers) · [12.03 Managing containers](#1203-managing-containers) · [12.04 Images](#1204-images) · [12.05 Dockerfile instructions](#1205-dockerfile-instructions) · [12.06 Building images & .dockerignore](#1206-building-images--dockerignore) · [12.07 Best practices & multi-stage builds](#1207-best-practices--multi-stage-builds) · [12.08 Volumes & bind mounts](#1208-volumes--bind-mounts) · [12.09 Networking](#1209-networking) · [12.10 Docker Compose](#1210-docker-compose) · [12.11 GPUs & ML images](#1211-gpus--ml-images) · [12.12 Recipes: Jupyter & a model API](#1212-recipes-jupyter--a-model-api) · [12.13 Registries](#1213-registries) · [12.14 Debugging & cleanup](#1214-debugging--cleanup)
+
+**[Part III — Data Structures & Algorithms](#part-iii--data-structures--algorithms)**
+
+- **[13. Data Structures & Algorithms](#13-data-structures--algorithms)** — [13.01 Linked lists](#1301-linked-lists) · [13.02 Stacks](#1302-stacks) · [13.03 Queues](#1303-queues) · [13.04 Unbounded arrays](#1304-unbounded-arrays) · [13.05 Hash tables](#1305-hash-tables) · [13.06 Binary search trees](#1306-binary-search-trees) · [13.07 Dictionaries and sets](#1307-dictionaries-and-sets) · [13.08 Heaps](#1308-heaps) · [13.09 Priority queues](#1309-priority-queues) · [13.10 Binary search](#1310-binary-search) · [13.11 Merge sort](#1311-merge-sort) · [13.12 Quicksort](#1312-quicksort)
 
 ---
 
@@ -5888,3 +5892,475 @@ docker system prune -a --volumes                 # EVERYTHING unused, including 
 **Drills:** (1) Debug a container that exits immediately by overriding its entrypoint. (2) Find out why a container was killed. (3) Reclaim disk space safely.
 
 Full reference: https://docs.docker.com/reference/
+
+---
+
+# Part III — Data Structures & Algorithms
+
+## 13. Data Structures & Algorithms
+
+Part III teaches differently from Parts I and II. Each module is **one guided tutorial** that walks a beginner through building a single data structure or algorithm **from a blank file**, in **Python, C++, Java or Rust**. There is no problem counter or medal. The home page shows a status instead: **Not Started → In Progress → Almost! → Completed**.
+
+**How a tutorial works.**
+
+1. **Options.** The learner chooses the language, the element type (one concrete type, or generic) and the tutorial's own options, such as singly or doubly linked. Complexity boxes (space, insert, lookup, minimum, …) update as each choice changes.
+2. **Steps.** Every step names exact functions and fields and gives literal micro-steps ("make `n` point at `L.head`: `n.next = L.head`"), with the code shown in the chosen language. The learner types everything; there is no class or function stub. **Check** compiles and runs that step's tests plus the earlier steps' tests, and the next step opens only when they pass.
+3. **Almost!** Once every step passes, the learner builds the whole structure again in a blank editor. The page shows only the problem: interface, contracts and complexity requirements. Passing gives **Completed**.
+4. **Reset.** Reset (with a confirmation) is available at any point and starts over with new options.
+
+**Conventions (all tutorials).**
+
+* **Half-open segments [lo, hi).** `lo` is included and `hi` is excluded, for array ranges (`A[lo..hi)`), list segments (`[start, end)`, the dummy node or null excluded) and every recursive range (merge sort and quicksort sort `A[lo, hi)`). An empty range is `lo == hi`, a range's length is `hi - lo`, and the midpoint is `lo + (hi - lo) / 2`, which can't overflow.
+* **Variable names.** A structure is named with its capital first letter:
+
+  | Structure | Name |
+  |---|---|
+  | array, unbounded array | `A` |
+  | list | `L` |
+  | stack | `S` |
+  | queue | `Q` |
+  | hash table, dictionary | `H` |
+  | tree | `T` |
+  | heap | `H` |
+  | priority queue | `P` |
+  | set | `S` |
+
+  Functions take the structure as their first argument, as in CMU 15-122 or CLRS pseudocode, so every step reads the same in all four languages:
+  * Python, C++ and Rust: `insert_front(L, x)`.
+  * Java: `insertFront(L, x)`, as `static` methods inside the class.
+  * Rust silences its warning about the capital `L` with `#![allow(non_snake_case)]`.
+* **Contracts before code.** Step 2 of every data structure writes its **representation invariant** (`is_list(L)`, `is_heap(H)`, `is_bst(T)`, …), plus helpers such as `is_segment`. Every operation then begins with `assert is_X(S)`, the precondition (**requires**), and checks it again before returning, the postcondition (**ensures**). The assert syntax per language:
+  * Python: `assert`, removed by `python -O`.
+  * C++: `assert`, removed by `-DNDEBUG`.
+  * Java: `assert`; the checker runs with assertions on.
+  * Rust: `debug_assert!`, gone in release builds.
+
+  Because the invariant checks are O(n), contracts make every call O(n) while testing. Release builds drop them.
+* **Generic elements.** The generic option uses each language's native mechanism:
+  * C++: `template <typename T>`.
+  * Java: `<T>`, comparing with `.equals`.
+  * Rust: `<T>` with only the bounds a function needs (`PartialEq`, `Display`, `Default` for dummy nodes).
+  * Python: type parameters, `class Node[T]`.
+
+  C's `void*` with client-supplied comparison functions (15-122's C1 style) is the pre-template way to do the same thing. The tutorials explain it but use templates, which are type-checked and cost nothing at run time.
+* **Rust and pointers.** A structure where one node is reachable from two places uses raw pointers (`*mut Node<T>`) inside `unsafe` blocks. That covers tail pointers, `prev` pointers, dummies and cycles; `std::collections::LinkedList` is written the same way. Strictly tree-shaped ownership uses `Option<Box<…>>`: BST children, and stacks with no tail.
+* **Running code.** Python runs in the browser (Pyodide). C++ (GCC 15.2), Java (JDK 25) and Rust (rustc 1.94, edition 2021) are compiled and run on **Compiler Explorer** (godbolt.org), which accepts requests from any web page. No in-browser compiler covers all three, and none exists at all for Rust.
+
+**How the tests read a structure.** Each test program adds its own `main` with its own helpers, built on the learner's types: an independent walker that prints the contents and the first broken invariant, and builders for corrupted structures. Every printed line is compared with the expected output, and the first line that differs is shown. Each step's tests are mutation-tested: deleting any one statement of the reference makes them fail (`scripts/dsa_selftest.mjs --mutants`).
+
+### 13.01 Linked lists
+
+**Interface:**
+
+| Function | Behaviour | Time |
+|---|---|---|
+| `Node(data)` | `next` (and `prev`) start null | O(1) |
+| `LinkedList()` | an empty list | O(1) |
+| `is_segment(start, end, n)` | | O(n) |
+| `is_list(L)` | | O(n) |
+| `is_empty(L)` | | O(1) |
+| `insert_front(L, x)` | | O(1) |
+| `insert_back(L, x)` | | O(1) |
+| `delete_head(L) -> x` | requires a non-empty list | O(1) |
+| `delete_node(L, x) -> bool` | removes the first node holding x | O(n) |
+| `lookup(L, x) -> bool` | | O(n) |
+| `print_list(L)` | prints `[a, b, c]` | O(n) |
+
+The list keeps `size`, so its length is O(1).
+
+**Options.** End: NULL-terminated or dummy node. Links: singly or doubly. Shape: linear or circular. That makes 8 layouts × int/generic × 4 languages. Each layout uses the fewest pointers that keep both ends O(1):
+
+| Layout | Fields | Elements | Empty | Insert at end |
+|---|---|---|---|---|
+| NULL, linear | `head`, `tail` | [head, null) | both null | via `tail` |
+| NULL, circular, singly | `tail` | `tail.next` is the first | `tail` null | |
+| NULL, circular, doubly | `head` | `head.prev` is the last | `head` null | |
+| dummy, linear | `head`, `dummy` | [head, dummy); the dummy is the exclusive end | `head == dummy` | write `x` into the dummy, then append a fresh dummy (15-122) |
+| dummy, circular | `dummy` | [dummy.next, dummy) around the circle | dummy points to itself | singly: the same fill-the-dummy trick; doubly (CLRS sentinel): via `dummy.prev` |
+
+**Invariant.** The building block is `is_segment(start, end, n)`: following `next` from `start` reaches `end` in exactly `n` steps, never meeting null or `end` early. Doubly linked lists also check `p.next.prev == p` at every step. Each layout's `is_list` is a few checks around one call:
+
+| Layout | `is_list(L)` |
+|---|---|
+| NULL, singly, linear | empty ⇒ both ends null; otherwise `L.tail.next` is null and `is_segment(L.head, L.tail, L.size - 1)` |
+| dummy, singly, linear | `L.dummy.next` is null and `is_segment(L.head, L.dummy, L.size)` |
+| NULL, singly, circular | `is_segment(L.tail.next, L.tail, L.size - 1)` |
+| dummy, circular | `is_segment(L.dummy.next, L.dummy, L.size)` |
+
+**Complexity:**
+
+| Operation | Singly | Doubly |
+|---|---|---|
+| insert front / back, delete head | O(1) | O(1) |
+| delete last | O(n): needs the node before it | O(1) |
+| unlink a node you already hold | O(n) | O(1) |
+| lookup, delete by value, minimum, traverse | O(n) | O(n) |
+| k-th element | O(k) | O(k) |
+
+Space is n nodes × (element + 1 or 2 pointers), plus 1 dummy.
+
+**Steps.**
+
+1. **The node:** `data`, `next` (and `prev`), null by default.
+2. **The list and its contracts:** the header fields and the constructor (it allocates the dummy), then `is_segment`, `is_list` and `is_empty`.
+3. **Insert at the start.**
+4. **Insert at the end.**
+5. **Delete the head:** add the extra precondition, non-empty.
+6. **Delete a node:** search with a trailing `prev`; a doubly linked list unlinks in O(1).
+7. **Lookup.**
+8. **Traverse and print.**
+
+**Pitfalls the tests catch:**
+
+* Forgetting the tail on the first insert or the last delete.
+* A circular walk with no step count; a circle has no null to stop at.
+* Reading `p.next` after freeing `p`.
+* Java `==` on generic elements, which compares references instead of calling `.equals`.
+* A function that falls off its end without returning.
+
+### 13.02 Stacks
+
+**Interface:**
+
+| Function | Behaviour | Time |
+|---|---|---|
+| `Stack()` | an empty stack | O(1) |
+| `is_stack(S)` | | |
+| `is_empty(S)` | | |
+| `push(S, x)` | | O(1) |
+| `pop(S) -> x` | requires non-empty | O(1) |
+| `peek(S) -> x` | requires non-empty | O(1) |
+| `size(S)` | | O(1) |
+
+**Implementation (the requested option).** A linked list where `S.top` is the head and nodes are added and removed at the head. That gives O(1) worst case with no resizing. The invariant is `is_segment(S.top, null, S.size)`.
+
+**Comparison box (not built here).** An unbounded array: amortized O(1), but better locality.
+
+**Steps:**
+
+1. Node.
+2. Stack and its contracts.
+3. `push`.
+4. `pop`.
+5. `peek`.
+6. `size` / `is_empty`.
+
+**Final challenge:** a balanced-brackets checker as the client.
+
+### 13.03 Queues
+
+**Interface:**
+
+| Function | Behaviour | Time |
+|---|---|---|
+| `Queue()` | an empty queue | |
+| `is_queue(Q)` | | |
+| `enq(Q, x)` | | O(1) |
+| `deq(Q) -> x` | requires non-empty | O(1) |
+| `peek(Q)` | | |
+| `size(Q)` | | |
+
+**Options:**
+
+* **Linked list (15-122):** `Q.front` and a dummy `Q.back`, so the queue is the segment [front, back). `enq` writes into the dummy and adds a new one; `deq` advances `front`. Both are O(1) worst case.
+* **Two stacks:** `enq` pushes onto `in`. `deq` pops from `out`, first moving everything from `in` when `out` is empty. Each element moves at most once, so `deq` is **amortized O(1)** and O(n) in the worst case. The tutorial shows the potential argument: every element in `in` pays one future move.
+
+**Steps:**
+
+1. Node (or reuse the stack).
+2. Queue and its contracts.
+3. `enq`.
+4. `deq`.
+5. `peek` and `size`.
+
+The two-stacks option has an extra step: the transfer function.
+
+### 13.04 Unbounded arrays
+
+**Interface:** `uba_new(capacity)`, `is_uba(A)`, `uba_len(A)`, `uba_get(A, i)`, `uba_set(A, i, x)`, `uba_add(A, x)` (push back), `uba_rem(A) -> x` (pop back).
+
+**Representation.** `A.size`, `A.limit` (capacity), and the backing array `A.data[0, limit)`, whose live part is `[0, size)`. The invariant is `0 <= size < limit` (15-122 keeps one free slot) and `length(data) == limit`.
+
+**Options: the resizing mechanism.**
+
+* **Doubling (×2):** amortized O(1) per add. This is the default and is optimal.
+* **×1.5:** amortized O(1) with less wasted space; many standard libraries do this.
+* **+c (arithmetic growth):** amortized **O(n)** per add. It's included so the learner sees why geometric growth matters.
+* **Shrink policy:** halve when a quarter full, which never thrashes (amortized O(1)); or never shrink. Halving when half full is shown as the bad choice: alternating add and remove at the boundary costs O(n) each time.
+
+**Complexity:**
+
+| Operation | Time |
+|---|---|
+| get, set | O(1) |
+| add, rem | amortized O(1) (geometric); a single call is O(n) worst case |
+| lookup | O(n) |
+| find min | O(n) |
+
+Space is up to 2n with doubling, 1.5n with ×1.5.
+
+**Steps:**
+
+1. The struct and its contracts.
+2. `get` and `set`, with bounds contracts: `0 <= i < size`.
+3. `resize(A, new_limit)`: allocate, copy `[0, size)`, swap.
+4. `add` with the growth rule.
+5. `rem` with the shrink rule.
+6. Amortized analysis: the token argument, with a counter of copies that the tests check.
+
+### 13.05 Hash tables
+
+**Interface:**
+
+| Function | Notes |
+|---|---|
+| `ht_new(capacity)` | |
+| `is_ht(H)` | |
+| `ht_lookup(H, k) -> v or null` | |
+| `ht_insert(H, k, v)` | overwrites |
+| `ht_delete(H, k)` | |
+| `ht_size(H)` | |
+
+The hash is a polynomial hash for strings and a multiplicative hash for ints, reduced with `% capacity` after making it non-negative.
+
+**Options: collision resolution.**
+
+* **Separate chaining (buckets):**
+  * Each slot holds a linked list of (key, value).
+  * Resize ×2 when load factor n/m > 1 and rehash every entry.
+  * Expected time is O(1 + α).
+* **Open addressing, linear probing:**
+  * Probe `h, h+1, h+2, …` (mod m).
+  * Resize when α > 1/2.
+  * Delete with **tombstones**, which are reclaimed on resize. The alternative is backward-shift deletion, the most efficient choice for linear probing.
+  * Primary clustering is shown on the complexity boxes.
+* **Open addressing, quadratic probing:**
+  * Probe `h + i²`, or `h + (i² + i)/2` with a power-of-two m. The triangular-number form visits every slot.
+  * With prime m it finds a free slot whenever α ≤ 1/2.
+  * There is no primary clustering.
+
+**Complexity:**
+
+| | Expected | Worst case |
+|---|---|---|
+| insert, lookup, delete | O(1) (bounded load factor) | O(n) (everything collides) |
+| resize | amortized O(1) per insert | |
+| min, ordered iteration | O(n): no order | |
+
+**Steps:**
+
+1. Entries and the table.
+2. Contracts: every key sits in the chain or probe run its hash says, and the size matches.
+3. Hash functions.
+4. `lookup`.
+5. `insert`, with update-in-place.
+6. `resize`.
+7. `delete`, with tombstones or chain unlinking.
+
+### 13.06 Binary search trees
+
+**Interface:** `bst_new()`, `is_bst(T)`, `bst_lookup(T, k)`, `bst_insert(T, k)`, `bst_delete(T, k)`, `bst_min` / `bst_max`, `bst_inorder(T)`, `height(T)`.
+
+**Invariant.** Every key in the left subtree < node < every key in the right subtree. This is checked with bounds passed down (`is_ordered(node, lo, hi)`), not just parent-child pairs.
+
+**Options:**
+
+* **Plain BST.** Every operation costs O(h), which is O(n) worst case on sorted input.
+* **AVL tree.**
+  * Each node stores its height, and every node's balance factor is in {-1, 0, 1}.
+  * Single and double rotations repair the balance on the way back up from an insert or delete.
+  * Worst case O(log n), with height < 1.44 log₂ n.
+* **Splay tree.**
+  * Each access splays the node to the root with zig, zig-zig and zig-zag steps.
+  * Amortized O(log n), with no balance information stored.
+  * Recently used keys are fast.
+
+**Complexity:**
+
+| Operation | Plain | AVL | Splay |
+|---|---|---|---|
+| lookup, insert, delete | O(h), O(n) worst | O(log n) | O(log n) amortized |
+| min, max, successor | O(h) | O(log n) | O(log n) amortized |
+| in-order traversal | O(n) | O(n) | O(n) |
+
+Space is O(n).
+
+**Steps:**
+
+1. Node and tree.
+2. Contracts: ordering with bounds, heights for AVL.
+3. `lookup`.
+4. `insert`.
+5. min/max and in-order traversal.
+6. `delete`: the leaf, one-child and two-child cases; the last swaps with the in-order successor.
+7. AVL only: `height`/`fix_height`, `rotate_left`/`rotate_right`, `rebalance`.
+8. Splay only: `rotate` and `splay`.
+
+Children use `Option<Box<Node>>` in Rust.
+
+### 13.07 Dictionaries and sets
+
+**Interface:**
+
+* Dictionary `H`: `dict_insert(H, k, v)`, `dict_lookup(H, k) -> v or null`, `dict_delete(H, k)`, `dict_size`.
+* Set `S`: `set_add(S, x)`, `set_contains(S, x)`, `set_remove(S, x)`.
+* Set operations: `union`, `intersection`, `difference`.
+
+**Options: what it's built on.**
+
+* **Hash table** (13.05): expected O(1) operations, no order.
+* **Binary search tree** (13.06, plain or AVL): O(log n) operations with order. This adds `min`, `successor`, range queries and sorted iteration.
+
+The complexity boxes show this trade-off directly. The tutorial wraps the earlier structure behind a client interface (the abstraction boundary), so the client code is the same for both options.
+
+**Steps:**
+
+1. The interface and its contracts, written first.
+2. Implement it on the chosen structure.
+3. Sets as dictionaries without values.
+4. Set operations: union, intersection, difference.
+5. A client: word counts.
+
+### 13.08 Heaps
+
+**Interface:**
+
+| Function | Behaviour | Time |
+|---|---|---|
+| `heap_new(capacity)` | | |
+| `is_heap(H)` | | |
+| `heap_add(H, x)` | | O(log n) |
+| `heap_peek(H)` | | O(1) |
+| `heap_rem(H) -> x` | | O(log n) |
+| `heapify(A)` | | O(n) |
+| `heapsort(A)` | | O(n log n) |
+
+**Representation.** An array-based complete binary tree. With 1-indexing (15-122), the children of i are `2i` and `2i+1` and its parent is `i/2`. With 0-indexing, the children are `2i+1` and `2i+2` and the parent is `(i-1)/2`.
+
+**Invariant:**
+
+* The shape: the elements occupy `[1, next)`.
+* The **ordering invariant:** the parent ≤ the child (a min-heap).
+
+**Options:**
+
+* Min-heap or max-heap, or generic with a comparison function.
+* 0- or 1-indexed.
+* An unbounded backing array (13.04) or a fixed capacity.
+
+**Steps:**
+
+1. Struct and contracts. `is_heap` checks every parent/child pair.
+2. `sift_up`.
+3. `add`.
+4. `sift_down`, comparing with the smaller child.
+5. `rem`: move the last element to the root, then sift down.
+6. Bottom-up `heapify`: sift down from n/2 to 1, O(n) in total.
+7. `heapsort`.
+
+### 13.09 Priority queues
+
+**Interface:** `pq_new()`, `pq_add(P, x, priority)`, `pq_peek(P)`, `pq_rem(P)` (highest priority first), `pq_size(P)`, and optionally `pq_decrease_key`.
+
+**Options: the implementation.**
+
+| Implementation | `pq_add` | `pq_rem` | Notes |
+|---|---|---|---|
+| unsorted array | O(1) | O(n) | |
+| sorted linked list | O(n) | O(1) | |
+| binary heap (13.08) | O(log n) | O(log n) | the optimal general-purpose choice |
+| heap + index map | O(log n) | O(log n) | `decrease_key` also O(log n), as Dijkstra needs |
+
+The complexity boxes compare all of them.
+
+**Steps:**
+
+1. The interface and contracts.
+2. Elements carry priorities.
+3. Wrap the heap.
+4. Ties: stable order by insertion counter.
+5. A client that merges k sorted lists.
+
+### 13.10 Binary search
+
+**Interface:** `binsearch(x, A, n) -> index or -1` on a sorted array. It requires `is_sorted(A, 0, n)` and ensures the result is -1 if `x` is not in `A`, or that `A[result] == x`.
+
+**Invariant (on [lo, hi)).**
+
+* `A[0, lo) < x` and `A[hi, n) > x` (or `≥ x` for the lower-bound variant).
+* The loop runs `while lo < hi`, with `mid = lo + (hi - lo) / 2`, then sets either `lo = mid + 1` or `hi = mid`.
+* Each round shrinks `hi - lo`, which proves termination.
+
+**Options:**
+
+* **Iterative:** O(1) space.
+* **Recursive:** `search(x, A, lo, hi)`, using O(log n) stack space.
+
+Variants included as steps:
+
+* Find any match.
+* Find the first occurrence: the lower bound.
+* The insertion point.
+
+**Complexity:** O(log n) time. Space is O(1) iterative or O(log n) recursive. A linear search, shown for comparison, is O(n).
+
+**Steps:**
+
+1. `is_sorted`, and `is_in(x, A, lo, hi)` for contracts.
+2. The loop invariant written as asserts.
+3. The loop or the recursion.
+4. Overflow-safe `mid`.
+5. Lower bound.
+
+### 13.11 Merge sort
+
+**Interface:**
+
+* `merge(A, lo, mid, hi)`: requires `A[lo, mid)` and `A[mid, hi)` sorted; ensures `A[lo, hi)` sorted.
+* `mergesort(A, lo, hi)`: sorts `A[lo, hi)`.
+
+**Implementation (one option, as requested).**
+
+1. Recurse on `[lo, mid)` and `[mid, hi)`.
+2. `merge` into a temporary array of length `hi - lo`, taking from the left half on ties; this makes it **stable**.
+3. Copy back.
+
+**Complexity:** O(n log n) time in every case. O(n) extra space for the temporary arrays, plus O(log n) stack. Stable.
+
+**Steps:**
+
+1. `is_sorted(A, lo, hi)`.
+2. `merge`, with its loop invariant: the output prefix is sorted, and both cursors stay in range.
+3. The `mergesort` base case: `hi - lo <= 1`.
+4. The recursive case.
+5. A counted-comparisons check that the tests verify against n log n.
+
+### 13.12 Quicksort
+
+**Interface:**
+
+* `partition(A, lo, pi, hi) -> mid`: requires `lo <= pi < hi`. It ensures `A[lo, mid) ≤ A[mid] ≤ A[mid+1, hi)`, with the pivot at `mid`.
+* `quicksort(A, lo, hi)`: sorts `A[lo, hi)`.
+
+**Implementation (one option, as requested).** The 15-122 partition:
+
+1. Swap the pivot to `A[lo]`.
+2. Grow `[lo+1, left)` ≤ pivot and `[right, hi)` > pivot until they meet.
+3. Swap the pivot into place.
+
+A **random pivot index** (or median of three) gives expected O(n log n) on every input.
+
+**Complexity:**
+
+* Time: O(n log n) expected; O(n²) worst case, which a fixed first-element pivot hits on sorted input.
+* Space: in place. The stack is O(log n) expected if the recursion goes into the smaller side first and loops on the larger one.
+* Not stable.
+
+**Steps:**
+
+1. Contracts: `le_seg`, `ge_seg` and `is_sorted`.
+2. `swap`.
+3. `partition`, with its loop invariants.
+4. `quicksort`'s base case and recursion.
+5. The random pivot.
+6. A test on sorted and all-equal input, which a naive version takes O(n²) on.
