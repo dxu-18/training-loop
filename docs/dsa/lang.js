@@ -112,7 +112,7 @@
     if ((m = line.match(/^return(?: (.+))?$/))) return { k: "return", e: m[1] ? parseExpr(m[1]) : null };
     if ((m = line.match(/^(assert|free) (.+)$/))) return { k: m[1], e: parseExpr(m[2]) };
     if ((m = line.match(/^(print|println|printb)(?: (.+))?$/))) return { k: m[1], e: m[2] ? parseExpr(m[2]) : null };
-    if ((m = line.match(/^make (\w+) (\w+)$/))) return { k: "make", struct: m[1], name: m[2] };
+    if ((m = line.match(/^make (\w+) (\w+)(?:\((.*)\))?$/))) return { k: "make", struct: m[1], name: m[2], args: m[3] ? parseExpr(`new(${m[3]})`).args : [] };
     if ((m = line.match(/^push (\w+), (.+)$/))) return { k: "push", name: m[1], e: parseExpr(m[2]) };
     if ((m = line.match(/^swap (\w+), (.+), (.+)$/))) return { k: "swap", arr: m[1], i: parseExpr(m[2]), j: parseExpr(m[3]) };
     if ((m = line.match(/^(.+?) (\+=|-=|=) (.+)$/))) return { k: "assign", lhs: parseExpr(m[1]), op: m[2], e: parseExpr(m[3]) };
@@ -225,8 +225,8 @@
           java: param ? `(T[]) new Object[${n}]` : `new ${ctx.T}[${n}]`, rs: `vec![${ctx.generic ? `${ctx.T}::default()` : "0"}; ${n}]` }[L];
       }
       case "allocn": {
-        const n = expr(e.n, ctx), N = nodeOf(ctx).name;
-        return { py: `[None] * ${expr(e.n, ctx, 9)}`, cpp: `std::vector<${N}*>(${n}, nullptr)`, java: `new ${N}[${n}]`,
+        const n = expr(e.n, ctx), N = nodeOf(ctx).name, g = ctx.generic ? `<${ctx.T}>` : "";
+        return { py: `[None] * ${expr(e.n, ctx, 9)}`, cpp: `std::vector<${N}${g}*>(${n}, nullptr)`, java: `new ${N}[${n}]`,
           rs: `vec![${ctx.qual ? "std::ptr" : "ptr"}::null_mut(); ${n}]` }[L];
       }
       case "len": {
@@ -269,7 +269,7 @@
         if (e.op === "==" || e.op === "!=") return wrap(compare(e, ctx), 4);
         const p = PREC[e.op];
         // Java orders generic elements with compareTo
-        if (p === 4 && L === "java" && ctx.generic && typeOf(e.a, ctx) === "T") return wrap(`${expr(e.a, ctx, 9)}.compareTo(${expr(e.b, ctx)}) ${e.op} 0`, 4);
+        if (p === 4 && L === "java" && (ctx.generic || ctx.strT) && typeOf(e.a, ctx) === "T") return wrap(`${expr(e.a, ctx, 9)}.compareTo(${expr(e.b, ctx)}) ${e.op} 0`, 4);
         const op = e.op === "/" && L === "py" ? "//" : e.op;   // integer division
         if (p === 4) {
           const [a, b] = rsIndexSides(e, typeOf(e.a, ctx), typeOf(e.b, ctx), expr(e.a, ctx, p), expr(e.b, ctx, p + 1), ctx);
@@ -305,10 +305,11 @@
     return [a, b];
   }
 
-  // Rust can't move a generic element out of an array: copying one (into a variable, another array or a slot) clones it
+  // Rust can't move an element (generic, or a String) out of an array or a node: copying one (into a variable, another
+  // array, a slot or a by-value argument) clones it
   function copyOut(e, rendered, ctx) {
-    const copies = e && (e.k === "index" || (e.k === "field" && typeOf(e, ctx) === "T"));   // (an array slot, or a node's element)
-    return ctx.lang === "rs" && ctx.generic && copies ? `${rendered}.clone()` : rendered;
+    const copies = e && (e.k === "index" || e.k === "field") && typeOf(e, ctx) === "T";   // (an array slot, or a node's element)
+    return ctx.lang === "rs" && (ctx.generic || ctx.strT) && copies ? `${rendered}.clone()` : rendered;
   }
 
   // a call argument: Rust borrows a structure held by value (a local, or a field like Q.inbox), an array, and an
@@ -320,6 +321,7 @@
     }
     const s = expr(a, ctx);
     if (ctx.lang !== "rs") return s;
+    if (kind === "T") return copyOut(a, s, ctx);
     const t = String(typeOf(a, ctx));
     if (t.startsWith("V:")) return kind.startsWith("mut:") ? `&mut ${s}` : `&${s}`;
     if (t === "ArrV") return kind === "ArrMut" ? `&mut ${s}` : `&${s}`;
@@ -330,7 +332,7 @@
   function typeName(t, ctx) {
     const g = ctx.generic ? `<${ctx.T}>` : "";
     if (t === "N") return ctx.lang === "cpp" ? `${nodeOf(ctx).name}${g}*` : `${nodeOf(ctx).name}${g}`;
-    if (t === "NArrV") return ctx.lang === "cpp" ? `std::vector<${nodeOf(ctx).name}*>` : `${nodeOf(ctx).name}[]`;
+    if (t === "NArrV") return ctx.lang === "cpp" ? `std::vector<${nodeOf(ctx).name}${g}*>` : `${nodeOf(ctx).name}[]`;
     if (t === "ArrV") return ctx.lang === "cpp" ? `std::vector<${ctx.T}>` : `${ctx.T}[]`;
     if (t === "Vec") {
       const boxed = { int: "Integer" }[ctx.T] || ctx.T;
@@ -360,7 +362,7 @@
         if (L === "py") return { code: [`${s.name} = ${val}`] };
         if (L === "rs") {
           const mut = ctx.muts.has(s.name) || vt === "Vec" || vt === "ArrV" || vt === "NArrV" ? "mut " : "";   // (arrays may be changed through &mut)
-          const ann = vt === "ArrV" || vt === "Vec" ? `: Vec<${ctx.T}>` : vt === "NArrV" ? `: Vec<*mut ${nodeOf(ctx).name}>` : "";
+          const ann = vt === "ArrV" || vt === "Vec" ? `: Vec<${ctx.T}>` : vt === "NArrV" ? `: Vec<*mut ${nodeOf(ctx).name}${ctx.generic ? `<${ctx.T}>` : ""}>` : "";
           return { code: [`let ${mut}${s.name}${ann} = ${copyOut(s.e, val, ctx)};`] };
         }
         if (vt === "Vec" && L === "cpp") return { code: [`${typeName(vt, ctx)} ${s.name};`] };
@@ -430,13 +432,14 @@
         return { code: [], note: `Nothing to write in ${LANGS[L].name}: once nothing points to \`${n}\`, the garbage collector frees it.` };
       }
       case "print": case "println": case "printb": return { code: [printStmt(s, ctx)] };
-      case "make": {
+      case "make": {   // a structure in a local variable, made by its constructor (with arguments, if it takes any)
         const N = s.struct;
         ctx.vars[s.name] = `V:${N}`;
         const g = ctx.generic ? `<${ctx.T}>` : "";
-        return { code: [{ py: `${s.name} = ${N}()`, cpp: `${N}${g} ${s.name};`,
-          java: `${N}${g} ${s.name} = new ${N}${ctx.generic ? "<>" : ""}();`,
-          rs: `let mut ${s.name}${ctx.generic ? `: ${N}${g}` : ""} = ${N}::new();` }[L]] };
+        const a = s.args.map((x) => expr(x, ctx)).join(", ");
+        return { code: [{ py: `${s.name} = ${N}(${a})`, cpp: a ? `${N}${g} ${s.name}(${a});` : `${N}${g} ${s.name};`,
+          java: `${N}${g} ${s.name} = new ${N}${ctx.generic ? "<>" : ""}(${a});`,
+          rs: `let mut ${s.name}${ctx.generic ? `: ${N}${g}` : ""} = ${N}::new(${a});` }[L]] };
       }
       case "expr": return { code: [`${expr(s.e, ctx)}${semi}`] };
     }
@@ -520,7 +523,12 @@
       if (e.k === "alloc") { need.add("Default"); need.add("Clone"); }   // (vec![T::default(); n])
       if (e.k === "bin" && (e.op === "==" || e.op === "!=") && typeOf(e.a, c) === "T") need.add("PartialEq");
       if (e.k === "bin" && ["<", ">", "<=", ">="].includes(e.op) && typeOf(e.a, c) === "T") need.add("PartialOrd");
-      if (e.k === "call") { const s = spec(e.fn, c); (s.bounds || []).forEach((b) => need.add(b)); }
+      if (e.k === "call") {
+        const s = spec(e.fn, c);
+        (s.bounds || []).forEach((b) => need.add(b));
+        // (an element passed by value from a slot or a node is cloned)
+        e.args.forEach((x, i) => { if (s.params[i] && s.params[i][1] === "T" && (x.k === "index" || x.k === "field") && typeOf(x, c) === "T") need.add("Clone"); });
+      }
       for (const v of Object.values(e)) if (v && typeof v === "object") walkE(v, c);
     };
     const c = { ...ctx, vars: { ...ctx.vars } };
@@ -533,7 +541,7 @@
           if (s.k === "let") c.vars[s.name] = typeOf(s.e, c) === "null" ? "N" : typeOf(s.e, c);
           if (s.k === "take") c.vars[s.name] = "T";
           if (s.k === "for") c.vars[s.name] = "int";
-          if ((s.k === "assign" || s.k === "push" || s.k === "let") && s.e && (s.e.k === "index" || (s.e.k === "field" && typeOf(s.e, c) === "T"))) need.add("Clone");
+          if ((s.k === "assign" || s.k === "push" || s.k === "let") && s.e && (s.e.k === "index" || s.e.k === "field") && typeOf(s.e, c) === "T") need.add("Clone");
         }
         if (st.body) walk(st.body);
       }
@@ -571,7 +579,8 @@
 
   // the header line(s) of a function, from its spec
   function signature(name, s, ctx) {
-    const L = ctx.lang, g = ctx.generic;
+    // generic only if the element type appears in it: parent(i) stays a plain function (nothing could infer its T)
+    const L = ctx.lang, g = ctx.generic && (s.params.some(([, k]) => !["int", "V", "bool"].includes(k)) || ["T", "Tpeek", "N"].includes(s.ret));
     const T = ctx.T;
     const hints = !ctx.ref && !ctx.harnessFn;
     const n = fnName(name, ctx);
