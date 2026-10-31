@@ -307,7 +307,8 @@
 
   // Rust can't move a generic element out of an array: copying one (into a variable, another array or a slot) clones it
   function copyOut(e, rendered, ctx) {
-    return ctx.lang === "rs" && ctx.generic && e && e.k === "index" ? `${rendered}.clone()` : rendered;
+    const copies = e && (e.k === "index" || (e.k === "field" && typeOf(e, ctx) === "T"));   // (an array slot, or a node's element)
+    return ctx.lang === "rs" && ctx.generic && copies ? `${rendered}.clone()` : rendered;
   }
 
   // a call argument: Rust borrows a structure held by value (a local, or a field like Q.inbox), an array, and an
@@ -532,7 +533,7 @@
           if (s.k === "let") c.vars[s.name] = typeOf(s.e, c) === "null" ? "N" : typeOf(s.e, c);
           if (s.k === "take") c.vars[s.name] = "T";
           if (s.k === "for") c.vars[s.name] = "int";
-          if ((s.k === "assign" || s.k === "push" || s.k === "let") && s.e && s.e.k === "index") need.add("Clone");
+          if ((s.k === "assign" || s.k === "push" || s.k === "let") && s.e && (s.e.k === "index" || (s.e.k === "field" && typeOf(s.e, c) === "T"))) need.add("Clone");
         }
         if (st.body) walk(st.body);
       }

@@ -6376,44 +6376,45 @@ A run that creates tombstones and then forces a resize checks that `used` resets
 
 ### 13.09 Binary search trees
 
-**Interface:** `bst_new()`, `is_bst(T)`, `bst_lookup(T, k)`, `bst_insert(T, k)`, `bst_delete(T, k)`, `bst_min` / `bst_max`, `bst_inorder(T)`, `height(T)`.
+**Representation.**
+* The tree is `B`, not `T`, so it doesn't clash with the type parameter `T`. It keeps `root` and `size`.
+* Nodes are `{data, left, right}`; an AVL node adds `height`, 1 for a new node.
+* Node functions are recursive and return their subtree's new root: `B.root = node_insert(B.root, x)`.
+* Rust uses raw pointers, as the linked lists do, so rotations can rewire freely.
 
-**Invariant.** Every key in the left subtree < node < every key in the right subtree. This is checked with bounds passed down (`is_ordered(node, lo, hi)`), not just parent-child pairs.
+**Interface:**
+* `bst_size`.
+* `bst_lookup(B, x)`, on top of `node_lookup`.
+* `bst_insert(B, x)`, on top of `node_insert`. A duplicate is ignored.
+* `bst_min(B)`, on top of `node_min`.
+* `bst_print(B)`, on top of `node_print(n, k)`. It prints in order, which is sorted.
+* `bst_delete(B, x) -> bool`, on top of `node_delete` and `node_delete_min`. With two children, a node takes the minimum of its right subtree, which is then removed.
+
+**Contracts** (when on):
+* `is_ordered(n, lo, hi)` takes its bounds as nodes, or null for none, so a grandchild must also respect its grandparent.
+* `node_size`.
+* For AVL, `is_avl`: stored heights are correct and the two sides differ by at most 1.
+* `is_bst` combines them.
 
 **Options:**
 
-* **Plain BST.** Every operation costs O(h), which is O(n) worst case on sorted input.
-* **AVL tree.**
-  * Each node stores its height, and every node's balance factor is in {-1, 0, 1}.
-  * Single and double rotations repair the balance on the way back up from an insert or delete.
-  * Worst case O(log n), with height < 1.44 log₂ n.
-* **Splay tree.**
-  * Each access splays the node to the root with zig, zig-zig and zig-zag steps.
-  * Amortized O(log n), with no balance information stored.
-  * Recently used keys are fast.
-
-**Complexity:**
-
-| Operation | Plain | AVL | Splay |
+| Tree | Steps | Lookup / insert / delete | Worst case for one operation |
 |---|---|---|---|
-| lookup, insert, delete | O(h), O(n) worst | O(log n) | O(log n) amortized |
-| min, max, successor | O(h) | O(log n) | O(log n) amortized |
-| in-order traversal | O(n) | O(n) | O(n) |
+| **Plain BST** | tree → contracts → lookup → insert → min/in-order → delete | O(h) | O(n): a chain on sorted input |
+| **AVL** | adds `height`, `fix_height`, rotations and `rebalance` | O(log n) | O(log n) |
+| **Splay** | adds rotations and `splay` | O(log n) amortized | O(n) |
 
-Space is O(n).
+* **AVL.** `rebalance(n)` fixes the height. When one side is 2 taller, it rotates once (left-left or right-right) or twice (left-right or right-left). Insert and delete call it on the way back up.
+* **Splay.** The classic recursive `splay(n, x)`: zig-zig rotates the grandparent first, zig-zag the parent, and a final zig handles the last level.
+  * Lookup splays, so it reshapes the tree.
+  * Insert splays, then splits the tree around a new root.
+  * Delete splays, removes the root, splays the left subtree's maximum up, and hangs the right subtree there.
 
-**Steps:**
-
-1. Node and tree.
-2. Contracts: ordering with bounds, heights for AVL.
-3. `lookup`.
-4. `insert`.
-5. min/max and in-order traversal.
-6. `delete`: the leaf, one-child and two-child cases; the last swaps with the in-order successor.
-7. AVL only: `height`/`fix_height`, `rotate_left`/`rotate_right`, `rebalance`.
-8. Splay only: `rotate` and `splay`.
-
-Children use `Option<Box<Node>>` in Rust.
+**Tests.** The checker prints the tree's shape after every change, e.g. `50(30(20, 40), 70)`; for AVL it adds heights, `50:3(…)`. A JavaScript model replays every variant exactly.
+* **Rebalance:** the four unbalanced shapes are built by hand.
+* **Splay:** values smaller and bigger than everything are included.
+* **Delete:** a leaf, nodes with only a left or only a right child, one with two children, and the root.
+* **Contracts:** each broken tree trips exactly one check, plus an AVL tree with correct heights but out of balance.
 
 ### 13.10 Dictionaries and sets
 

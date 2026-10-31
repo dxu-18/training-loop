@@ -269,6 +269,7 @@ details.setup { margin-top: 14px; }
 .dg-box { font: 0.88rem var(--mono); border: 1.5px solid var(--ink); border-radius: 5px; padding: 3px 10px; background: var(--surface); }
 .dg-box.dummy { border-style: dashed; color: var(--muted); }
 .dg-box.pivot { border-color: var(--accent); color: var(--accent); font-weight: 700; }
+.dg-box.spacer { visibility: hidden; }   /* an empty column in a tree drawing */
 .dg-arrow, .dg-null, .dg-loop { font: 0.9rem var(--mono); color: var(--muted); padding: 3px 2px; }
 .dg-label { font: 600 0.78rem var(--mono); color: var(--ink); padding: 3px 8px 3px 0; min-width: 4.5em; }
 .dg-row + .dg-row { margin-top: 10px; }

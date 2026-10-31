@@ -174,11 +174,11 @@ try:
         check(any("part iii" in h.lower() and "data structures" in h.lower() for h in heads), "home has Part III · Data Structures & Algorithms")
         row = pg.locator("a.topic[href='#/dsa/linked-lists']")
         check(row.count() == 1 and "not started" in row.inner_text().lower(), "Linked lists row says Not Started")
-        check(pg.locator(".part:last-child .topic.soon").count() == 4, "the other 4 tutorials say soon")
+        check(pg.locator(".part:last-child .topic.soon").count() == 3, "the other 3 tutorials say soon")
         first = pg.locator(".part:last-child li").first.inner_text()
         check("13.01" in first and "Binary search" in first, "Part III starts with 13.01 Binary search")
         check("Mergesort" in pg.inner_text(".part:last-child") and "Merge sort" not in pg.inner_text(".part:last-child"), "Mergesort is one word")
-        for tid in ("binary-search", "mergesort", "quicksort", "stacks", "queues", "unbounded-arrays", "hash-tables"):
+        for tid in ("binary-search", "mergesort", "quicksort", "stacks", "queues", "unbounded-arrays", "hash-tables", "binary-search-trees"):
             r = pg.locator(f"a.topic[href='#/dsa/{tid}']")
             check(r.count() == 1 and "not started" in r.inner_text().lower(), f"{tid}: live and Not Started")
         pg.screenshot(path=str(OUT / "home.png"), full_page=True)
@@ -450,8 +450,27 @@ try:
             if run_all_steps(pg, f"ht-{lang}"):
                 finish(pg, f"ht-{lang}")
 
+        # ---- 13.09 Binary search trees: plain, AVL, splay change the boxes and the steps; four languages
+        pg.goto(BASE + "/#/dsa/binary-search-trees")
+        pg.wait_for_selector(".begin")
+        TID[0] = "binary-search-trees"
+        choose(pg, {"tree": "plain", "contracts": "on"})
+        check(big("worst") == "O(n)" and pg.locator(".dsa-preview li").count() == 6, "plain BST: worst case O(n), 6 steps")
+        choose(pg, {"tree": "avl"})
+        check(big("worst") == "O(log n)" and pg.locator(".dsa-preview li").count() == 8 and "Rebalance" in pg.inner_text(".dsa-preview"), "AVL: O(log n) worst case, rotations and rebalance steps")
+        choose(pg, {"tree": "splay"})
+        check("amortized" in pg.inner_text(".cx[data-id='lookup']") and "Splay" in pg.inner_text(".dsa-preview"), "splay: amortized, a splay step")
+        pg.screenshot(path=str(OUT / "bst-setup.png"), full_page=True)
+        start(pg, "binary-search-trees", {"lang": "py", "type": "int", "tree": "plain"})
+        if run_all_steps(pg, "bst-py", wrong_at=4):
+            finish(pg, "bst-py")
+        for lang, typ, tree in (("rs", "generic", "avl"), ("java", "generic", "splay"), ("cpp", "int", "plain")):
+            start(pg, "binary-search-trees", {"lang": lang, "type": typ, "tree": tree})
+            if run_all_steps(pg, f"bst-{lang}"):
+                finish(pg, f"bst-{lang}")
+
         # ---- the Contracts option: on every tutorial, off by default; it changes the steps, the boxes and the final
-        for tid in ("binary-search", "mergesort", "quicksort", "linked-lists", "stacks", "queues", "unbounded-arrays", "hash-tables"):
+        for tid in ("binary-search", "mergesort", "quicksort", "linked-lists", "stacks", "queues", "unbounded-arrays", "hash-tables", "binary-search-trees"):
             pg.goto(BASE + f"/#/dsa/{tid}")
             pg.wait_for_selector(".begin, .reset")
             if pg.locator(".reset").count():

@@ -26,7 +26,7 @@ const args = process.argv.slice(2);
 const flag = (f) => args.includes(f);
 const opt = (f, d) => { const i = args.indexOf(f); return i >= 0 ? args[i + 1] : d; };
 // every tutorial in docs/dsa/ (--only linked-lists,stacks to pick some)
-const TUTORIALS = Object.fromEntries(["binary-search", "mergesort", "quicksort", "linked-list", "stack", "queue", "unbounded-array", "hash-table"]
+const TUTORIALS = Object.fromEntries(["binary-search", "mergesort", "quicksort", "linked-list", "stack", "queue", "unbounded-array", "hash-table", "bst"]
   .filter((f) => existsSync(join(ROOT, `docs/dsa/${f}.js`)))
   .map((f) => { const t = require(join(ROOT, `docs/dsa/${f}.js`)); return [t.id, t]; })
   .filter(([id]) => !opt("--only", "") || opt("--only", "").split(",").includes(id)));
@@ -37,7 +37,7 @@ const LANGS = opt("--lang", "py,cpp,java,rs").split(",");
 function sh(cmd, argv, opts = {}) {
   return new Promise((resolve) => {
     execFile(cmd, argv, { timeout: 60000, maxBuffer: 16 << 20, ...opts }, (err, stdout, stderr) =>
-      resolve({ code: err ? (err.code ?? 1) : 0, stdout, stderr, killed: !!(err && err.killed) }));
+      resolve({ code: err ? (err.code ?? 1) : 0, stdout, stderr, killed: !!(err && err.killed), signal: err?.signal }));
   });
 }
 
@@ -90,7 +90,7 @@ async function runPythonBatch(jobs) {
       `def one(j):\n    signal.setitimer(signal.ITIMER_REAL, 5)\n    try: return json.loads(dsa_run(j["user"], j["tests"]))\n    finally: signal.setitimer(signal.ITIMER_REAL, 0)\n` +
       `jobs = json.load(open(${JSON.stringify(join(dir, "jobs.json"))}))\nprint(json.dumps([one(j) for j in jobs]))\n`;
     const r = await sh(PYTHON, ["-c", script], { timeout: 1800000 });
-    if (r.code) throw new Error(`python failed: ${r.stderr}`);
+    if (r.code) throw new Error(`python failed (exit ${r.code}${r.signal ? `, ${r.signal}` : ""}${r.killed ? ", killed" : ""}): ${r.stderr.slice(-2000)}`);
     return JSON.parse(r.stdout);
   } finally {
     rmSync(dir, { recursive: true, force: true });
