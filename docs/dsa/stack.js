@@ -40,8 +40,8 @@
   // ---------------------------------------------------------------- specs
   const M = "mut:Stack", R = "ref:Stack", O = "Stack";
   const FNS = {
-    is_segment: { params: [["start", "N"], ["end", "N"], ["n", "int"]], ret: "bool", owner: O },
-    is_stack: { params: [["S", R]], ret: "bool", owner: O },
+    is_segment: { params: [["start", "N"], ["end", "N"], ["n", "int"]], ret: "bool", owner: O, contract: true },
+    is_stack: { params: [["S", R]], ret: "bool", owner: O, contract: true },
     stack_empty: { params: [["S", R]], ret: "bool", owner: O },
     push: { params: [["S", M], ["x", "T"]], ret: "void", owner: O },
     pop: { params: [["S", M]], ret: "T", owner: O },
@@ -121,14 +121,16 @@
 
   const RUST_WHY = "A stack alone could own its nodes with `Option<Box<…>>`, but a queue (13.06) points at its last node from two places, which needs raw pointers, so these tutorials use them throughout. `std::collections::LinkedList` is built the same way.";
 
-  function steps() {
+  function steps(o) {
     const fn = (name, body, headerSay) => ({ name, steps: body(), headerSay });
+    const on = C.contractsOn(o);
     return [
       { id: "node", title: "The node",
         goal: "The stack is a linked list whose first node is the top. Each node holds one element (`data`) and a pointer to the node below it. A pointer that points nowhere is null.",
         decl: (c) => C.nodeSteps(c, { varName: "S", what: "stack", rustWhy: RUST_WHY }), tests: ["node"] },
-      { id: "stack", title: "The stack and its contracts",
-        goal: "The stack `S` keeps its `top` node and its `size`. Before any operation, write the **contracts**: {fn:is_segment(start, end, n)} " +
+      { id: "stack", title: on ? "The stack and its contracts" : "The stack",
+        goal: !on ? "The stack `S` keeps its `top` node and its `size`. Write the struct, its constructor, and {fn:stack_empty(S)}." :
+          "The stack `S` keeps its `top` node and its `size`. Before any operation, write the **contracts**: {fn:is_segment(start, end, n)} " +
           "(exactly `n` nodes from `start` up to, not including, `end`) and {fn:is_stack(S)}, which is true exactly when [`S.top`, null) holds `S.size` nodes. " +
           "Every operation checks {fn:is_stack(S)} when it starts and before it returns.",
         decl: (c) => stackDecl(c),
@@ -249,6 +251,7 @@
   const DEF = {
     id: "stacks", num: "13.05", title: "Stacks", heading: "Build a stack, step by step", diagramLabel: "Your stack",
     OPTIONS, DEFAULTS, FNS, STRUCTS, describe, complexity, diagram, steps, handlers, testGroups, refFns, problem,
+    CONTRACT_OPS: ["is_stack", "segment", "break"],
     _internals: { isSegment, isStack, stackEmpty, push, pop, peek, stackSize, stackDecl, showFn, BREAKS, RUST_WHY },
   };
   const tutorial = C.make(DEF);

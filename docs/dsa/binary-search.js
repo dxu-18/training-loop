@@ -47,11 +47,11 @@
   const ORD = ["PartialOrd"];
   const seg = [["A", "Arr"], ["lo", "int"], ["hi", "int"]];
   const FNS = {
-    is_sorted: { params: seg, ret: "bool", owner: O },
-    is_in: { params: [...seg, ["x", "Tref"]], ret: "bool", owner: O },
-    all_smaller: { params: [...seg, ["x", "Tref"]], ret: "bool", owner: O },
-    all_bigger: { params: [...seg, ["x", "Tref"]], ret: "bool", owner: O },
-    all_at_least: { params: [...seg, ["x", "Tref"]], ret: "bool", owner: O },
+    is_sorted: { params: seg, ret: "bool", owner: O, contract: true },
+    is_in: { params: [...seg, ["x", "Tref"]], ret: "bool", owner: O, contract: true },
+    all_smaller: { params: [...seg, ["x", "Tref"]], ret: "bool", owner: O, contract: true },
+    all_bigger: { params: [...seg, ["x", "Tref"]], ret: "bool", owner: O, contract: true },
+    all_at_least: { params: [...seg, ["x", "Tref"]], ret: "bool", owner: O, contract: true },
     binsearch: { params: [["A", "Arr"], ["n", "int"], ["x", "Tref"]], ret: "index", owner: O, bounds: ORD },
     binsearch_rec: { params: [...seg, ["x", "Tref"]], ret: "index", owner: O, bounds: ORD },
     lower_bound: { params: [["A", "Arr"], ["n", "int"], ["x", "Tref"]], ret: "int", owner: O, bounds: ORD },
@@ -142,6 +142,7 @@
   function steps(o) {
     const fn = (name, body, headerSay) => ({ name, steps: body(), headerSay });
     const r = rec(o);
+    const on = C.contractsOn(o);
     return [
       { id: "sorted", title: "Sorted arrays and their contracts",
         goal: "Binary search works on a **sorted** array `A`. A **segment** `A[lo, hi)` is the elements from index `lo` up to, not including, `hi`: " +
@@ -155,14 +156,15 @@
         fns: [fn("all_smaller", allSmaller, "Write {fn:all_smaller}."), fn("all_bigger", allBigger, "Write {fn:all_bigger}.")],
         tests: ["sorted", "invariant"] },
       { id: "binsearch", title: "Binary search",
-        goal: "{fn:binsearch(A, n, x)} returns an index `i` with `A[i] == x`, or -1 if `x` isn't in `A[0, n)`. Compare the middle element with `x` and keep the half where `x` can be: " +
+        goal: (on ? "" : "Binary search works on a **sorted** array `A`; `A[lo, hi)` is the segment from `lo` up to, not including, `hi`. ") +
+          "{fn:binsearch(A, n, x)} returns an index `i` with `A[i] == x`, or -1 if `x` isn't in `A[0, n)`. Compare the middle element with `x` and keep the half where `x` can be: " +
           "the segment halves every time, so O(log n)." + (r ? " Recursively: {fn:binsearch_rec(A, lo, hi, x)} searches [`lo`, `hi`) and calls itself on one half; {fn:binsearch} starts it on the whole array." : ""),
         fns: r ? [fn("binsearch_rec", binsearchRec, "Write {fn:binsearch_rec}, which searches the segment [`lo`, `hi`)."), fn("binsearch", binsearchWrap, "Write {fn:binsearch}, which searches the whole array.")]
           : [fn("binsearch", binsearchIter, "Write the header: {fn:binsearch} takes the array, its length and `x`, and returns an index.")],
         tests: ["sorted", "invariant", "binsearch"] },
       { id: "lower_bound", title: "Lower bound",
         goal: "{fn:lower_bound(A, n, x)} returns the first index whose element is at least `x`: where `x` is, or where it would be inserted to keep `A` sorted (`n` if every element is smaller). " +
-          "With duplicates it finds the first copy. The invariant becomes `A[0, lo) < x <= A[hi, n)`, so write {fn:all_at_least} first.",
+          "With duplicates it finds the first copy." + (on ? " The invariant becomes `A[0, lo) < x <= A[hi, n)`, so write {fn:all_at_least} first." : " The segment keeps `A[0, lo) < x <= A[hi, n)`."),
         fns: [fn("all_at_least", allAtLeast, "Write {fn:all_at_least}."),
           ...(r ? [fn("lower_bound_rec", lowerRec, "Write {fn:lower_bound_rec}."), fn("lower_bound", lowerWrap, "Write {fn:lower_bound}.")]
             : [fn("lower_bound", lowerIter, "Write {fn:lower_bound}.")])],
@@ -275,6 +277,7 @@
   const DEF = {
     id: "binary-search", num: "13.01", title: "Binary search", heading: "Build binary search, step by step", diagramLabel: "Your search",
     OPTIONS, DEFAULTS, FNS, STRUCTS: {}, describe, complexity, diagram, steps, handlers, testGroups, refFns, problem,
+    CONTRACT_OPS: ["is_sorted", "is_in", "all_smaller", "all_bigger", "all_at_least"],
     _internals: { isSorted, all },   // (the sorting tutorials reuse them)
   };
   const tutorial = C.make(DEF);

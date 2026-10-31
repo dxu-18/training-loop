@@ -89,7 +89,7 @@ async function runPythonBatch(jobs) {
       `def alarm(*_): raise TimeoutError("time limit")\nsignal.signal(signal.SIGALRM, alarm)\n` +
       `def one(j):\n    signal.setitimer(signal.ITIMER_REAL, 5)\n    try: return json.loads(dsa_run(j["user"], j["tests"]))\n    finally: signal.setitimer(signal.ITIMER_REAL, 0)\n` +
       `jobs = json.load(open(${JSON.stringify(join(dir, "jobs.json"))}))\nprint(json.dumps([one(j) for j in jobs]))\n`;
-    const r = await sh(PYTHON, ["-c", script], { timeout: 600000 });
+    const r = await sh(PYTHON, ["-c", script], { timeout: 1800000 });
     if (r.code) throw new Error(`python failed: ${r.stderr}`);
     return JSON.parse(r.stdout);
   } finally {
@@ -112,7 +112,20 @@ function verdict(res, expected) {
   return `line ${cmp.line + 1}: expected ${JSON.stringify(cmp.expected)}, got ${JSON.stringify(cmp.got)}\n${(res.stderr || "").slice(0, 2000)}`;
 }
 
+// every page a tutorial can show, for every combination of options: steps, final problem, complexity, diagram
+function renderAll() {
+  let n = 0;
+  for (const t of Object.values(TUTORIALS)) {
+    for (const o of combos(t)) {
+      t.render(o); t.problem(o); t.complexity(o); t.diagram(o); t.describe(o);
+      n++;
+    }
+  }
+  console.log(`rendered ${n} option combinations`);
+}
+
 async function selftest() {
+  renderAll();
   const jobs = [];
   for (const [name, t] of Object.entries(TUTORIALS)) {
     for (const o of combos(t)) {
@@ -182,7 +195,10 @@ async function mutants() {
       }
     }
   }
-  const res = await runPythonBatch(jobs.map((j) => j.prog));
+  // many mutants loop forever until their 5 s alarm: run them in chunks, several interpreters at once
+  const chunks = [];
+  for (let i = 0; i < jobs.length; i += 150) chunks.push(jobs.slice(i, i + 150).map((j) => j.prog));
+  const res = (await pool(chunks, Math.max(2, cpus().length - 2), (c) => runPythonBatch(c))).flat();
   const survivors = jobs.filter((j, k) => res[k].compiled && RUN.compare(j.expected, res[k].stdout).ok && !res[k].stderr);
   for (const s of survivors) console.log(`SURVIVED ${JSON.stringify(s.o)} ${s.fn}: dropping "${s.removed}"`);
   console.log(`${jobs.length} mutants, ${survivors.length} survived`);

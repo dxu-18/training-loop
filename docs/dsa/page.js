@@ -65,6 +65,8 @@
     const meta = LIST.find((x) => x.id === id);
     if (!t || !meta) return false;
     const s = tstate(id);
+    // tutorials begun before the Contracts option existed were written with contracts: keep them that way
+    if (s.opts && s.phase !== "setup" && !s.opts.contracts) { s.opts.contracts = "on"; save(); }
     page = { id, t, s, meta, editor: null, busy: false, token: {} };
     document.title = `${meta.num} ${meta.title} · training-loop`;
     if (s.phase === "setup") renderSetup();
@@ -81,7 +83,7 @@
       <span class="crumb"><span class="m-id">${esc(meta.num)}</span>${esc(meta.title)}</span>${summary}
       <span class="bar-right">${chip(page.id)}${s.phase === "setup" ? "" : '<button class="btn small reset">Reset</button>'}</span></div>`;
   }
-  const optSummary = (t, o) => t.OPTIONS.map((x) => x.choices.find(([v]) => v === o[x.id])[1]).join(" · ");
+  const optSummary = (t, o) => t.OPTIONS.map((x) => (x.summary ? x.summary[o[x.id]] : x.choices.find(([v]) => v === o[x.id])[1])).join(" · ");
 
   function wireBar() {
     const r = $(".reset");

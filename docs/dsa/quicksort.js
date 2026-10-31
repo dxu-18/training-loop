@@ -45,9 +45,9 @@
   const O = "Quicksort";
   const seg = [["lo", "int"], ["hi", "int"]];
   const FNS = {
-    is_sorted: { params: [["A", "Arr"], ...seg], ret: "bool", owner: O },
-    all_at_most: { params: [["A", "Arr"], ...seg, ["x", "Tref"]], ret: "bool", owner: O },
-    all_bigger: { params: [["A", "Arr"], ...seg, ["x", "Tref"]], ret: "bool", owner: O },
+    is_sorted: { params: [["A", "Arr"], ...seg], ret: "bool", owner: O, contract: true },
+    all_at_most: { params: [["A", "Arr"], ...seg, ["x", "Tref"]], ret: "bool", owner: O, contract: true },
+    all_bigger: { params: [["A", "Arr"], ...seg, ["x", "Tref"]], ret: "bool", owner: O, contract: true },
     swap: { params: [["A", "ArrMut"], ["i", "int"], ["j", "int"]], ret: "void", owner: O },
     partition: { params: [["A", "ArrMut"], ["lo", "int"], ["pi", "int"], ["hi", "int"]], ret: "int", owner: O, bounds: ["PartialOrd"] },
     quicksort: { params: [["A", "ArrMut"], ...seg], ret: "void", owner: O, bounds: ["PartialOrd"] },
@@ -111,7 +111,8 @@
           fn("all_at_most", allAtMost, "Write {fn:all_at_most}."), fn("all_bigger", allBigger, "Write {fn:all_bigger}.")],
         contractNote: true, tests: ["contracts"] },
       { id: "swap", title: "Swap",
-        goal: "Quicksort moves elements around with {fn:swap(A, i, j)}, which exchanges `A[i]` and `A[j]`.",
+        goal: (C.contractsOn(o) ? "" : "Quicksort sorts `A[lo, hi)` in place: pick a **pivot**, **partition** the segment so smaller elements come before the pivot and bigger ones after, then sort both sides. ") +
+          "It moves elements around with {fn:swap(A, i, j)}, which exchanges `A[i]` and `A[j]`.",
         fns: [fn("swap", swap, "Write {fn:swap}.")], tests: ["contracts", "swap"] },
       { id: "partition", title: "Partition",
         goal: "{fn:partition(A, lo, pi, hi)} rearranges `A[lo, hi)` around the pivot `A[pi]` and returns the pivot's new index `mid`: everything in `A[lo, mid)` is at most the pivot, everything in `A[mid + 1, hi)` is bigger. " +
@@ -239,6 +240,7 @@
   const DEF = {
     id: "quicksort", num: "13.03", title: "Quicksort", heading: "Build quicksort, step by step", diagramLabel: "Your partition",
     OPTIONS, DEFAULTS, FNS, STRUCTS: {}, describe, complexity, diagram, steps, handlers, testGroups, refFns, problem,
+    CONTRACT_OPS: ["is_sorted", "all_at_most", "all_bigger"],
   };
   const tutorial = C.make(DEF);
   if (typeof module !== "undefined" && module.exports) module.exports = tutorial;

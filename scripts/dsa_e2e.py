@@ -99,7 +99,9 @@ def step_count(pg):
 
 
 def start(pg, tid, opts):
-    """Open a tutorial from its options page (resetting it first) and begin with these options."""
+    """Open a tutorial from its options page (resetting it first) and begin with these options (contracts on unless
+    they say otherwise)."""
+    opts = {"contracts": "on", **opts}
     TID[0] = tid
     pg.goto(BASE + f"/#/dsa/{tid}")
     pg.wait_for_selector(".begin, .reset")
@@ -296,7 +298,7 @@ try:
             pg.wait_for_selector(".begin, .reset")
             if pg.locator(".reset").count():
                 pg.click(".reset"); pg.click(".modal .confirm"); pg.wait_for_selector(".begin")
-            choose(pg, {"lang": lang, **opts})
+            choose(pg, {"lang": lang, "contracts": "on", **opts})
             pg.click(".begin")
             pg.wait_for_selector(".check")
             if lang == "cpp":
@@ -447,6 +449,35 @@ try:
             start(pg, "hash-tables", {"lang": lang, "keys": keys, "method": method})
             if run_all_steps(pg, f"ht-{lang}"):
                 finish(pg, f"ht-{lang}")
+
+        # ---- the Contracts option: on every tutorial, off by default; it changes the steps, the boxes and the final
+        for tid in ("binary-search", "mergesort", "quicksort", "linked-lists", "stacks", "queues", "unbounded-arrays", "hash-tables"):
+            pg.goto(BASE + f"/#/dsa/{tid}")
+            pg.wait_for_selector(".begin, .reset")
+            if pg.locator(".reset").count():
+                pg.click(".reset"); pg.click(".modal .confirm"); pg.wait_for_selector(".begin")
+            check(pg.locator(".opt[data-opt='contracts'] button[data-v='off'].on").count() == 1, f"{tid}: Contracts option, off by default")
+        TID[0] = "binary-search"
+        pg.goto(BASE + "/#/dsa/binary-search")
+        pg.wait_for_selector(".begin")
+        n_off = pg.locator(".dsa-preview li").count()
+        has_box = lambda: pg.locator(".cx[data-id='contracts']").count()
+        off_box = has_box()
+        choose(pg, {"contracts": "on"})
+        check(n_off == 2 and pg.locator(".dsa-preview li").count() == 4 and off_box == 0 and has_box() == 1,
+              "binary search: 2 steps without contracts, 4 with (and the contracts box only with them)")
+        start(pg, "binary-search", {"lang": "cpp", "type": "generic", "style": "iterative", "contracts": "off"})
+        check(pg.locator(".outline li").count() == 2 and "#include <vector>" in pg.inner_text(".coach"), "no contracts: the setup moves into the first remaining step")
+        if run_all_steps(pg, "bs-nc-cpp"):
+            pg.wait_for_selector(".submit")
+            prob = pg.inner_text(".problem")
+            check("isSorted" not in prob and "is_sorted" not in prob and "Check the contracts" not in prob, "no contracts: the final problem doesn't ask for them")
+            finish(pg, "bs-nc-cpp")
+        for tid, lang, opts in (("hash-tables", "rs", {"keys": "string", "method": "chain"}), ("quicksort", "java", {"type": "int", "pivot": "middle"}),
+                                ("queues", "py", {"type": "generic", "impl": "stacks"}), ("unbounded-arrays", "cpp", {"type": "generic", "grow": "half", "shrink": "quarter"})):
+            start(pg, tid, {"lang": lang, "contracts": "off", **opts})
+            if run_all_steps(pg, f"{tid}-nc-{lang}"):
+                finish(pg, f"{tid}-nc-{lang}")
 
         # ---- phone layout
         ph = b.new_page(viewport={"width": 390, "height": 844})
