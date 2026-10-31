@@ -6302,52 +6302,68 @@ The +4 row is there so the learner sees why geometric growth matters.
 
 ### 13.08 Hash tables
 
-**Interface:**
+**Interface (key → int value):**
 
-| Function | Notes |
+| Function | Behaviour |
 |---|---|
-| `ht_new(capacity)` | |
+| `ht_hash(k, m)` | |
 | `is_ht(H)` | |
-| `ht_lookup(H, k) -> v or null` | |
-| `ht_insert(H, k, v)` | overwrites |
-| `ht_delete(H, k)` | |
 | `ht_size(H)` | |
+| `ht_contains(H, k)` | |
+| `ht_get(H, k)` | requires the key |
+| `ht_insert(H, k, v)` | inserts or updates |
+| `ht_delete(H, k) -> bool` | |
+| `ht_resize(H, new_capacity)` | |
 
-The hash is a polynomial hash for strings and a multiplicative hash for ints, reduced with `% capacity` after making it non-negative.
+Chaining adds `ht_find(H, k) -> entry`. Open addressing adds `ht_probe(h, t, m)` and `ht_find_slot(H, k) -> slot or -1`.
+
+**Keys: int or string, instead of generic.** A hash table needs a concrete hash function, and writing it is the first step.
+* int: the key reduced into [0, m), never negative. Python `%`, C++ `((k % m) + m) % m`, Java `Math.floorMod`, Rust `rem_euclid`.
+* string: `h = (h * 31 + code) % m`, character by character. It's reduced at every step, so there's no overflow and the same numbers come out in every language.
+
+Because the hash gives the same numbers everywhere, the tests can print the exact table layout.
 
 **Options: collision resolution.**
+* **Separate chaining:**
+  * Each bucket is a linked list of entries `{key, value, next}`, and new entries go at the front.
+  * The table doubles when `size > capacity`.
+  * `is_ht` checks that every entry sits in the bucket its key hashes to, and that there are exactly `size` of them.
+* **Open addressing, linear probing:** slot `(h + t) % m`.
+* **Open addressing, quadratic probing:** slot `(h + t(t + 1)/2) % m`. These triangular steps reach every slot when the capacity is a power of two, and every capacity here is (it starts at 8 and doubles).
 
-* **Separate chaining (buckets):**
-  * Each slot holds a linked list of (key, value).
-  * Resize ×2 when load factor n/m > 1 and rehash every entry.
-  * Expected time is O(1 + α).
-* **Open addressing, linear probing:**
-  * Probe `h, h+1, h+2, …` (mod m).
-  * Resize when α > 1/2.
-  * Delete with **tombstones**, which are reclaimed on resize. The alternative is backward-shift deletion, the most efficient choice for linear probing.
-  * Primary clustering is shown on the complexity boxes.
-* **Open addressing, quadratic probing:**
-  * Probe `h + i²`, or `h + (i² + i)/2` with a power-of-two m. The triangular-number form visits every slot.
-  * With prime m it finds a free slot whenever α ≤ 1/2.
-  * There is no primary clustering.
+How both open-addressing versions work:
+* One entry per slot.
+* `delete` leaves a **tombstone**: a special entry, `H.tomb`. That way, keys that probed past the slot are still found.
+* `used` counts entries plus tombstones. The table doubles when `used * 2 > capacity`.
+* Resizing rehashes the entries, drops the tombstones and resets `used`.
+* `is_ht` checks that searching for each entry's key finds it at its own slot (reachable, and no earlier copy of the key), that the counts match, and that at most half the slots are in use.
 
 **Complexity:**
-
-| | Expected | Worst case |
-|---|---|---|
-| insert, lookup, delete | O(1) (bounded load factor) | O(n) (everything collides) |
-| resize | amortized O(1) per insert | |
-| min, ordered iteration | O(n): no order | |
+* insert, lookup and delete: expected O(1); worst case O(n), all keys colliding.
+* resize: O(n), so O(1) amortized per insert.
+* min or sorted order: O(n), because there's no order.
+* The boxes explain primary clustering for linear probing, and why quadratic probing clusters less.
 
 **Steps:**
 
-1. Entries and the table.
-2. Contracts: every key sits in the chain or probe run its hash says, and the size matches.
-3. Hash functions.
-4. `lookup`.
-5. `insert`, with update-in-place.
-6. `resize`.
-7. `delete`, with tombstones or chain unlinking.
+1. The table and the hash function. Open addressing adds `ht_probe`.
+2. The contract: `is_ht` and `ht_size`. Open addressing writes `ht_find_slot` first, because the invariant uses it.
+3. Lookup: chaining's `ht_find`, then `ht_contains` and `ht_get`.
+4. `ht_resize`.
+5. `ht_insert`.
+6. `ht_delete`.
+
+**Tests.** The checker prints the whole table after every change: the non-empty buckets in chain order, or every slot (`_` for empty, `X` for a tombstone), with `size`, `used` and `capacity`.
+
+The broken tables the contract must reject:
+* the size one too big;
+* a capacity that doesn't match the table;
+* a chain moved to the wrong bucket;
+* a chain that loops back on itself;
+* an entry cut off from its home slot;
+* an uncounted tombstone.
+
+A run that creates tombstones and then forces a resize checks that `used` resets.
 
 ### 13.09 Binary search trees
 

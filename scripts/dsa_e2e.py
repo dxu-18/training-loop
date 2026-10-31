@@ -172,11 +172,11 @@ try:
         check(any("part iii" in h.lower() and "data structures" in h.lower() for h in heads), "home has Part III · Data Structures & Algorithms")
         row = pg.locator("a.topic[href='#/dsa/linked-lists']")
         check(row.count() == 1 and "not started" in row.inner_text().lower(), "Linked lists row says Not Started")
-        check(pg.locator(".part:last-child .topic.soon").count() == 5, "the other 5 tutorials say soon")
+        check(pg.locator(".part:last-child .topic.soon").count() == 4, "the other 4 tutorials say soon")
         first = pg.locator(".part:last-child li").first.inner_text()
         check("13.01" in first and "Binary search" in first, "Part III starts with 13.01 Binary search")
         check("Mergesort" in pg.inner_text(".part:last-child") and "Merge sort" not in pg.inner_text(".part:last-child"), "Mergesort is one word")
-        for tid in ("binary-search", "mergesort", "quicksort", "stacks", "queues", "unbounded-arrays"):
+        for tid in ("binary-search", "mergesort", "quicksort", "stacks", "queues", "unbounded-arrays", "hash-tables"):
             r = pg.locator(f"a.topic[href='#/dsa/{tid}']")
             check(r.count() == 1 and "not started" in r.inner_text().lower(), f"{tid}: live and Not Started")
         pg.screenshot(path=str(OUT / "home.png"), full_page=True)
@@ -427,6 +427,26 @@ try:
             start(pg, "unbounded-arrays", {"lang": lang, "type": typ, "grow": grow, "shrink": shrink})
             if run_all_steps(pg, f"uba-{lang}"):
                 finish(pg, f"uba-{lang}")
+
+        # ---- 13.08 Hash tables: the collision method changes the boxes and the diagram; four languages
+        pg.goto(BASE + "/#/dsa/hash-tables")
+        pg.wait_for_selector(".begin")
+        TID[0] = "hash-tables"
+        choose(pg, {"method": "chain", "keys": "int"})
+        check("H.table[" in pg.inner_text(".diagram") and big("cluster") == "chains", "chaining: buckets in the diagram, collisions share chains")
+        choose(pg, {"method": "linear"})
+        check(big("cluster") == "yes" and "tombstone" in pg.inner_text(".cx[data-id='delete']"), "linear probing: primary clustering, tombstones")
+        choose(pg, {"method": "quadratic"})
+        check(big("cluster") == "less", "quadratic probing: less clustering")
+        pg.screenshot(path=str(OUT / "ht-setup.png"), full_page=True)
+        start(pg, "hash-tables", {"lang": "py", "keys": "int", "method": "chain"})
+        check(pg.locator(".outline li").count() == 6, "hash tables: 6 steps")
+        if run_all_steps(pg, "ht-py", wrong_at=5):
+            finish(pg, "ht-py")
+        for lang, keys, method in (("java", "string", "linear"), ("rs", "string", "quadratic"), ("cpp", "int", "chain")):
+            start(pg, "hash-tables", {"lang": lang, "keys": keys, "method": method})
+            if run_all_steps(pg, f"ht-{lang}"):
+                finish(pg, f"ht-{lang}")
 
         # ---- phone layout
         ph = b.new_page(viewport={"width": 390, "height": 844})

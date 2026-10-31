@@ -566,6 +566,49 @@ requires `size <= limit`, as in 15-122.
   - Python with a wrong step;
   - Rust generic (×1.5, ½), Java generic (+4, never) and C++.
 
+### Session 17 (2026-10-31): hash tables
+Request: "go ahead and do hash tables".
+
+**13.08 Hash tables** (`docs/dsa/hash-table.js`): key → int value.
+- Options:
+  - language;
+  - **keys**: int or string, instead of int/generic, because a hash table needs a concrete hash function;
+  - **collisions**: separate chaining, linear probing or quadratic probing.
+- The hash function is written by hand: the key mod m, never negative, or a polynomial `h * 31 + code` reduced at
+  every step. It gives the same numbers in every language, so the tests print the exact table and check it against a
+  JavaScript model.
+- Chaining: chains of `Entry {key, value, next}`, front insertion, doubling when `size > capacity`.
+- Open addressing: tombstones (`H.tomb`), `used` counting entries plus tombstones, doubling when
+  `used * 2 > capacity`, capacity a power of two (so the triangular quadratic steps reach every slot).
+- Steps:
+  1. table and hash (and `ht_probe`);
+  2. contract (`is_ht`, `ht_size`; `ht_find_slot` first for open addressing);
+  3. lookup;
+  4. resize;
+  5. insert;
+  6. delete.
+
+**More in `lang.js` and `common.js`.**
+- A tutorial can name its own node type (`Entry` with `key`, `value`, `next`) and its own element type (string keys,
+  not generic) through `ctxExtra`.
+- `new(k, v)` with several arguments.
+- `allocn(n)`: a block of null pointers.
+- Functions returning an entry (ret `N`).
+- A value kind `V` (Rust `i32`, where positions are `usize`).
+- Rust casts an index (`isize`, maybe -1) for indexing and comparisons.
+- Java compares string keys with `equals`.
+
+**Mutation check.**
+- It first left 18 mutants alive. Strengthening the tests caught them:
+  - the open-addressing invariant became "`ht_find_slot` finds each entry at its own slot" (simpler, and it also
+    catches duplicate keys);
+  - a capacity that doesn't match an empty table;
+  - a resize after tombstones, checking that `used` resets;
+  - the cut-off-entry break, which is now always generated.
+- Steps marked `noMutate` are skipped: Python's implicit `return None`, and a final `return -1` that a half-empty
+  table can't reach.
+- 252 mutants, all caught; 168 runs, all passing.
+
 ### Open problem: Hugging Face in the browser
 Pyodide has no `transformers`. Options: extend the shim idea (a tiny tokenizer/pipeline layer over torch-lite),
 AST and pattern checks, or an optional "run locally" mode. **Not decided yet.**
@@ -603,7 +646,7 @@ docs/                 the static website (GitHub Pages root): app.js (pages), te
                       every tutorial shares: rendering, reference programs, tests), run.js (Compiler Explorer + Pyodide
                       runner, the tests around the user's file, output diff), page.js (setup, steps with the typing
                       coach, final, status, reset); one file per tutorial: binary-search.js, mergesort.js, quicksort.js, linked-list.js,
-                      stack.js, queue.js, unbounded-array.js
+                      stack.js, queue.js, unbounded-array.js, hash-table.js
 scripts/dsa_selftest.mjs  every tutorial reference x option x language, step by step (+ --mutants)
 scripts/dsa_e2e.py        browser click-through of Part III (Compiler Explorer answered by local compilers)
 ```
@@ -637,7 +680,7 @@ Legend: ✅ done · 🟡 partial · ⬜ not started
 | 10 | SQL | ⬜ | sqlite3 exec | |
 | 11 | LaTeX | ⬜ | normalized / KaTeX | |
 | 12 | Docker | ⬜ | command / Dockerfile | |
-| 13 | Data Structures & Algorithms (Part III) | 🟡 **13.01–13.07 live** (binary search, mergesort, quicksort, linked lists, stacks, queues, unbounded arrays; all options × int/generic × Python/C++/Java/Rust); 13.08–13.12 researched in COMP_GUIDE §13, "soon" | Pyodide (Python), Compiler Explorer (C++/Java/Rust); line-by-line output diff | session 11 |
+| 13 | Data Structures & Algorithms (Part III) | 🟡 **13.01–13.08 live** (binary search, mergesort, quicksort, linked lists, stacks, queues, unbounded arrays, hash tables; all options × element types × Python/C++/Java/Rust); 13.09–13.12 researched in COMP_GUIDE §13, "soon" | Pyodide (Python), Compiler Explorer (C++/Java/Rust); line-by-line output diff | session 11 |
 
 ### What exists (as of session 5; the Bash topic and its terminal are described in §2, sessions 7–8)
 - `generator/`: core (tiers, registry, Instructions), grader (answer comparison, AST checks,
