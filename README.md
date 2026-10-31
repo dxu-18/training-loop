@@ -17,8 +17,8 @@ the other topics are listed as "soon". Topics come from [COMP_GUIDE.md](COMP_GUI
 **Part III, Data Structures & Algorithms**, is different: step-by-step tutorials that walk you through building each
 structure from a blank file, in Python, C++, Java or Rust. Choose the options (say, a circular doubly linked list with a
 dummy node, and whether to also write contracts) and the complexity boxes update. Then follow concrete steps, each checked before the next opens, and
-finally build it again with no hints. Binary search, mergesort, quicksort, linked lists, stacks, queues, unbounded arrays, hash tables and binary search trees
-(plain, AVL, splay) are live; Python runs in the browser, while C++, Java and Rust
+finally build it again with no hints. All twelve are live: binary search, mergesort, quicksort, linked lists, stacks, queues, unbounded arrays, hash tables,
+binary search trees (plain, AVL, splay), dictionaries & sets, heaps and priority queues; Python runs in the browser, while C++, Java and Rust
 are compiled and run on [Compiler Explorer](https://godbolt.org).
 
 Progress is kept in your browser. **Download** (top right of the main page) saves it to a `.tlsave` file, and

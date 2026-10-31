@@ -6418,83 +6418,166 @@ A run that creates tombstones and then forces a resize checks that `used` resets
 
 ### 13.10 Dictionaries and sets
 
+**What it teaches.** A dictionary is an *interface* (insert, look up, delete) with interchangeable implementations. 13.08 and 13.09 built the structures; this tutorial builds the abstraction on top of them:
+* sets as dictionaries whose values don't matter;
+* set operations;
+* a client that only uses the interface.
+
+**Options:**
+* **Built on:** a hash table (separate chaining) or a plain binary search tree.
+* **Keys:** int or string. Values are ints.
+* Language and Contracts.
+
+**Representation:**
+
+| Built on | Nodes | Dictionary `H` | Order |
+|---|---|---|---|
+| Hash table | `Entry {key, value, next}` | `{size, capacity, table}`, capacity 8, doubling when `size > capacity` | bucket by bucket, each chain from the front |
+| BST | `Node {key, value, left, right}` | `{root, size}` | in order: sorted |
+
+Hashing is 13.08's: the key mod m, or `h = (h * 31 + c) % m` for strings.
+
 **Interface:**
 
-* Dictionary `H`: `dict_insert(H, k, v)`, `dict_lookup(H, k) -> v or null`, `dict_delete(H, k)`, `dict_size`.
-* Set `S`: `set_add(S, x)`, `set_contains(S, x)`, `set_remove(S, x)`.
-* Set operations: `union`, `intersection`, `difference`.
+| Function | Behaviour | Hash table | BST |
+|---|---|---|---|
+| `dict_size(H)` | the number of entries | O(1) | O(1) |
+| `dict_find(H, k)` | the key's entry or node, or null | O(1) expected | O(h), via `node_find` |
+| `dict_contains(H, k)` | true if the key is there | O(1) expected | O(h) |
+| `dict_lookup(H, k)` | the key's value; requires the key | O(1) expected | O(h) |
+| `dict_print(H)` | print every pair as `{k=v, k=v}` | bucket order | sorted, via `node_print` |
+| `dict_insert(H, k, v)` | update the value, or add the pair | uses `dict_resize` | uses `node_insert` |
+| `dict_delete(H, k) -> bool` | remove the key | unlink | `node_min`, `node_delete_min`, `node_delete` |
 
-**Options: what it's built on.**
+`dict_contains`, `dict_lookup`, every set function and the client are **the same code** for both implementations: they only call `dict_find` and the other interface functions.
 
-* **Hash table** (13.08): expected O(1) operations, no order.
-* **Binary search tree** (13.09, plain or AVL): O(log n) operations with order. This adds `min`, `successor`, range queries and sorted iteration.
+**Sets.** `Set {dict}` wraps a dictionary, and its elements are the keys:
+* `set_add(S, x)` inserts `x` with value 0;
+* `set_contains`, `set_remove` and `set_size` forward to the dictionary.
 
-The complexity boxes show this trade-off directly. The tutorial wraps the earlier structure behind a client interface (the abstraction boundary), so the client code is the same for both options.
+**Set operations** fill a fresh result set `R`:
+* `set_union(R, A, B)`: `add_all(R, A)`, then `add_all(R, B)`.
+* `set_intersection(R, A, B)`: the keys of `A` that `B` has.
+* `set_difference(R, A, B)`: the keys of `A` that `B` doesn't have.
+
+For a hash table these walk `A`'s buckets. For a BST they recurse over `A`'s nodes in preorder (`node_add_all`, `node_add_common`, `node_add_missing`).
+
+**Client.** `tally(H, A)` counts how many times each key appears in the array `A`: with string keys, word counts. In Java it lives in a `Client` class.
+
+**Contracts:**
+* Hash table: 13.08's `is_dict`.
+* BST: 13.09's `is_ordered` and `node_size`.
 
 **Steps:**
+1. The table or tree.
+2. Contracts.
+3. Lookup and printing.
+4. Insert.
+5. Delete.
+6. Sets.
+7. Set operations.
+8. The client.
 
-1. The interface and its contracts, written first.
-2. Implement it on the chosen structure.
-3. Sets as dictionaries without values.
-4. Set operations: union, intersection, difference.
-5. A client: word counts.
+**Complexity boxes:**
+
+| Operation | Hash table | BST |
+|---|---|---|
+| Insert, lookup, delete | O(1) expected | O(h) |
+| Sorted output | O(n log n) | O(n) |
+| Smallest key | O(n) | O(h) |
+| Set operations | O(n + m) | O((n + m)·h) |
+| Counting n keys | O(n) | O(n·h) |
+
+**Tests:**
+* The checker prints the bucket layout or the tree's `k=v` shape after every change, and every set in iteration order.
+* The JavaScript models replay both structures, including the preorder that set operations add in.
+* Broken dictionaries: the size; the capacity, alone on an empty table; a chain in the wrong bucket; a looping chain; the two ordering bounds.
+* BST deletes cover every kind of node. They include a node whose only child has a child of its own, the one case that tells "the child takes its place" apart from "copy in the successor".
 
 ### 13.11 Heaps
+
+**Representation.** A complete binary tree stored row by row in an array, as in CMU 15-122:
+* `Heap {size, capacity, data}`;
+* fixed capacity: `Heap(capacity)` makes an empty heap;
+* the shape needs no pointers.
+
+**Options:**
+* **Order:** min-heap (parent ≤ children) or max-heap (parent ≥ children).
+* **Indexing:**
+  * 0-indexed: children `2i + 1` and `2i + 2`, parent `(i - 1) / 2`;
+  * 1-indexed, as in 15-122 and CLRS: slot 0 unused, children `2i` and `2i + 1`, parent `i / 2`.
+* int or generic elements (`Comparable` in Java, `PartialOrd` in Rust), language and Contracts.
 
 **Interface:**
 
 | Function | Behaviour | Time |
 |---|---|---|
-| `heap_new(capacity)` | | |
-| `is_heap(H)` | | |
-| `heap_add(H, x)` | | O(log n) |
-| `heap_peek(H)` | | O(1) |
-| `heap_rem(H) -> x` | | O(log n) |
-| `heapify(A)` | | O(n) |
-| `heapsort(A)` | | O(n log n) |
-
-**Representation.** An array-based complete binary tree. With 1-indexing (15-122), the children of i are `2i` and `2i+1` and its parent is `i/2`. With 0-indexing, the children are `2i+1` and `2i+2` and the parent is `(i-1)/2`.
-
-**Invariant:**
-
-* The shape: the elements occupy `[1, next)`.
-* The **ordering invariant:** the parent ≤ the child (a min-heap).
-
-**Options:**
-
-* Min-heap or max-heap, or generic with a comparison function.
-* 0- or 1-indexed.
-* An unbounded backing array (13.07) or a fixed capacity.
+| `heap_size(H)`, `heap_full(H)` | | O(1) |
+| `parent(i)`, `left(i)`, `right(i)` | the index arithmetic, the only place the indexing option shows | O(1) |
+| `ok_above(H, i, j)` | may the element at `i` sit above the one at `j`? (`<=` or `>=`: the only place min/max shows) | O(1) |
+| `swap(H, i, j)` | | O(1) |
+| `is_heap(H)` | shape (size within capacity, data of the right length) and order (each element may sit below its parent) | O(n) |
+| `sift_up(H, i)`, `heap_add(H, x)` | add at the end, sift up; requires room | O(log n) |
+| `heap_peek(H)` | the root | O(1) |
+| `sift_down(H, i)`, `heap_rem(H)` | the last element moves to the root and sifts down, swapping with the right child when it may sit above the left | O(log n) |
+| `heapify(H)` | bottom-up: sift down every element with children, from the last back to the root | O(n) |
+| `heapsort(A)` | heapify a copy, then remove into `A` (from the back for a max-heap), so the result is always ascending | O(n log n) |
 
 **Steps:**
+1. The heap and its index functions.
+2. Order and swap.
+3. Contracts.
+4. Sift up and add.
+5. Sift down and remove.
+6. Heapify and heapsort.
 
-1. Struct and contracts. `is_heap` checks every parent/child pair.
-2. `sift_up`.
-3. `add`.
-4. `sift_down`, comparing with the smaller child.
-5. `rem`: move the last element to the root, then sift down.
-6. Bottom-up `heapify`: sift down from n/2 to 1, O(n) in total.
-7. `heapsort`.
+**Generic Java.** The block is made as `(T[]) new Comparable[n]`. The functions that order elements are `<T extends Comparable<T>>`, and they read the array as a `Comparable[]`: an `Object[]` would fail that cast. Accordingly, the checker never indexes `H.data` from its concrete-typed `main`. It writes through its own generic `put(H, i, x)`.
+
+**Tests:**
+* The array after every change.
+* Sift up on an element written past the end without sifting, and sift down on an overwritten root.
+* Heapify on elements written in any order.
+* Heapsort on empty, one-element, duplicate and sorted arrays.
+* Broken heaps: size past capacity (on a full heap, so the order check can't catch it first); a capacity that doesn't match; the root out of order; the last element out of order with its parent.
 
 ### 13.12 Priority queues
 
-**Interface:** `pq_new()`, `pq_add(P, x, priority)`, `pq_peek(P)`, `pq_rem(P)` (highest priority first), `pq_size(P)`, and optionally `pq_decrease_key`.
+**What it is.** Elements are served by priority: the smallest number first (priority 1 before priority 2), and first in, first out among equal priorities.
+* Each element is stored in an **entry** `{data, prio, seq}`. `seq` comes from a counter `P.count` as the entry is added.
+* `before(e, f)` compares the priorities, then the sequence numbers. That makes the queue stable whatever it's built on.
+* Elements are int or generic, and never compared, so `T` needs no bounds.
 
-**Options: the implementation.**
+**Options: what it's built on.**
 
-| Implementation | `pq_add` | `pq_rem` | Notes |
-|---|---|---|---|
-| unsorted array | O(1) | O(n) | |
-| sorted linked list | O(n) | O(1) | |
-| binary heap (13.11) | O(log n) | O(log n) | the optimal general-purpose choice |
-| heap + index map | O(log n) | O(log n) | `decrease_key` also O(log n), as Dijkstra needs |
+| Built on | Add | Peek | Remove | n adds, then n removes |
+|---|---|---|---|---|
+| binary heap (13.11, 0-indexed, ordered by `before`) | O(log n) | O(1) | O(log n) | O(n log n) |
+| sorted linked list | O(n): walk to the entry's place | O(1) | O(1) | O(n²) |
+| unsorted array | O(1) amortized: append | O(n): scan | O(n): scan, then move the last entry into the hole | O(n²) |
 
-The complexity boxes compare all of them.
+The array-based queues start at capacity 4 and double (`pq_grow`). They clear a vacated slot, so no dangling pointer is left behind. Changing a priority (decrease-key, as Dijkstra needs) is O(n) in all three; the box notes that a heap with an index map does it in O(log n).
+
+**Interface:**
+* `before`, `pq_size`, `pq_empty`.
+* `is_pq`:
+  * the heap order, or the list order;
+  * every slot in use holds an entry;
+  * every `seq` is below `count`.
+* `pq_add(P, x, prio)`.
+* `pq_peek(P)` and `pq_rem(P)`, which require a non-empty queue.
+* Helpers:
+  * heap: `pq_swap`, `sift_up` and `sift_down`;
+  * unsorted array: `pq_best(P)`, the index of the entry served first.
 
 **Steps:**
+1. Entries and the queue.
+2. Contracts.
+3. Add.
+4. Peek.
+5. Remove.
 
-1. The interface and contracts.
-2. Elements carry priorities.
-3. Wrap the heap.
-4. Ties: stable order by insertion counter.
-5. A client that merges k sorted lists.
+**Tests:**
+* The array, every slot shown and `_` for empty, or the list after every change.
+* Growth past 4 entries.
+* Equal priorities served first in, first out.
+* Broken queues: the size; a sequence number not from the counter; the capacity; the heap root out of order; the list's first entry out of order; a list that loops back. With a strict order, the loop is caught by the order check.

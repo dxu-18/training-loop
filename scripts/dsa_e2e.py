@@ -6,7 +6,7 @@ Python runs in the page's real Pyodide worker.
 
     python scripts/build.py && python scripts/dsa_e2e.py <screenshot-dir>
 
-Covers: the home page's Part III rows and status labels, options updating the complexity boxes and the diagram,
+Covers: the home page's Part III rows and status labels (all twelve live), options updating the complexity boxes and the diagram,
 every step of the linked-list tutorial in Python, C++, Java and Rust (reference code passes, wrong code fails with the
 first differing line, empty and non-compiling code), Run, the final challenge, Completed, Reset (cancel and confirm),
 reload keeping progress, and the phone layout.
@@ -174,11 +174,12 @@ try:
         check(any("part iii" in h.lower() and "data structures" in h.lower() for h in heads), "home has Part III · Data Structures & Algorithms")
         row = pg.locator("a.topic[href='#/dsa/linked-lists']")
         check(row.count() == 1 and "not started" in row.inner_text().lower(), "Linked lists row says Not Started")
-        check(pg.locator(".part:last-child .topic.soon").count() == 3, "the other 3 tutorials say soon")
+        check(pg.locator(".part:last-child .topic.soon").count() == 0, "every Part III tutorial is live: none says soon")
         first = pg.locator(".part:last-child li").first.inner_text()
         check("13.01" in first and "Binary search" in first, "Part III starts with 13.01 Binary search")
         check("Mergesort" in pg.inner_text(".part:last-child") and "Merge sort" not in pg.inner_text(".part:last-child"), "Mergesort is one word")
-        for tid in ("binary-search", "mergesort", "quicksort", "stacks", "queues", "unbounded-arrays", "hash-tables", "binary-search-trees"):
+        for tid in ("binary-search", "mergesort", "quicksort", "stacks", "queues", "unbounded-arrays", "hash-tables", "binary-search-trees",
+                    "dictionaries-sets", "heaps", "priority-queues"):
             r = pg.locator(f"a.topic[href='#/dsa/{tid}']")
             check(r.count() == 1 and "not started" in r.inner_text().lower(), f"{tid}: live and Not Started")
         pg.screenshot(path=str(OUT / "home.png"), full_page=True)
@@ -232,6 +233,20 @@ try:
               if (p1 !== ts.length) bad.push(`${T.id} ${JSON.stringify(o)} step ${k + 1}: reference reaches ${p1}/${ts.length}`);
               if (p0 !== 0) bad.push(`${T.id} ${JSON.stringify(o)} step ${k + 1}: ${p0} hints done before typing`);
               const lines = after.split("\n");
+              // a function's header isn't done at "def f()" (brackets close themselves) or before its ":" / "{"
+              ts.forEach((t, ti) => {
+                if (!t.fn) return;
+                for (const { text: L } of t.lines) {
+                  const at = lines.findIndex((x) => x.trim() === L.trim());
+                  const w = C.coachWant({ fn: t.fn, lines: [{ text: L, depth: 0 }] }, o.lang)[0];
+                  if (at < 0 || !w || w.count === undefined) continue;   // (the header line itself)
+                  const ind = lines[at].match(/^\s*/)[0];
+                  const q = (line) => C.coachProgress(ts, [...lines.slice(0, at), ind + line].join("\n"), o.lang, new Set()).k;
+                  for (const part of [L.slice(0, L.indexOf("(") + 1) + ")", L.replace(/\s*[:{]\s*$/, "")]) {
+                    if (q(part) > ti) bad.push(`${T.id} ${JSON.stringify(o)} step ${k + 1}: "${part}" already finishes the header hint`);
+                  }
+                }
+              });
               let prev = 0;
               for (let i = 1; i <= lines.length; i++) {
                 const q = C.coachProgress(ts, lines.slice(0, i).join("\n"), o.lang, new Set()).k;
@@ -243,7 +258,7 @@ try:
           }
           return bad;
         }""")
-        check(not bad, "every tutorial x option x language x step: the reference satisfies all its hint bubbles, in order" + (": " + "; ".join(bad[:4]) if bad else ""))
+        check(not bad, "every tutorial x option x language x step: the reference satisfies all its hint bubbles, in order, and a function header's only once it's whole" + (": " + "; ".join(bad[:4]) if bad else ""))
 
         # empty and broken code
         pg.evaluate(SET, "")
@@ -469,8 +484,63 @@ try:
             if run_all_steps(pg, f"bst-{lang}"):
                 finish(pg, f"bst-{lang}")
 
+        # ---- 13.10 Dictionaries & sets: hash table or BST changes the boxes and the diagram; four languages
+        pg.goto(BASE + "/#/dsa/dictionaries-sets")
+        pg.wait_for_selector(".begin")
+        TID[0] = "dictionaries-sets"
+        choose(pg, {"base": "hash", "contracts": "on"})
+        check(big("ops") == "O(1)" and big("sorted") == "O(n log n)" and "H.table" in pg.inner_text(".diagram") and pg.locator(".dsa-preview li").count() == 8,
+              "dictionary on a hash table: O(1), unsorted, buckets in the diagram, 8 steps")
+        choose(pg, {"base": "bst"})
+        check(big("ops") == "O(h)" and big("sorted") == "O(n)" and "H.root" in pg.inner_text(".diagram"), "dictionary on a BST: O(h), sorted for free, a tree in the diagram")
+        pg.screenshot(path=str(OUT / "dict-setup.png"), full_page=True)
+        start(pg, "dictionaries-sets", {"lang": "py", "keys": "int", "base": "hash"})
+        if run_all_steps(pg, "dict-py", wrong_at=4):
+            finish(pg, "dict-py")
+        for lang, keys, base in (("rs", "string", "bst"), ("java", "int", "bst"), ("cpp", "string", "hash")):
+            start(pg, "dictionaries-sets", {"lang": lang, "keys": keys, "base": base})
+            if run_all_steps(pg, f"dict-{lang}"):
+                finish(pg, f"dict-{lang}")
+
+        # ---- 13.11 Heaps: min or max, 0- or 1-indexed; four languages
+        pg.goto(BASE + "/#/dsa/heaps")
+        pg.wait_for_selector(".begin")
+        TID[0] = "heaps"
+        choose(pg, {"order": "min", "index": "0", "contracts": "on"})
+        check(big("heapify") == "O(n)" and "minimum" in pg.inner_text(".cx[data-id='rem']") and pg.locator(".dsa-preview li").count() == 6, "min-heap: remove the minimum, heapify O(n), 6 steps")
+        choose(pg, {"order": "max", "index": "1"})
+        check("maximum" in pg.inner_text(".cx[data-id='rem']") and "2i + 1" in pg.inner_text(".dg-caption"), "max-heap, 1-indexed: remove the maximum, children 2i and 2i + 1")
+        pg.screenshot(path=str(OUT / "heap-setup.png"), full_page=True)
+        start(pg, "heaps", {"lang": "py", "type": "int", "order": "min", "index": "0"})
+        if run_all_steps(pg, "heap-py", wrong_at=4):
+            finish(pg, "heap-py")
+        for lang, typ, order, index in (("rs", "generic", "max", "1"), ("java", "generic", "min", "1"), ("cpp", "int", "max", "0")):
+            start(pg, "heaps", {"lang": lang, "type": typ, "order": order, "index": index})
+            if run_all_steps(pg, f"heap-{lang}"):
+                finish(pg, f"heap-{lang}")
+
+        # ---- 13.12 Priority queues: heap, sorted list or unsorted array change the boxes; four languages
+        pg.goto(BASE + "/#/dsa/priority-queues")
+        pg.wait_for_selector(".begin")
+        TID[0] = "priority-queues"
+        choose(pg, {"impl": "heap", "contracts": "on"})
+        check(big("add") == "O(log n)" and big("rem") == "O(log n)" and pg.locator(".dsa-preview li").count() == 5, "heap: O(log n) add and remove, 5 steps")
+        choose(pg, {"impl": "list"})
+        check(big("add") == "O(n)" and big("rem") == "O(1)" and "P.head" in pg.inner_text(".diagram"), "sorted list: O(n) add, O(1) remove")
+        choose(pg, {"impl": "array"})
+        check(big("add") == "O(1)" and big("rem") == "O(n)" and big("ties") == "FIFO", "unsorted array: O(1) add, O(n) remove; ties FIFO")
+        pg.screenshot(path=str(OUT / "pq-setup.png"), full_page=True)
+        start(pg, "priority-queues", {"lang": "py", "type": "int", "impl": "heap"})
+        if run_all_steps(pg, "pq-py", wrong_at=3):
+            finish(pg, "pq-py")
+        for lang, typ, impl in (("rs", "generic", "list"), ("java", "int", "array"), ("cpp", "generic", "heap")):
+            start(pg, "priority-queues", {"lang": lang, "type": typ, "impl": impl})
+            if run_all_steps(pg, f"pq-{lang}"):
+                finish(pg, f"pq-{lang}")
+
         # ---- the Contracts option: on every tutorial, off by default; it changes the steps, the boxes and the final
-        for tid in ("binary-search", "mergesort", "quicksort", "linked-lists", "stacks", "queues", "unbounded-arrays", "hash-tables", "binary-search-trees"):
+        for tid in ("binary-search", "mergesort", "quicksort", "linked-lists", "stacks", "queues", "unbounded-arrays", "hash-tables", "binary-search-trees",
+                    "dictionaries-sets", "heaps", "priority-queues"):
             pg.goto(BASE + f"/#/dsa/{tid}")
             pg.wait_for_selector(".begin, .reset")
             if pg.locator(".reset").count():
@@ -493,6 +563,8 @@ try:
             check("isSorted" not in prob and "is_sorted" not in prob and "Check the contracts" not in prob, "no contracts: the final problem doesn't ask for them")
             finish(pg, "bs-nc-cpp")
         for tid, lang, opts in (("hash-tables", "rs", {"keys": "string", "method": "chain"}), ("quicksort", "java", {"type": "int", "pivot": "middle"}),
+                                ("dictionaries-sets", "py", {"keys": "string", "base": "bst"}), ("heaps", "java", {"type": "int", "order": "max", "index": "0"}),
+                                ("priority-queues", "rs", {"type": "int", "impl": "array"}),
                                 ("queues", "py", {"type": "generic", "impl": "stacks"}), ("unbounded-arrays", "cpp", {"type": "generic", "grow": "half", "shrink": "quarter"})):
             start(pg, tid, {"lang": lang, "contracts": "off", **opts})
             if run_all_steps(pg, f"{tid}-nc-{lang}"):

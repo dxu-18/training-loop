@@ -740,6 +740,62 @@ can be renamed. Upload should accept only that file type.
 - Rejected files: not JSON, not a progress file, a newer version, damaged.
 - Phone and dark layouts.
 
+### Session 21 (2026-10-31): the coach waits for whole headers; dictionaries & sets, heaps, priority queues
+Request:
+* Fix the hint bubble moving on as soon as `def binsearch()` appears. The editor closes brackets as they're opened, so the
+  bubble must wait until the header is done (its colon, or brace).
+* Then build dictionaries and sets, heaps and priority queues, after planning them properly.
+
+**The coach.**
+* A function's header is matched by the function's name, so the parameters may be named differently.
+* It now counts only once it's whole:
+  * as many parameters as the reference's, counted at the top level of the brackets;
+  * the `:` (Python) or `{` (C++/Java/Rust) after them.
+* `scripts/dsa_e2e.py` types every function header of every tutorial, option and language partially (`f()`, and the
+  header without its `:`/`{`) and checks the bubble stays put: 3078 headers.
+
+**13.10 Dictionaries & sets** (`docs/dsa/dict-set.js`).
+* Options: built on a hash table (chaining) or a plain BST; int or string keys.
+* `dict_contains`, `dict_lookup`, the sets, the set operations and the counting client are identical code on both
+  implementations: the abstraction boundary.
+* Steps: structure, contracts, lookup and printing, insert, delete, sets, set operations, client (8).
+
+**13.11 Heaps** (`docs/dsa/heap.js`).
+* Options: min or max (only `ok_above` changes) and 0- or 1-indexed (only `parent`/`left`/`right` and the bounds
+  change).
+* Fixed capacity: `Heap(capacity)`.
+* Steps: the heap, order and swap, contracts, sift up and add, sift down and remove, heapify and heapsort (6).
+
+**13.12 Priority queues** (`docs/dsa/priority-queue.js`).
+* Options: binary heap, sorted list or unsorted array, the classic trade-off in the boxes.
+* Entries carry a sequence number, so equal priorities are first in, first out.
+* Arrays start at 4 and double.
+* Steps: entries, contracts, add, peek, remove (5).
+
+**Changes to the statement language (`lang.js`):**
+* `make Heap H(n)`: constructors with arguments.
+* Rust clones a `String` key copied out of a node or array, including into a by-value argument, and never clones a
+  pointer.
+* Java orders strings with `compareTo`.
+* C++ and Rust spell generic entry arrays `Entry<T>*`.
+* A function whose signature never mentions the element type, like `parent(int i)`, isn't made generic: nothing could
+  infer its `T`.
+* Every program the nine earlier tutorials generate (3376, all languages and options) was compared before and after:
+  byte-identical.
+
+**Generic Java arrays.**
+* A generic heap's block is `(T[]) new Comparable[n]`.
+* `<T extends Comparable<T>>` methods read a `T[]` field as a `Comparable[]`, and an `Object[]` fails that cast
+  (checked with javac).
+* The checker never indexes `H.data` from its concrete-typed `main`.
+
+**Mutation check.**
+* Heaps: the size check survived because a non-full heap's placeholder already broke the order. It's tested on a full
+  heap now.
+* Priority queues: the list's `n > size` guard could never fire, since a loop in a strictly ordered list fails the
+  order check first. It was deleted.
+* Dictionaries: added 13.08's "capacity on an empty table" test and 13.09's "only child with a child" deletes.
+
 ### Open problem: Hugging Face in the browser
 Pyodide has no `transformers`. Options: extend the shim idea (a tiny tokenizer/pipeline layer over torch-lite),
 AST and pattern checks, or an optional "run locally" mode. **Not decided yet.**
@@ -778,7 +834,8 @@ docs/                 the static website (GitHub Pages root): app.js (pages), te
                       every tutorial shares: rendering, reference programs, tests), run.js (Compiler Explorer + Pyodide
                       runner, the tests around the user's file, output diff), page.js (setup, steps with the typing
                       coach, final, status, reset); one file per tutorial: binary-search.js, mergesort.js, quicksort.js, linked-list.js,
-                      stack.js, queue.js, unbounded-array.js, hash-table.js, bst.js
+                      stack.js, queue.js, unbounded-array.js, hash-table.js, bst.js,
+                      dict-set.js, heap.js, priority-queue.js
 scripts/dsa_selftest.mjs  every tutorial reference x option x language, step by step (+ --mutants)
 scripts/dsa_e2e.py        browser click-through of Part III (Compiler Explorer answered by local compilers)
 scripts/progress_e2e.py   browser check of the progress file: Download, Upload, Merge / Replace, rejected files
@@ -813,7 +870,7 @@ Legend: ✅ done · 🟡 partial · ⬜ not started
 | 10 | SQL | ⬜ | sqlite3 exec | |
 | 11 | LaTeX | ⬜ | normalized / KaTeX | |
 | 12 | Docker | ⬜ | command / Dockerfile | |
-| 13 | Data Structures & Algorithms (Part III) | 🟡 **13.01–13.09 live** (binary search, mergesort, quicksort, linked lists, stacks, queues, unbounded arrays, hash tables, BSTs; all options × element types × Python/C++/Java/Rust, contracts optional); 13.10–13.12 researched in COMP_GUIDE §13, "soon" | Pyodide (Python), Compiler Explorer (C++/Java/Rust); line-by-line output diff | session 11 |
+| 13 | Data Structures & Algorithms (Part III) | ✅ **all 12 live** (binary search, mergesort, quicksort, linked lists, stacks, queues, unbounded arrays, hash tables, BSTs, dictionaries & sets, heaps, priority queues; all options × element types × Python/C++/Java/Rust, contracts optional) | Pyodide (Python), Compiler Explorer (C++/Java/Rust); line-by-line output diff | session 11 |
 
 ### What exists (as of session 5; the Bash topic and its terminal are described in §2, sessions 7–8)
 - `generator/`: core (tiers, registry, Instructions), grader (answer comparison, AST checks,
