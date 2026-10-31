@@ -368,6 +368,29 @@ and listed as "soon".
 
   Its Compiler Explorer requests are answered by compiling locally, so no code leaves the machine during tests.
 
+### Session 12 (2026-10-30): micro-steps as bubbles that follow the typing
+Request: the step instructions took so much room that the code box was pushed far down (worst at step 2). Now:
+- The top of a step is a **high-level overview** only: "Step 1 of 8 · The node" and the goal paragraph.
+- The detailed micro-steps appear as **translucent chat bubbles** while the user types. The page keeps checking (not
+  compiling) whether the current micro-step's code has been typed. When it has, the bubble fades out and the next one
+  appears; when the user deletes progress, the bubbles go back.
+
+Built (`docs/dsa/page.js`, "the coach"):
+
+| Part | How |
+|---|---|
+| Targets | A step's micro-steps are flattened into ordered targets (an instruction and its line(s)). Wordless parts (an `else` branch, closing braces) join the target before them. Things with nothing to type (Python and Java free memory themselves) are told with the next target. Java's `class LinkedList` brace is not a target, since it closes after all the functions. |
+| Matching | 120 ms after each edit the file's lines are compared, in order, with the targets: whitespace and comments ignored, Python quotes unified, Python type hints optional, `x++` = `x += 1` = `x = x + 1`, `NULL` = `nullptr`, `std::ptr::` = `ptr::`. A function header matches by its name. The bubble shows the first target not yet typed. |
+| Bubble | Under the cursor's line (or the last typed line when the editor isn't focused), at the right of the editor. Translucent and blurred, with clicks passing through to the code. It shows "k / n", the instruction and the code. Changes fade out and in. |
+| Escape hatches | A "skip ›" button for a line deliberately written another way. The whole list stays under a closed "All micro-steps" dropdown. When every target is typed, the bubble says to press Check; there's no bubble on steps already passed. |
+
+Tested in `scripts/dsa_e2e.py`:
+- the first bubble;
+- typing advances it, and deleting brings it back;
+- "press Check" when the step is done;
+- for every layout × language × step (512), the reference code satisfies all of its bubbles, and typing it line by line
+  never moves the bubbles backwards.
+
 ### Open problem: Hugging Face in the browser
 Pyodide has no `transformers`. Options: extend the shim idea (a tiny tokenizer/pipeline layer over torch-lite),
 AST and pattern checks, or an optional "run locally" mode. **Not decided yet.**
