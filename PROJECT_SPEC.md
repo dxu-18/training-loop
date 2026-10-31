@@ -284,6 +284,90 @@ recently introduced"; and "when Wrong is displayed, show the correct solution (l
 - Tests: every problem lists ≤ 4 described names, under 3% of problems list none, and a problem never mixes new and
   older names (tests/test_templates.py); e2e checks the dropdown and the Solution box.
 
+### Session 11 (2026-10-30): Part III, Data Structures & Algorithms
+Request (before scikit-learn, Hugging Face, …), condensed with every requirement kept:
+- **A new Part III.** Step-by-step guides that teach beginners the basic data structures and algorithms. Unlike the
+  100-problem sections, a guide walks the student through the exact steps to build one structure. The linked list,
+  for example (default null pointers), goes: the node with data and a pointer to next → contracts before writing the
+  code → insert at the start → insert at the end → delete head → delete node → lookup → traverse/print. Each step can be
+  broken into smaller steps, down to concise micro details: **very concrete, literal steps, not high-level ideas.**
+- **Status labels.** On the main page each tutorial shows **Not Started / In Progress / Almost! / Completed** instead of
+  a count.
+- **Languages.** Python, C++, Java and Rust. Unlike LeetCode there are **no templates** (no `class LinkedList` stub):
+  the student writes everything from scratch.
+- **The 12 tutorials:** linked lists, stacks, queues, unbounded arrays, hash tables, binary search trees, dictionaries
+  and sets, heaps, priority queues, binary search, merge sort, quicksort.
+- **Options before starting.** Every tutorial lets the student pick the element type: one specific type, or generic
+  (`void*` in C, templates and generics elsewhere). Then options per tutorial:
+
+  | Tutorial | Options |
+  |---|---|
+  | Linked lists | NULL-terminated or dummy node; singly or doubly; circular or not |
+  | Stacks | via linked lists |
+  | Queues | via linked lists or two stacks |
+  | Unbounded arrays | the resizing mechanism |
+  | Hash tables | buckets (separate chaining), or open addressing with linear or quadratic probing |
+  | Binary search trees | plain, AVL or splay |
+  | Dictionaries and sets | on BSTs or on hash tables |
+  | Heaps | — |
+  | Priority queues | — |
+  | Binary search | iterative or recursive |
+  | Merge sort | one way: a merge function plus recursive mergesort |
+  | Quicksort | one way: a partition function plus quicksort |
+
+- **Live complexity boxes.** While choosing, boxes show the complexity overall and per operation (insert, lookup, find
+  minimum, …), updating in real time. Operations a structure doesn't have are left out.
+- **Conventions.** Segments are `[lo, hi)`: `lo` included, `hi` excluded. Variables are the structure's capital first
+  letter: array `A`, queue `Q`, stack `S`, hash table or dictionary `H`, list `L`.
+- **The final challenge.** When every step is done the tutorial moves to **Almost!** and asks the student to implement
+  the structure once more with no hints: only the problem and a completely blank code box. Passing it gives
+  **Completed**. Reset/restart at any point, with a confirmation.
+- **Plan.** Research all of them first (the best way to build each, always preferring the optimal implementation),
+  write it into PROJECT_SPEC and COMP_GUIDE, and **build linked lists first**. The rest show "soon".
+
+**Decisions.**
+
+| Decision | Choice | Why |
+|---|---|---|
+| Where code runs | Python: in the page's Pyodide worker (`generator/api.py: dsa_run`). C++, Java and Rust: **Compiler Explorer** (godbolt.org) `POST /api/compiler/<id>/compile` with `executorRequest`. Compilers: GCC 15.2 `g152` (`-std=c++20 -O1`), JDK 25 `java2500`, rustc 1.94 `r1940` (`--edition 2021`). | GitHub Pages is static. CE's API accepts requests from any origin (checked: `Access-Control-Allow-Origin: *`) and executes all three. There is no in-browser rustc. Options weighed: in-browser clang (`@yowasp/clang`, ~25 MB) would cover only C++; Java in the browser (CheerpJ) is free only for non-commercial use and can't be self-hosted. **The user's C++/Java/Rust code is sent to godbolt.org**, and the page says so. |
+| One source, four languages | Each function is written once as micro-steps in a tiny statement language (`docs/dsa/lang.js`: `n.next = L.head`, `if L.tail == null`, `let x = take n`, …) and rendered to Python, C++, Java and Rust. | The step text, the reference solution, the tests' helpers and the tests' `main` all come from it, so they can't disagree. 8 layouts × 2 element types × 4 languages = 64 variants of every step. |
+| API style | Free functions that take the structure: `insert_front(L, x)`; Java `insertFront(L, x)` as static methods inside `class LinkedList`; C++ `LinkedList& L`. | The requested naming convention (`L`), 15-122/CLRS style, and every step reads the same in all four languages (`L.head`; node fields are `n->next` in C++ and `(*n).next` in Rust). |
+| Generic elements | C++ `template <typename T>`, Java `<T>` (comparisons with `.equals`), Rust `<T>` with only the bounds used (`PartialEq`, `Display`, `Default` for dummies), Python `class Node[T]` | Native, type-checked, zero-cost. `void*` (C1 style) is explained but not used. Generic tests use `String` values, and Java's `new String(...)` catches `==`. |
+| Rust pointers | Raw pointers (`*mut Node<T>`) inside `unsafe { }`; nodes via `Box::into_raw`, freed with `Box::from_raw` | Tail pointers, `prev`, dummies and cycles share nodes; `Box` can't. `std::collections::LinkedList` does the same. |
+| Linked-list layouts | NULL-linear: `head`, `tail`. NULL-circular: singly `tail` only (`tail.next` is first), doubly `head` only (`head.prev` is last). Dummy-linear: `head` and `dummy`, the list is `[head, dummy)`. Dummy-circular: `dummy` only, `[dummy.next, dummy)`. All keep `size`. | The fewest pointers with O(1) at both ends. The dummy-end lists use 15-122's trick for `insert_back` (write into the dummy, add a fresh dummy); the doubly circular one is CLRS's sentinel. |
+| Contracts | `is_segment(start, end, n)`: exactly `n` steps from `start` reach `end`, never meeting null or `end` early, plus `p.next.prev == p` when doubly. `is_list(L)` per layout. `assert is_list(L)` at the start and end of every operation (`debug_assert!` in Rust); `delete_head` also requires non-empty. | The requested "contracts before code", and `[lo, hi)` segments. The checker turns Java's assertions on (`setDefaultAssertionStatus` before the user's classes load). |
+| Tests | Each step's tests: the user's file plus a `main` the checker adds. The checker's own helpers (`ref_is_segment`, `ref_insert_back`, `show`) are built on the user's types; `show` prints the contents and the first broken invariant. Checking step k reruns steps 1..k. The final adds a seeded random sequence of 60 operations. The page compares every line and shows the first difference. | Precise feedback ("L.tail.next is not null, so L.tail is not the last node") instead of right/wrong. A user's own `main` is renamed so the checker's runs. Nothing is put before the user's code, so error line numbers match the editor. |
+| Status | localStorage `training-loop:dsa:v1`: options, phase (`setup`, `steps`, `final`), steps passed, the code, the final's code and result. Not Started = no options confirmed; In Progress; Almost! = all steps passed; Completed = final passed. | Same storage style as the problem sections. Reset clears it after a confirmation dialog. |
+
+**Built: 13.01 Linked lists** (`docs/dsa/linked-list.js`):
+
+- **Options:** language, int or generic, NULL or dummy, singly or doubly, linear or circular.
+- **Complexity boxes:** space, insert at start and end, delete head, delete last, unlink a held node, delete by value,
+  lookup, find minimum, k-th, traverse, length, `is_list`. The ones that aren't tutorial functions are faded. Changed
+  values flash.
+- **A drawing of the chosen layout.**
+- **8 steps,** with the final challenge's problem generated from the same interface.
+
+The other 11 are researched in COMP_GUIDE §13 (interface, invariant, options with their complexity, steps, pitfalls)
+and listed as "soon".
+
+**Testing.**
+
+- `scripts/dsa_selftest.mjs` runs every reference solution, step by step and as the final: 576 runs with local
+  clang++, javac and rustc, and Pyodide's `dsa_run` for Python.
+- `--mutants` deletes each statement of every Python reference in turn: all 630 mutants are caught. Strengthening
+  this added broken-list cases, `is_segment` walks past the end and around a circle, and printing what a Python
+  function really returned (`None` is not `false`).
+- `tests/test_dsa.py` covers the Python runner and runs the Python references.
+- `scripts/dsa_e2e.py` clicks through the site:
+  - home status labels;
+  - options updating the boxes and the diagram;
+  - all 8 steps and the final in Python, C++, Java and Rust;
+  - wrong, empty and non-compiling code, and Run;
+  - Reset (cancel and confirm), reload, and the phone layout.
+
+  Its Compiler Explorer requests are answered by compiling locally, so no code leaves the machine during tests.
+
 ### Open problem: Hugging Face in the browser
 Pyodide has no `transformers`. Options: extend the shim idea (a tiny tokenizer/pipeline layer over torch-lite),
 AST and pattern checks, or an optional "run locally" mode. **Not decided yet.**
@@ -317,6 +401,11 @@ ci/pages.yml          optional GitHub Actions deploy (inactive, see its header)
 tests/                pytest: every template passes its own grader; every challenge matches a brute force
 docs/                 the static website (GitHub Pages root): app.js (pages), terminal.js (the Bash terminal, nano,
                       Files panel), worker.js (Pyodide), style.css
+  dsa/                Part III tutorials: lang.js (the statement language -> Python/C++/Java/Rust), run.js (Compiler
+                      Explorer + Pyodide runner, assembling the tests around the user's file, output diff),
+                      page.js (setup, steps, final, status, reset), linked-list.js (13.01's content and tests)
+scripts/dsa_selftest.mjs  every tutorial reference x option x language, step by step (+ --mutants)
+scripts/dsa_e2e.py        browser click-through of Part III (Compiler Explorer answered by local compilers)
 ```
 
 Local dev:
@@ -348,6 +437,7 @@ Legend: ✅ done · 🟡 partial · ⬜ not started
 | 10 | SQL | ⬜ | sqlite3 exec | |
 | 11 | LaTeX | ⬜ | normalized / KaTeX | |
 | 12 | Docker | ⬜ | command / Dockerfile | |
+| 13 | Data Structures & Algorithms (Part III) | 🟡 **13.01 Linked lists live** (8 layouts × int/generic × Python/C++/Java/Rust); 13.02–13.12 researched in COMP_GUIDE §13, "soon" | Pyodide (Python), Compiler Explorer (C++/Java/Rust); line-by-line output diff | session 11 |
 
 ### What exists (as of session 5; the Bash topic and its terminal are described in §2, sessions 7–8)
 - `generator/`: core (tiers, registry, Instructions), grader (answer comparison, AST checks,
@@ -380,6 +470,8 @@ Legend: ✅ done · 🟡 partial · ⬜ not started
   are large (n = 2·10⁴), so quadratic solutions time out.
 
 ### Next steps (suggested order)
+0. Part III, one tutorial at a time, in COMP_GUIDE §13's order (stacks and queues reuse the linked-list node), each as
+   a `docs/dsa/<name>.js` like `linked-list.js`, plus its reference/mutant self-test.
 1. scikit-learn (exec checker; add `"scikit-learn"` packages, already listed in `docs/app.js`) and
    Matplotlib (reuse the 2.18 figure-inspection `post` pattern).
 2. SQL section (sqlite3 checker); Git and Docker on top of bash-lite (a simulated `git` and `docker`).

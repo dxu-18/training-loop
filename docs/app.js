@@ -2,6 +2,7 @@
 //   #/                 topic list
 //   #/<topic>          the topic's modules (one per COMP_GUIDE subsection)
 //   #/<topic>/<module> one-problem-at-a-time practice; every module has its own counter and medal
+//   #/dsa/<tutorial>   Part III: a step-by-step Data Structures & Algorithms tutorial (docs/dsa/page.js)
 "use strict";
 
 // Per-topic editor mode and Pyodide packages (`extra`: heavy packages only some modules need).
@@ -208,10 +209,13 @@ async function renderHome() {
   };
   const part = (n, name) => `<section class="part"><h2>Part ${n === 1 ? "I" : "II"} · ${name}</h2>
     <ol class="topics">${TOPICS.filter((t) => t.part === n).map(row).join("")}</ol></section>`;
+  // Part III: tutorials, labelled by status instead of a count
+  const dsa = window.DSAPage ? `<section class="part"><h2>Part III · Data Structures & Algorithms</h2>
+    <ol class="topics">${DSAPage.homeRows()}</ol></section>` : "";
   app().innerHTML = `<div class="home">
     <h1>training-loop</h1>
     <p class="tag">One problem at a time. Muscle memory for the ML stack and the tools around it.</p>
-    ${part(1, "The Python ML stack")}${part(2, "Developer tools")}
+    ${part(1, "The Python ML stack")}${part(2, "Developer tools")}${dsa}
   </div>`;
 }
 
@@ -518,12 +522,17 @@ async function route() {
   const [topicId, moduleId] = location.hash.replace(/^#\/?/, "").split("/");
   if (view && view.term) view.term.stop();
   view = null;
+  if (window.DSAPage) DSAPage.leave();
+  if (topicId === "dsa" && window.DSAPage && DSAPage.render(moduleId)) return;
   const cat = await catalog();
   const topic = TOPIC[topicId];
   if (!topic || !liveModules(cat, topicId).length) return renderHome();
   if (!moduleId) return renderTopic(topic);
   const mod = liveModules(cat, topicId).find((m) => m.id === moduleId);
   return mod ? renderPractice(topic, mod, cat[topicId].title) : renderTopic(topic);
+}
+if (window.DSAPage) {
+  DSAPage.init({ app, esc, inline, md, codeBlock, TimeLimit, getPy: () => (py ||= new Py()) });
 }
 window.addEventListener("hashchange", () => { window.scrollTo(0, 0); route(); });
 route();
