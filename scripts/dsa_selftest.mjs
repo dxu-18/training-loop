@@ -26,7 +26,7 @@ const args = process.argv.slice(2);
 const flag = (f) => args.includes(f);
 const opt = (f, d) => { const i = args.indexOf(f); return i >= 0 ? args[i + 1] : d; };
 // every tutorial in docs/dsa/ (--only linked-lists,stacks to pick some)
-const TUTORIALS = Object.fromEntries(["binary-search", "mergesort", "quicksort", "linked-list", "stack", "queue"]
+const TUTORIALS = Object.fromEntries(["binary-search", "mergesort", "quicksort", "linked-list", "stack", "queue", "unbounded-array"]
   .filter((f) => existsSync(join(ROOT, `docs/dsa/${f}.js`)))
   .map((f) => { const t = require(join(ROOT, `docs/dsa/${f}.js`)); return [t.id, t]; })
   .filter(([id]) => !opt("--only", "") || opt("--only", "").split(",").includes(id)));
@@ -36,7 +36,7 @@ const LANGS = opt("--lang", "py,cpp,java,rs").split(",");
 
 function sh(cmd, argv, opts = {}) {
   return new Promise((resolve) => {
-    execFile(cmd, argv, { timeout: 20000, maxBuffer: 16 << 20, ...opts }, (err, stdout, stderr) =>
+    execFile(cmd, argv, { timeout: 60000, maxBuffer: 16 << 20, ...opts }, (err, stdout, stderr) =>
       resolve({ code: err ? (err.code ?? 1) : 0, stdout, stderr, killed: !!(err && err.killed) }));
   });
 }
@@ -48,25 +48,28 @@ function combos(t) {
   return out.filter((c) => LANGS.includes(c.lang));
 }
 
+// compilers get longer than programs: many run at once, and a slow javac isn't a failure
+const BUILD = { timeout: 120000 };
+
 async function runCompiled(lang, source) {
   const dir = mkdtempSync(join(tmpdir(), "dsa-"));
   try {
     if (lang === "cpp") {
       writeFileSync(join(dir, "prog.cpp"), source);
-      const b = await sh("clang++", ["-std=c++20", "-O1", "-w", "-o", join(dir, "prog"), join(dir, "prog.cpp")]);
+      const b = await sh("clang++", ["-std=c++20", "-O1", "-w", "-o", join(dir, "prog"), join(dir, "prog.cpp")], BUILD);
       if (b.code) return { compiled: false, compileOutput: b.stderr };
       const r = await sh(join(dir, "prog"), []);
       return { compiled: true, stdout: r.stdout, stderr: r.stderr, exit: r.code };
     }
     if (lang === "java") {
       writeFileSync(join(dir, "prog.java"), source);
-      const b = await sh("javac", ["-nowarn", "-d", join(dir, "out"), join(dir, "prog.java")]);
+      const b = await sh("javac", ["-nowarn", "-d", join(dir, "out"), join(dir, "prog.java")], BUILD);
       if (b.code) return { compiled: false, compileOutput: b.stderr };
       const r = await sh("java", ["-Xss1m", "-cp", join(dir, "out"), "TLTests"]);
       return { compiled: true, stdout: r.stdout, stderr: r.stderr, exit: r.code };
     }
     writeFileSync(join(dir, "prog.rs"), source);
-    const b = await sh("rustc", ["--edition", "2021", "-A", "warnings", "-o", join(dir, "prog"), join(dir, "prog.rs")]);
+    const b = await sh("rustc", ["--edition", "2021", "-A", "warnings", "-o", join(dir, "prog"), join(dir, "prog.rs")], BUILD);
     if (b.code) return { compiled: false, compileOutput: b.stderr };
     const r = await sh(join(dir, "prog"), []);
     return { compiled: true, stdout: r.stdout, stderr: r.stderr, exit: r.code };
@@ -130,12 +133,20 @@ async function selftest() {
   const pyRes = await runPythonBatch(py.map((j) => build(j).prog));
   py.forEach((j, k) => { const v = verdict(pyRes[k], build(j).h.expected); if (v) failures.push([j, v]); });
   let done = 0;
+  const flaky = [];
   await pool(other, Math.max(2, cpus().length - 2), async (j) => {
     const { h, prog } = build(j);
     const v = verdict(await runCompiled(j.o.lang, prog.source), h.expected);
-    if (v) failures.push([j, v]);
+    if (v) { flaky.push(j); if (process.env.DSA_DEBUG) process.stderr.write(`  first try: ${j.name} ${JSON.stringify(j.o)}: ${v.slice(0, 300)}\n`); }
     if (++done % 50 === 0) process.stderr.write(`  ${done}/${other.length} compiled runs\n`);
   });
+  // a compiler or JVM timing out under load isn't a failure: run those again, one at a time
+  for (const j of flaky) {
+    const { h, prog } = build(j);
+    const v = verdict(await runCompiled(j.o.lang, prog.source), h.expected);
+    if (v) failures.push([j, v]);
+  }
+  if (flaky.length) process.stderr.write(`  ${flaky.length} run(s) retried alone, ${flaky.length - failures.filter(([j]) => j.o.lang !== "py").length} passed\n`);
   for (const [j, v] of failures.slice(0, 12)) console.log(`FAIL ${j.name} ${JSON.stringify(j.o)} ${j.final ? "final" : `step ${j.upto}`}: ${v}\n`);
   console.log(`${jobs.length} runs, ${failures.length} failures`);
   return failures.length === 0;

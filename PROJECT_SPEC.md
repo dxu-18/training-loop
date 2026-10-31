@@ -529,6 +529,43 @@ sorted input at O(n log n) vs O(n²)). Steps:
 
 A diagram label longer than its box now hangs over the next cells instead of widening its column.
 
+### Session 16 (2026-10-31): unbounded arrays
+Request: "go ahead and do unbounded arrays (they should be able to choose resizing mechanism, among other options)".
+
+**13.07 Unbounded arrays** (`docs/dsa/unbounded-array.js`).
+- Options:
+  - language and int/generic;
+  - **growth**: ×2, ×1.5 or +4;
+  - **shrinking**: at ¼ full, below ½ full (thrashes), or never.
+- The complexity boxes follow the options: amortized add O(1) vs O(n), copies for n adds (< 2n / < 3n / ≈ n²/8),
+  amortized remove O(1) vs O(n), space O(n) vs O(peak).
+- Steps:
+  1. struct and contracts (`is_uba`: `size < limit`, `len(data) == limit`; `uba_len`);
+  2. `uba_get` and `uba_set`;
+  3. `uba_resize`;
+  4. `uba_add`;
+  5. `uba_rem`.
+
+A first draft had `uba_resize` require `is_uba`, which fails exactly when `uba_add` calls it (a full block); it now
+requires `size <= limit`, as in 15-122.
+
+**More in `lang.js`.**
+- `alloc(n)`: a fixed block. Python `[0] * n`, C++ `std::vector<T>(n)`, Java `new int[n]` / `(T[]) new Object[n]`,
+  Rust `vec![T::default(); n]` (adds `Clone + Default`).
+- `len(X)`.
+- Rust's generic getter returns `&A.data[i]`.
+
+**Tests.**
+- The checker prints `size` and `limit` after every operation, so the growth and shrink policies are checked, against
+  a JavaScript model of the chosen policy.
+- `dsa_selftest.mjs`: 432 runs and 282 mutants for unbounded arrays, all passing and all caught.
+- The self-test now retries a failed compiled run once, on its own: under load an occasional javac or JVM run timed
+  out. Compilers get 120 s, programs 60 s.
+- `dsa_e2e.py`:
+  - the growth and shrink options changing the boxes;
+  - Python with a wrong step;
+  - Rust generic (×1.5, ½), Java generic (+4, never) and C++.
+
 ### Open problem: Hugging Face in the browser
 Pyodide has no `transformers`. Options: extend the shim idea (a tiny tokenizer/pipeline layer over torch-lite),
 AST and pattern checks, or an optional "run locally" mode. **Not decided yet.**
@@ -566,7 +603,7 @@ docs/                 the static website (GitHub Pages root): app.js (pages), te
                       every tutorial shares: rendering, reference programs, tests), run.js (Compiler Explorer + Pyodide
                       runner, the tests around the user's file, output diff), page.js (setup, steps with the typing
                       coach, final, status, reset); one file per tutorial: binary-search.js, mergesort.js, quicksort.js, linked-list.js,
-                      stack.js, queue.js
+                      stack.js, queue.js, unbounded-array.js
 scripts/dsa_selftest.mjs  every tutorial reference x option x language, step by step (+ --mutants)
 scripts/dsa_e2e.py        browser click-through of Part III (Compiler Explorer answered by local compilers)
 ```
@@ -600,7 +637,7 @@ Legend: ✅ done · 🟡 partial · ⬜ not started
 | 10 | SQL | ⬜ | sqlite3 exec | |
 | 11 | LaTeX | ⬜ | normalized / KaTeX | |
 | 12 | Docker | ⬜ | command / Dockerfile | |
-| 13 | Data Structures & Algorithms (Part III) | 🟡 **13.01 Binary search, 13.02 Mergesort, 13.03 Quicksort, 13.04 Linked lists, 13.05 Stacks, 13.06 Queues live** (all options × int/generic × Python/C++/Java/Rust); 13.07–13.12 researched in COMP_GUIDE §13, "soon" | Pyodide (Python), Compiler Explorer (C++/Java/Rust); line-by-line output diff | session 11 |
+| 13 | Data Structures & Algorithms (Part III) | 🟡 **13.01–13.07 live** (binary search, mergesort, quicksort, linked lists, stacks, queues, unbounded arrays; all options × int/generic × Python/C++/Java/Rust); 13.08–13.12 researched in COMP_GUIDE §13, "soon" | Pyodide (Python), Compiler Explorer (C++/Java/Rust); line-by-line output diff | session 11 |
 
 ### What exists (as of session 5; the Bash topic and its terminal are described in §2, sessions 7–8)
 - `generator/`: core (tiers, registry, Instructions), grader (answer comparison, AST checks,

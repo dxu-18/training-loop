@@ -172,11 +172,11 @@ try:
         check(any("part iii" in h.lower() and "data structures" in h.lower() for h in heads), "home has Part III · Data Structures & Algorithms")
         row = pg.locator("a.topic[href='#/dsa/linked-lists']")
         check(row.count() == 1 and "not started" in row.inner_text().lower(), "Linked lists row says Not Started")
-        check(pg.locator(".part:last-child .topic.soon").count() == 6, "the other 6 tutorials say soon")
+        check(pg.locator(".part:last-child .topic.soon").count() == 5, "the other 5 tutorials say soon")
         first = pg.locator(".part:last-child li").first.inner_text()
         check("13.01" in first and "Binary search" in first, "Part III starts with 13.01 Binary search")
         check("Mergesort" in pg.inner_text(".part:last-child") and "Merge sort" not in pg.inner_text(".part:last-child"), "Mergesort is one word")
-        for tid in ("binary-search", "mergesort", "quicksort", "stacks", "queues"):
+        for tid in ("binary-search", "mergesort", "quicksort", "stacks", "queues", "unbounded-arrays"):
             r = pg.locator(f"a.topic[href='#/dsa/{tid}']")
             check(r.count() == 1 and "not started" in r.inner_text().lower(), f"{tid}: live and Not Started")
         pg.screenshot(path=str(OUT / "home.png"), full_page=True)
@@ -404,6 +404,29 @@ try:
         pg.wait_for_selector("a.topic[href='#/dsa/queues']")
         check("completed" in pg.inner_text("a.topic[href='#/dsa/queues']").lower() and "completed" in pg.inner_text("a.topic[href='#/dsa/stacks']").lower(),
               "home: Stacks and Queues say Completed")
+
+        # ---- 13.07 Unbounded arrays: growth and shrinking change the boxes; four languages
+        pg.goto(BASE + "/#/dsa/unbounded-arrays")
+        pg.wait_for_selector(".begin")
+        TID[0] = "unbounded-arrays"
+        big = lambda i: pg.inner_text(f".cx[data-id='{i}'] .cx-big")
+        choose(pg, {"grow": "double", "shrink": "quarter"})
+        check(big("add") == "O(1)" and big("rem") == "O(1)" and big("copies") == "< 2n", "×2, shrink at ¼: add and remove O(1) amortized, < 2n copies")
+        choose(pg, {"grow": "plus"})
+        check(big("add") == "O(n)" and big("copies") == "≈ n²/8", "+4 growth: add O(n) amortized, ≈ n²/8 copies")
+        choose(pg, {"shrink": "half"})
+        check(big("rem") == "O(n)", "shrinking below ½: remove O(n) (thrashing)")
+        choose(pg, {"shrink": "never"})
+        check(big("space") == "O(peak)", "never shrinking: space O(peak)")
+        pg.screenshot(path=str(OUT / "uba-setup.png"), full_page=True)
+        start(pg, "unbounded-arrays", {"lang": "py", "type": "int", "grow": "double", "shrink": "quarter"})
+        check(pg.locator(".outline li").count() == 5, "unbounded arrays: 5 steps")
+        if run_all_steps(pg, "uba-py", wrong_at=4):
+            finish(pg, "uba-py")
+        for lang, typ, grow, shrink in (("rs", "generic", "half", "half"), ("java", "generic", "plus", "never"), ("cpp", "int", "double", "quarter")):
+            start(pg, "unbounded-arrays", {"lang": lang, "type": typ, "grow": grow, "shrink": shrink})
+            if run_all_steps(pg, f"uba-{lang}"):
+                finish(pg, f"uba-{lang}")
 
         # ---- phone layout
         ph = b.new_page(viewport={"width": 390, "height": 844})
