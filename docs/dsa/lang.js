@@ -341,7 +341,8 @@
       }
       const body = st.body ? toDisplay(st.body, ctx) : [];
       const say = typeof st.say === "function" ? st.say(ctx) : st.say || "";
-      return { say, code: r.code, body, close: r.close || [], note: r.note || st.note || null, isElse: st.ir && /^(else|elif)\b/.test(st.ir) };
+      return { say, code: r.code, body, close: r.close || [], note: r.note || st.note || null, isElse: st.ir && /^(else|elif)\b/.test(st.ir),
+        deferClose: !!st.deferClose };
     });
     // C-like: an if's "}" merges into the following "} else {"
     for (let i = 0; i + 1 < out.length; i++) if (out[i + 1].isElse && LANGS[ctx.lang].cLike) out[i].close = [];

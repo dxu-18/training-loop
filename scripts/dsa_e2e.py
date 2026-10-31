@@ -158,12 +158,52 @@ try:
         pg.screenshot(path=str(OUT / "setup.png"), full_page=True)
         choose(pg, {"lang": "py", "type": "int", "end": "null", "links": "singly", "shape": "linear"})
         pg.click(".begin")
-        pg.wait_for_selector(".micro")
+        pg.wait_for_selector(".check")
         check(pg.evaluate(STATUS) == "In Progress", "Begin -> In Progress")
         check(pg.locator(".outline li").count() == 8, "the outline lists 8 steps")
-        check("class Node" in pg.inner_text(".problem"), "step 1 shows the Python node code")
+        check(pg.locator(".all-micro").count() == 1 and not pg.get_attribute(".all-micro", "open") is not None,
+              "step 1: the micro-steps are folded away under the overview")
+        pg.wait_for_selector(".coach[data-k='0']")
+        check("class Node" in pg.inner_text(".coach") and "1 /" in pg.inner_text(".coach"), "the first hint bubble asks for class Node")
+        pg.evaluate(SET, "class Node:\n    ")
+        pg.wait_for_selector(".coach[data-k='1']:not(.leaving)")
+        check("__init__" in pg.inner_text(".coach:not(.leaving)"), "typing it moves the bubble to the next micro-step")
+        pg.screenshot(path=str(OUT / "coach.png"), full_page=False)
+        pg.evaluate(SET, "")
+        pg.wait_for_selector(".coach[data-k='0']:not(.leaving)")
+        check(True, "deleting the code brings the earlier bubble back")
+        pg.evaluate(SET, program(pg, 1))
+        pg.wait_for_selector(".coach.done:not(.leaving)")
+        check("Check" in pg.inner_text(".coach.done"), "the whole step typed: the bubble says to press Check")
+        # every step of every layout and language: its reference satisfies all its bubbles, in a monotonic order
+        bad = pg.evaluate(r"""() => {
+          const T = DSATutorials['linked-lists'], C = DSAPage._coach, bad = [];
+          let combos = [{}];
+          for (const o of T.OPTIONS) combos = combos.flatMap((c) => o.choices.map(([v]) => ({ ...c, [o.id]: v })));
+          for (const o of combos) {
+            const steps = T.render(o);
+            for (let k = 0; k < steps.length; k++) {
+              const ts = C.coachTargets(steps[k].items);
+              ts.forEach((t) => { t.want = C.coachWant(t, o.lang); });
+              const before = k ? T.program(o, k) : "", after = T.program(o, k + 1);
+              const p0 = C.coachProgress(ts, before, o.lang, new Set()).k, p1 = C.coachProgress(ts, after, o.lang, new Set()).k;
+              if (p1 !== ts.length) bad.push(`${JSON.stringify(o)} step ${k + 1}: reference reaches ${p1}/${ts.length}`);
+              if (p0 !== 0) bad.push(`${JSON.stringify(o)} step ${k + 1}: ${p0} hints done before typing`);
+              const lines = after.split("\n");
+              let prev = 0;
+              for (let i = 1; i <= lines.length; i++) {
+                const q = C.coachProgress(ts, lines.slice(0, i).join("\n"), o.lang, new Set()).k;
+                if (q < prev) { bad.push(`${JSON.stringify(o)} step ${k + 1}: progress went back at line ${i}`); break; }
+                prev = q;
+              }
+            }
+          }
+          return bad;
+        }""")
+        check(not bad, "every layout x language x step: the reference satisfies all its hint bubbles, in order" + (": " + "; ".join(bad[:4]) if bad else ""))
 
         # empty and broken code
+        pg.evaluate(SET, "")
         pg.click(".check")
         check("Not yet" in wait_verdict(pg), "Check with an empty editor: Not yet")
         pg.evaluate(SET, "class Node:\n    def __init__(self, data)\n")
@@ -217,7 +257,7 @@ try:
                 pg.click(".reset"); pg.click(".modal .confirm"); pg.wait_for_selector(".begin")
             choose(pg, {"lang": lang, **opts})
             pg.click(".begin")
-            pg.wait_for_selector(".micro")
+            pg.wait_for_selector(".check")
             if lang == "cpp":
                 pg.evaluate(SET, "int f() { return 1 }\n")
                 pg.click(".check")

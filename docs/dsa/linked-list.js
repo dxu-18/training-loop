@@ -561,7 +561,7 @@
       return [{ say: (g ? "Declare the class `LinkedList<T>`." : "Declare the class `LinkedList`.") +
         (v.dummy ? "" : " Fields start as `null` and 0, which is already an empty list.") +
         " Every function from here on goes inside this class, as a `static` method that takes the list `L`.",
-      code: [g ? "class LinkedList<T> {" : "class LinkedList {"], close: ["}"], body }];
+      code: [g ? "class LinkedList<T> {" : "class LinkedList {"], close: ["}"], body, deferClose: true }];   // its brace ends the file
     }
     const N = g ? "Node<T>" : "Node";
     const body = fs.map((f) => ({ say: fieldSay(f, v), code: [`${f}: *mut ${N},`] }));

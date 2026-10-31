@@ -58,7 +58,7 @@
   let page = null;   // { id, t, s, editor, busy, token }
   const $ = (sel) => deps.app().querySelector(sel);
 
-  function leave() { page = null; }
+  function leave() { if (page && page.cleanup) page.cleanup(); page = null; }
 
   function render(id) {
     const t = tutorial(id);
@@ -240,8 +240,168 @@
     });
   }
 
+  // ------------------------------------------------------------ the coach: micro-steps as bubbles that follow the typing
+  // The current step's micro-steps become an ordered list of targets (an instruction and the line(s) it asks for).
+  // On every edit the file is compared, line by line and in order, with the targets (no compiling): the first target
+  // not yet typed is shown in a bubble under the cursor's line. Typing it fades the bubble into the next one; deleting
+  // brings earlier ones back.
+  function coachTargets(items) {
+    const out = [];
+    const lines = (code, depth) => code.map((text) => ({ text, depth }));
+    const add = (say, ls, extra = {}) => {
+      // a target without words (an else branch, a closing brace) belongs with the one before it
+      if (!say && !extra.note && out.length && ls.length) { out[out.length - 1].lines.push(...ls); return; }
+      out.push({ say, lines: ls, notes: [], ...extra });
+    };
+    const walk = (list, depth) => {
+      for (const m of list) {
+        if (m.group) {
+          add(m.say, m.body.filter((x) => x.header).flatMap((x) => lines(x.code, depth)), { fn: m.fn });
+          walk(m.body.filter((x) => !x.header && !x.closing), depth + 1);
+          add("", m.body.filter((x) => x.closing).flatMap((x) => lines(x.code, depth)));
+          continue;
+        }
+        if (!m.body.some(hasText)) { add(m.say, DL.emit([m]).map((text) => ({ text, depth })), { note: m.note }); continue; }
+        add(m.say, lines(m.code, depth), { note: m.note });
+        walk(m.body, depth + 1);
+        if (!m.deferClose) add("", lines(m.close, depth));   // (Java's class LinkedList closes after all the functions)
+      }
+    };
+    walk(items, 0);
+    // a step with nothing to type (Python and Java free memory themselves) is told along with the next one
+    const merged = [];
+    let carry = [];
+    for (const t of out) {
+      if (!t.lines.length) { carry.push([t.say, t.note].filter(Boolean).join(" ")); continue; }
+      t.notes = carry;
+      carry = [];
+      merged.push(t);
+    }
+    if (carry.length && merged.length) merged[merged.length - 1].after = carry;
+    return merged;
+  }
+
+  // a line without spaces or comments; Python's quotes made the same
+  function normLine(line, lang) {
+    const s = lang === "py" ? line.replace(/#.*$/, "").replace(/'/g, '"') : line.replace(/\/\/.*$/, "");
+    return s.replace(/\s+/g, "");
+  }
+  // equivalent spellings: x++ / ++x / x = x + 1 / x += 1, NULL / nullptr, std::ptr:: / ptr::, Python's type hints
+  function looseLine(n, lang) {
+    let s = n.replace(/;$/, "");
+    if (lang === "py") {
+      s = s.replace(/->[^:]+:$/, ":").replace(/^(def\w+|class\w+)\[[^\]]*\]/, "$1").replace(/(\w):[^,)=:]+(?=[,)=])/g, "$1")
+        .replace(/\(\):$/, ":").replace(/==None/g, "isNone").replace(/!=None/g, "isnotNone");
+    }
+    s = s.replace(/\bNULL\b/g, "nullptr").replace(/std::ptr::/g, "ptr::");
+    let m;
+    if ((m = s.match(/^(.+?)\+\+$/)) || (m = s.match(/^\+\+(.+)$/))) s = `${m[1]}+=1`;
+    else if ((m = s.match(/^(.+?)--$/)) || (m = s.match(/^--(.+)$/))) s = `${m[1]}-=1`;
+    else if ((m = s.match(/^([\w.>()*-]+)=\1([+-])1$/))) s = `${m[1]}${m[2]}=1`;
+    return s;
+  }
+
+  function coachWant(t, lang) {
+    const name = t.fn ? (lang === "java" ? DL.camel(t.fn) : t.fn) : null;
+    return t.lines.map(({ text }) => {
+      const n = normLine(text, lang);
+      if (!n) return null;
+      const w = { n, l: looseLine(n, lang) };
+      if (name && /^template</.test(n)) w.re = /^template</;
+      else if (name) w.re = { py: new RegExp(`^def${name}(\\[.*\\])?\\(`), rs: new RegExp(`^(pub)?fn${name}(<.*>)?\\(`),
+        java: new RegExp(`static.*\\b${name}\\(`), cpp: new RegExp(`\\b${name}\\((?!.*;$)`) }[lang];
+      return w;
+    }).filter(Boolean);
+  }
+
+  // -> { k: the first target not typed yet, anchor: the line of the last one typed }
+  function coachProgress(targets, code, lang, skipped) {
+    const U = [];
+    code.split("\n").forEach((line, idx) => { const n = normLine(line, lang); if (n) U.push({ n, l: looseLine(n, lang), idx }); });
+    const hit = (u, w) => u.n === w.n || u.l === w.l || (w.re && w.re.test(u.n));
+    let j = 0, k = 0, anchor = null;
+    for (; k < targets.length; k++) {
+      if (skipped.has(k)) continue;
+      let jj = j, ok = true, last = null;
+      for (const w of targets[k].want) {
+        while (jj < U.length && !hit(U[jj], w)) jj++;
+        if (jj >= U.length) { ok = false; break; }
+        last = U[jj].idx;
+        jj++;
+      }
+      if (!ok) break;
+      j = jj;
+      if (last !== null) anchor = last;
+    }
+    if (anchor === null) anchor = U.length ? U[U.length - 1].idx : 0;
+    return { k, anchor };
+  }
+
+  function startCoach(st, passed) {
+    const p = page, cm = p.editor, lang = p.s.opts.lang, mode = DL.LANGS[lang].mode;
+    const host = $(".editor");
+    const targets = coachTargets(st.items);
+    targets.forEach((t) => { t.want = coachWant(t, lang); });
+    const skipped = new Set();
+    let shown = null, el = null, anchor = 0, timer = null;
+    const place = () => {
+      if (!el || page !== p) return;
+      const line = Math.min(cm.hasFocus() ? cm.getCursor().line : anchor, cm.lastLine());
+      const c = cm.charCoords({ line, ch: 0 }, "window");
+      el.style.top = `${Math.round(c.bottom - host.getBoundingClientRect().top + 6)}px`;
+    };
+    const show = (k) => {
+      shown = k;
+      if (el) { const old = el; old.classList.add("leaving"); setTimeout(() => old.remove(), 240); el = null; }
+      if (k >= targets.length && passed) return;    // a step already passed: no reminder needed
+      const node = document.createElement("div");
+      node.className = "coach entering";
+      node.dataset.k = String(k);
+      if (k >= targets.length) {
+        node.classList.add("done");
+        node.innerHTML = `<div class="coach-say">✓ That's the whole step. Press <strong>Check</strong> (⇧↵).</div>`;
+      } else {
+        const t = targets[k];
+        const base = Math.min(...t.lines.map((x) => x.depth));
+        const code = t.lines.map((x) => "    ".repeat(x.depth - base) + x.text).join("\n");
+        node.innerHTML = `<div class="coach-head"><span class="coach-n">${k + 1} / ${targets.length}</span>` +
+          `<button type="button" class="coach-skip" title="I wrote this differently: show the next hint">skip ›</button></div>` +
+          t.notes.map((x) => `<div class="coach-note">${deps.inline(x)}</div>`).join("") +
+          (t.say ? `<div class="coach-say">${deps.inline(t.say)}</div>` : "") +
+          (t.note ? `<div class="coach-note">${deps.inline(t.note)}</div>` : "");
+        const pre = deps.codeBlock(code, mode);
+        pre.classList.add("coach-code");
+        node.appendChild(pre);
+        if (t.after) node.insertAdjacentHTML("beforeend", t.after.map((x) => `<div class="coach-note">${deps.inline(x)}</div>`).join(""));
+        const skip = node.querySelector(".coach-skip");
+        skip.addEventListener("mousedown", (e) => e.preventDefault());   // keep the editor's focus (and the bubble in place)
+        skip.onclick = () => { skipped.add(k); update(); cm.focus(); };
+      }
+      host.appendChild(node);
+      el = node;
+      place();
+      requestAnimationFrame(() => requestAnimationFrame(() => node.classList.remove("entering")));
+    };
+    const update = () => {
+      if (page !== p) return;
+      const r = coachProgress(targets, cm.getValue(), lang, skipped);
+      anchor = r.anchor;
+      if (r.k !== shown) show(r.k);
+      else place();
+    };
+    cm.on("change", () => { clearTimeout(timer); timer = setTimeout(update, 120); });
+    cm.on("cursorActivity", place);
+    cm.on("focus", place);
+    cm.on("blur", place);
+    p.onResize = place;
+    window.addEventListener("resize", place);
+    p.cleanup = () => window.removeEventListener("resize", place);
+    update();
+  }
+
   // ------------------------------------------------------------ steps
   function renderSteps() {
+    if (page.cleanup) { page.cleanup(); page.cleanup = null; }
     const { t, s } = page;
     const esc = deps.esc;
     const o = s.opts;
@@ -263,9 +423,8 @@
             <h2 class="dsa-h">${esc(st.title)}</h2>
             <div class="prompt">${deps.md(st.goal)}</div>
             ${st.contractNote ? `<p class="contract-note">${deps.inline(st.contractNote)}</p>` : ""}
-            <div class="label">Do this</div>
-            ${microHTML(st.items, mode)}
-            ${s.view === 0 ? `<p class="ms-foot">Type it into the editor below (it's your whole file: each step adds to it), then press <strong>Check</strong>.</p>` : ""}
+            ${s.view === 0 ? `<p class="ms-foot">Type in the editor below: it's your whole file, and each step adds to it. Hints appear beside your code as you type.</p>` : ""}
+            <details class="all-micro"><summary>All micro-steps</summary><div class="inner">${microHTML(st.items, mode)}</div></details>
           </article>
           <div class="editor"><textarea></textarea></div>
           <div class="actions">
@@ -289,6 +448,7 @@
     highlight($(".problem"), mode);
     deps.app().querySelectorAll("button.ol-item").forEach((b) => { b.onclick = () => { s.view = Number(b.dataset.i); save(); renderSteps(); }; });
     makeEditor(s.code, (v) => { s.code = v; save(); }, () => doRun(), () => doCheck());
+    startCoach(st, s.view < s.passed);
     $(".run").onclick = doRun;
     $(".check").onclick = doCheck;
     if (s.view < s.passed) showNext();
@@ -494,5 +654,5 @@
     document.body.appendChild(m);
   }
 
-  root.DSAPage = { init, homeRows, render, leave, status, LIST };
+  root.DSAPage = { init, homeRows, render, leave, status, LIST, _coach: { coachTargets, coachWant, coachProgress } };
 })(window);

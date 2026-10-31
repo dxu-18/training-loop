@@ -5904,7 +5904,12 @@ Part III teaches differently from Parts I and II. Each module is **one guided tu
 **How a tutorial works.**
 
 1. **Options.** The learner chooses the language, the element type (one concrete type, or generic) and the tutorial's own options, such as singly or doubly linked. Complexity boxes (space, insert, lookup, minimum, …) update as each choice changes.
-2. **Steps.** Every step names exact functions and fields and gives literal micro-steps ("make `n` point at `L.head`: `n.next = L.head`"), with the code shown in the chosen language. The learner types everything; there is no class or function stub. **Check** compiles and runs that step's tests plus the earlier steps' tests, and the next step opens only when they pass.
+2. **Steps.** The top of each step is a short overview of what it builds. The literal micro-steps ("make `n` point at `L.head`: `n.next = L.head`", in the chosen language) appear **one at a time in a bubble beside the code, as the learner types**:
+   * Each typed line is compared with the expected one, in order. Nothing is compiled. Spacing, comments and the usual equivalent spellings don't matter.
+   * When a micro-step is typed, its bubble fades into the next one; deleting code brings earlier bubbles back.
+   * The full list is folded under "All micro-steps".
+
+   The learner types everything; there is no class or function stub. **Check** compiles and runs that step's tests plus the earlier steps' tests, and the next step opens only when they pass.
 3. **Almost!** Once every step passes, the learner builds the whole structure again in a blank editor. The page shows only the problem: interface, contracts and complexity requirements. Passing gives **Completed**.
 4. **Reset.** Reset (with a confirmation) is available at any point and starts over with new options.
 
