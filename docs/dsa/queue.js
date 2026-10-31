@@ -1,5 +1,5 @@
-// 13.03 Queues: on a linked list with a dummy node (CMU 15-122), or on two stacks (amortized O(1)), in Python, C++,
-// Java or Rust. The two-stack version builds its stack with 13.02's steps.
+// 13.06 Queues: on a linked list with a dummy node (CMU 15-122), or on two stacks (amortized O(1)), in Python, C++,
+// Java or Rust. The two-stack version builds its stack with 13.05's steps.
 (function (root) {
   "use strict";
   const DL = root.DSALang || (typeof require !== "undefined" ? require("./lang.js") : null);
@@ -239,7 +239,7 @@
     return [
       node("Two stacks make the queue, and each stack is a linked list whose first node is its top. Each node holds one element (`data`) and a pointer to the node below it. A pointer that points nowhere is null."),
       { id: "stack", title: "The stack and its contracts",
-        goal: "First the stack (13.02 in brief): `S` keeps its `top` node and its `size`. Its contracts: {fn:is_segment(start, end, n)} and {fn:is_stack(S)}, true exactly when [`S.top`, null) holds `S.size` nodes.",
+        goal: "First the stack (13.05 in brief): `S` keeps its `top` node and its `size`. Its contracts: {fn:is_segment(start, end, n)} and {fn:is_stack(S)}, true exactly when [`S.top`, null) holds `S.size` nodes.",
         decl: (c) => STK.stackDecl(c),
         fns: [fn("is_segment", STK.isSegment, "Write {fn:is_segment}: does [`start`, `end`) hold exactly `n` nodes?"),
           fn("is_stack", STK.isStack, "Write {fn:is_stack}."), fn("stack_empty", STK.stackEmpty, "Write {fn:stack_empty}.")],
@@ -449,7 +449,7 @@
   }
 
   const DEF = {
-    id: "queues", num: "13.03", title: "Queues", heading: "Build a queue, step by step", diagramLabel: "Your queue",
+    id: "queues", num: "13.06", title: "Queues", heading: "Build a queue, step by step", diagramLabel: "Your queue",
     OPTIONS, DEFAULTS, FNS, STRUCTS, describe, complexity, diagram, steps, handlers, testGroups, refFns, problem,
   };
   const tutorial = C.make(DEF);

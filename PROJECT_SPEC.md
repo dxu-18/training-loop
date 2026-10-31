@@ -440,6 +440,62 @@ Request: "now go ahead and implement stacks and queues." Built:
   - the queue's options changing steps, boxes and diagram;
   - the hint-bubble consistency check across every tutorial.
 
+### Session 14 (2026-10-30): Part III reordered; binary search
+Request: "move binary search, mergesort and quicksort to 13.01, 13.02, and 13.03, and shift everything down. rename merge
+sort without the space -> mergesort. then implement binary search".
+
+**New order.**
+
+| Number | Tutorial |
+|---|---|
+| 13.01 | Binary search |
+| 13.02 | Mergesort |
+| 13.03 | Quicksort |
+| 13.04 | Linked lists |
+| 13.05 | Stacks |
+| 13.06 | Queues |
+| 13.07 | Unbounded arrays |
+| 13.08 | Hash tables |
+| 13.09 | Binary search trees |
+| 13.10 | Dictionaries & sets |
+| 13.11 | Heaps |
+| 13.12 | Priority queues |
+
+Where the new order lives:
+- The home page reads it from `DSAPage.LIST`. Saved progress is keyed by tutorial id, so the move changes nothing for
+  learners.
+- COMP_GUIDE §13 and its cross-references are renumbered, and the not-yet-built `merge-sort` id is now `mergesort`.
+- Session notes 11–13 above keep the numbers of their time (linked lists were 13.01 then).
+
+**13.01 Binary search** (`docs/dsa/binary-search.js`). Options: iterative or recursive; int or generic. Steps:
+1. sorted arrays and their contracts (`is_sorted(A, lo, hi)`, `is_in(A, lo, hi, x)`);
+2. the loop invariant (`all_smaller`, `all_bigger`: `A[0, lo) < x < A[hi, n)`);
+3. `binsearch(A, n, x)`, with an overflow-safe `mid` and -1 when absent (or `binsearch_rec` plus `binsearch`);
+4. `lower_bound(A, n, x)`, after `all_at_least` (or its recursive pair).
+
+In Java the functions are static methods in `class BinarySearch`.
+
+**Arrays in `lang.js`.**
+
+| Addition | Detail |
+|---|---|
+| Expressions | indexing `A[i]`, array literals in tests, `*`, `/` (`//` in Python), `%`, negative literals, `for i = lo to hi` |
+| Parameter kinds | `Arr`: `list[T]` / `const std::vector<T>&` / `T[]` / `&[T]`. `Tref`: Rust `&T`, read as `*x` and passed on as `x` |
+| `index` return | an index or -1; Rust `isize`, positions `usize`, so `mid as isize` |
+| Ordering on `T` | Java `compareTo` with `<T extends Comparable<T>>`; Rust `PartialOrd`. A function's spec can declare bounds that callers inherit (`bounds: ["PartialOrd"]`). |
+
+The hints skip an empty Java class's closing brace, which comes after all the functions.
+
+**Testing.**
+- `dsa_selftest.mjs`: 80 runs and 90 mutants for binary search, all passing and all caught.
+- The other tutorials still pass.
+- `dsa_e2e.py`:
+  - the new home order;
+  - the style option changing the space box;
+  - binary search in Python (with a wrong step), C++ recursive generic, Rust iterative generic and Java recursive
+    generic;
+  - the hint bubbles matching their reference code for every tutorial.
+
 ### Open problem: Hugging Face in the browser
 Pyodide has no `transformers`. Options: extend the shim idea (a tiny tokenizer/pipeline layer over torch-lite),
 AST and pattern checks, or an optional "run locally" mode. **Not decided yet.**
@@ -476,7 +532,7 @@ docs/                 the static website (GitHub Pages root): app.js (pages), te
   dsa/                Part III tutorials: lang.js (the statement language -> Python/C++/Java/Rust), common.js (what
                       every tutorial shares: rendering, reference programs, tests), run.js (Compiler Explorer + Pyodide
                       runner, the tests around the user's file, output diff), page.js (setup, steps with the typing
-                      coach, final, status, reset); one file per tutorial: linked-list.js, stack.js, queue.js
+                      coach, final, status, reset); one file per tutorial: binary-search.js, linked-list.js, stack.js, queue.js
 scripts/dsa_selftest.mjs  every tutorial reference x option x language, step by step (+ --mutants)
 scripts/dsa_e2e.py        browser click-through of Part III (Compiler Explorer answered by local compilers)
 ```
@@ -510,7 +566,7 @@ Legend: ✅ done · 🟡 partial · ⬜ not started
 | 10 | SQL | ⬜ | sqlite3 exec | |
 | 11 | LaTeX | ⬜ | normalized / KaTeX | |
 | 12 | Docker | ⬜ | command / Dockerfile | |
-| 13 | Data Structures & Algorithms (Part III) | 🟡 **13.01 Linked lists, 13.02 Stacks, 13.03 Queues live** (all options × int/generic × Python/C++/Java/Rust); 13.04–13.12 researched in COMP_GUIDE §13, "soon" | Pyodide (Python), Compiler Explorer (C++/Java/Rust); line-by-line output diff | session 11 |
+| 13 | Data Structures & Algorithms (Part III) | 🟡 **13.01 Binary search, 13.04 Linked lists, 13.05 Stacks, 13.06 Queues live** (all options × int/generic × Python/C++/Java/Rust); the rest researched in COMP_GUIDE §13, "soon" | Pyodide (Python), Compiler Explorer (C++/Java/Rust); line-by-line output diff | session 11 |
 
 ### What exists (as of session 5; the Bash topic and its terminal are described in §2, sessions 7–8)
 - `generator/`: core (tiers, registry, Instructions), grader (answer comparison, AST checks,

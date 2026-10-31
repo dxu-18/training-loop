@@ -7,18 +7,18 @@
   const RUN = root.DSARun;
 
   const LIST = [
-    { id: "linked-lists", num: "13.01", title: "Linked lists" },
-    { id: "stacks", num: "13.02", title: "Stacks" },
-    { id: "queues", num: "13.03", title: "Queues" },
-    { id: "unbounded-arrays", num: "13.04", title: "Unbounded arrays" },
-    { id: "hash-tables", num: "13.05", title: "Hash tables" },
-    { id: "binary-search-trees", num: "13.06", title: "Binary search trees" },
-    { id: "dictionaries-sets", num: "13.07", title: "Dictionaries & sets" },
-    { id: "heaps", num: "13.08", title: "Heaps" },
-    { id: "priority-queues", num: "13.09", title: "Priority queues" },
-    { id: "binary-search", num: "13.10", title: "Binary search" },
-    { id: "merge-sort", num: "13.11", title: "Merge sort" },
-    { id: "quicksort", num: "13.12", title: "Quicksort" },
+    { id: "binary-search", num: "13.01", title: "Binary search" },
+    { id: "mergesort", num: "13.02", title: "Mergesort" },
+    { id: "quicksort", num: "13.03", title: "Quicksort" },
+    { id: "linked-lists", num: "13.04", title: "Linked lists" },
+    { id: "stacks", num: "13.05", title: "Stacks" },
+    { id: "queues", num: "13.06", title: "Queues" },
+    { id: "unbounded-arrays", num: "13.07", title: "Unbounded arrays" },
+    { id: "hash-tables", num: "13.08", title: "Hash tables" },
+    { id: "binary-search-trees", num: "13.09", title: "Binary search trees" },
+    { id: "dictionaries-sets", num: "13.10", title: "Dictionaries & sets" },
+    { id: "heaps", num: "13.11", title: "Heaps" },
+    { id: "priority-queues", num: "13.12", title: "Priority queues" },
   ];
   const tutorial = (id) => (root.DSATutorials || {})[id];
 
@@ -132,7 +132,7 @@
     };
     const rows = (d.rows || [d.cells]).map((r) => `<div class="dg-row">${r.map(cell).join("")}</div>`).join("");
     // [segments) and X.field names in the caption read as code
-    return `<div class="diagram">${rows}<div class="dg-caption">${deps.inline(d.caption.replace(/(\[[^)]*\)|\b[A-Z]\.\w+(?:\.\w+)*)/g, "`$1`"))}</div></div>`;
+    return `<div class="diagram">${rows}<div class="dg-caption">${deps.inline(d.caption.replace(/((?:\b[A-Z])?\[[^\[\]()]*[\])]|\b[A-Z]\.\w+(?:\.\w+)*)/g, "`$1`"))}</div></div>`;
   }
 
   function runnerNote(lang) {
@@ -264,7 +264,10 @@
           add("", m.body.filter((x) => x.closing).flatMap((x) => lines(x.code, depth)));
           continue;
         }
-        if (!m.body.some(hasText)) { add(m.say, DL.emit([m]).map((text) => ({ text, depth })), { note: m.note }); continue; }
+        if (!m.body.some(hasText)) {   // (a Java class's closing brace comes after all the functions)
+          add(m.say, DL.emit([{ ...m, close: m.deferClose ? [] : m.close }]).map((text) => ({ text, depth })), { note: m.note });
+          continue;
+        }
         add(m.say, lines(m.code, depth), { note: m.note });
         walk(m.body, depth + 1);
         if (!m.deferClose) add("", lines(m.close, depth));   // (Java's class LinkedList closes after all the functions)

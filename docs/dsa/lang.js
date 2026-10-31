@@ -18,7 +18,7 @@
   const camel = (s) => s.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
 
   // ---------------------------------------------------------------- parsing
-  const TOKEN = /\s*(\d+|"(?:[^"\\]|\\.)*"|[A-Za-z_]\w*|==|!=|<=|>=|[-+<>().,])/y;
+  const TOKEN = /\s*(\d+|"(?:[^"\\]|\\.)*"|[A-Za-z_]\w*|==|!=|<=|>=|[-+*\/%<>().,[\]])/y;
   function tokenize(src) {
     const out = [];
     TOKEN.lastIndex = 0;
@@ -49,15 +49,34 @@
       return a;
     };
     const add = () => {
-      let a = post();
-      while (peek() === "+" || peek() === "-") { const op = next(); a = { k: "bin", op, a, b: post() }; }
+      let a = mul();
+      while (peek() === "+" || peek() === "-") { const op = next(); a = { k: "bin", op, a, b: mul() }; }
       return a;
     };
-    const post = () => { let a = prim(); while (peek() === ".") { next(); a = { k: "field", obj: a, name: next() }; } return a; };
+    const mul = () => {
+      let a = post();
+      while (peek() === "*" || peek() === "/" || peek() === "%") { const op = next(); a = { k: "bin", op, a, b: post() }; }
+      return a;
+    };
+    const post = () => {
+      let a = prim();
+      for (;;) {
+        if (peek() === ".") { next(); a = { k: "field", obj: a, name: next() }; }
+        else if (peek() === "[") { next(); const idx = or(); expect("]"); a = { k: "index", obj: a, idx }; }
+        else return a;
+      }
+    };
     const prim = () => {
       const s = next();
       if (s === undefined) throw new Error(`IR: unexpected end of ${JSON.stringify(src)}`);
       if (s === "(") { const e = or(); expect(")"); return e; }
+      if (s === "[") {   // an array literal (the tests' arrays)
+        const items = [];
+        if (peek() !== "]") { items.push(or()); while (peek() === ",") { next(); items.push(or()); } }
+        expect("]");
+        return { k: "array", items };
+      }
+      if (s === "-" && /^\d/.test(peek() || "")) return { k: "num", v: -Number(next()) };
       if (/^\d/.test(s)) return { k: "num", v: Number(s) };
       if (s[0] === '"') return { k: "str", v: JSON.parse(s) };
       if (s === "null") return { k: "null" };
@@ -81,6 +100,7 @@
     let m;
     if ((m = line.match(/^let (\w+) = take (.+)$/))) return { k: "take", name: m[1], e: parseExpr(m[2]) };
     if ((m = line.match(/^let (\w+) = (.+)$/))) return { k: "let", name: m[1], e: parseExpr(m[2]) };
+    if ((m = line.match(/^for (\w+) = (.+) to (.+)$/))) return { k: "for", name: m[1], from: parseExpr(m[2]), to: parseExpr(m[3]) };
     if ((m = line.match(/^(if|elif|while|repeat) (.+)$/))) return { k: m[1], e: parseExpr(m[2]) };
     if (line === "else" || line === "block") return { k: line };
     if ((m = line.match(/^return(?: (.+))?$/))) return { k: "return", e: m[1] ? parseExpr(m[1]) : null };
@@ -98,6 +118,12 @@
   function typeOf(e, ctx) {
     switch (e.k) {
       case "num": return "int";
+      case "array": return "ArrV";
+      case "index": {
+        const ot = typeOf(e.obj, ctx);
+        if (ot !== "Arr" && ot !== "ArrV") throw new Error(`IR: can't index a ${ot}`);
+        return "T";
+      }
       case "str": return "T";
       case "null": return "null";
       case "bool": return "bool";
@@ -114,8 +140,8 @@
         if (!t) throw new Error(`IR: no field ${e.name} on ${ot}`);
         return t;
       }
-      case "call": { const r = spec(e.fn, ctx).ret; return r === "Tpeek" ? "T" : r; }
-      case "bin": return e.op === "+" || e.op === "-" ? "int" : "bool";
+      case "call": { const r = spec(e.fn, ctx).ret; return r === "Tpeek" ? "T" : r === "index" ? "index" : r; }
+      case "bin": return ["+", "-", "*", "/", "%"].includes(e.op) ? "int" : "bool";
       case "not": return "bool";
     }
     throw new Error(`IR: bad expression ${e.k}`);
@@ -128,7 +154,7 @@
   }
 
   // ---------------------------------------------------------------- expressions
-  const PREC = { or: 1, and: 2, "==": 4, "!=": 4, "<": 4, ">": 4, "<=": 4, ">=": 4, "+": 5, "-": 5 };
+  const PREC = { or: 1, and: 2, "==": 4, "!=": 4, "<": 4, ">": 4, "<=": 4, ">=": 4, "+": 5, "-": 5, "*": 6, "/": 6, "%": 6 };
 
   function fnName(name, ctx) {
     const isRef = name.startsWith("ref_") || (ctx.ref && !spec(name, ctx).harness);
@@ -169,7 +195,12 @@
       case "bool": return L === "py" ? (e.v ? "True" : "False") : String(e.v);
       case "default": return defaultLit(ctx);
       case "new": return newNode(e.arg, ctx);
-      case "id": return e.name;
+      case "id": return ctx.derefs && ctx.derefs.has(e.name) ? `*${e.name}` : e.name;   // (Rust: an element passed as &T)
+      case "index": return `${expr(e.obj, ctx, 9)}[${expr(e.idx, ctx)}]`;
+      case "array": {
+        const items = e.items.map((x) => expr(x, ctx)).join(", ");
+        return { py: `[${items}]`, cpp: `std::vector<${ctx.T}>{${items}}`, java: `new ${ctx.T}[]{${items}}`, rs: `vec![${items}]` }[L];
+      }
       case "field": {
         const ot = typeOf(e.obj, ctx);
         const o = expr(e.obj, ctx, 9);
@@ -201,7 +232,10 @@
         }
         if (e.op === "==" || e.op === "!=") return wrap(compare(e, ctx), 4);
         const p = PREC[e.op];
-        return wrap(`${expr(e.a, ctx, p)} ${e.op} ${expr(e.b, ctx, p + 1)}`, p);
+        // Java orders generic elements with compareTo
+        if (p === 4 && L === "java" && ctx.generic && typeOf(e.a, ctx) === "T") return wrap(`${expr(e.a, ctx, 9)}.compareTo(${expr(e.b, ctx)}) ${e.op} 0`, 4);
+        const op = e.op === "/" && L === "py" ? "//" : e.op;   // integer division
+        return wrap(`${expr(e.a, ctx, p)} ${op} ${expr(e.b, ctx, p + 1)}`, p);
       }
     }
     throw new Error(`IR: bad expression ${e.k}`);
@@ -222,10 +256,18 @@
     return `${a} ${e.op} ${b}`;
   }
 
-  // a call argument: Rust borrows a structure held by value (a local, or a field like Q.inbox)
+  // a call argument: Rust borrows a structure held by value (a local, or a field like Q.inbox), an array, and an
+  // element passed by reference (&T)
   function arg(a, kind, ctx) {
+    if (ctx.lang === "rs" && kind === "Tref") {
+      if (a.k === "id" && ctx.derefs && ctx.derefs.has(a.name)) return a.name;
+      return `&${expr(a, ctx, 9)}`;
+    }
     const s = expr(a, ctx);
-    if (ctx.lang === "rs" && String(typeOf(a, ctx)).startsWith("V:")) return kind.startsWith("mut:") ? `&mut ${s}` : `&${s}`;
+    if (ctx.lang !== "rs") return s;
+    const t = String(typeOf(a, ctx));
+    if (t.startsWith("V:")) return kind.startsWith("mut:") ? `&mut ${s}` : `&${s}`;
+    if (t === "ArrV") return `&${s}`;
     return s;
   }
 
@@ -233,6 +275,8 @@
   function typeName(t, ctx) {
     const g = ctx.generic ? `<${ctx.T}>` : "";
     if (t === "N") return ctx.lang === "cpp" ? `Node${g}*` : `Node${g}`;
+    if (t === "ArrV") return ctx.lang === "cpp" ? `std::vector<${ctx.T}>` : `${ctx.T}[]`;
+    if (t === "index") return "int";
     if (t === "T") return ctx.T;
     if (t === "int") return "int";
     if (t === "bool") return ctx.lang === "java" ? "boolean" : "bool";
@@ -254,7 +298,7 @@
         ctx.vars[s.name] = t === "null" ? "N" : t;
         const vt = ctx.vars[s.name];
         if (L === "py") return { code: [`${s.name} = ${val}`] };
-        if (L === "rs") return { code: [`let ${ctx.muts.has(s.name) ? "mut " : ""}${s.name} = ${val};`] };
+        if (L === "rs") return { code: [`let ${ctx.muts.has(s.name) ? "mut " : ""}${s.name}${vt === "ArrV" ? `: Vec<${ctx.T}>` : ""} = ${val};`] };
         return { code: [`${typeName(vt, ctx)} ${s.name} = ${val};`] };
       }
       case "take": {
@@ -274,6 +318,13 @@
       case "elif": return { code: [L === "py" ? `elif ${expr(s.e, ctx)}:` : `} else if ${cond(s.e)} {`], close: end };
       case "else": return { code: [L === "py" ? "else:" : "} else {"], close: end };
       case "while": return { code: [open(`while ${cond(s.e)}`)], close: end };
+      case "for": {   // for i = lo to hi: i runs over [lo, hi)
+        ctx.vars[s.name] = "int";
+        const a = expr(s.from, ctx), b = expr(s.to, ctx);
+        const head = { py: `for ${s.name} in range(${a}, ${b}):`, cpp: `for (int ${s.name} = ${a}; ${s.name} < ${b}; ${s.name}++) {`,
+          java: `for (int ${s.name} = ${a}; ${s.name} < ${b}; ${s.name}++) {`, rs: `for ${s.name} in ${a}..${b} {` }[L];
+        return { code: [head], close: end };
+      }
       case "repeat": {
         const n = expr(s.e, ctx);
         const head = { py: `for _ in range(${n}):`, cpp: `for (int k = 0; k < ${n}; k++) {`,
@@ -285,6 +336,8 @@
         if (!s.e) return { code: [`return${semi}`] };
         // Rust's generic peek returns a reference to the element (it can't move it out of the node)
         const borrow = L === "rs" && ctx.generic && ctx.ret === "Tpeek" && s.e.k === "field" ? "&" : "";
+        // Rust: an index (or -1) is an isize, the positions themselves usize
+        if (L === "rs" && ctx.ret === "index" && s.e.k !== "num" && typeOf(s.e, ctx) === "int") return { code: [`return ${expr(s.e, ctx, 9)} as isize;`] };
         return { code: [`return ${borrow}${expr(s.e, ctx)}${semi}`] };
       }
       case "assert": {
@@ -387,6 +440,7 @@
       if (!e || typeof e !== "object") return;
       if (e.k === "default") need.add("Default");
       if (e.k === "bin" && (e.op === "==" || e.op === "!=") && typeOf(e.a, c) === "T") need.add("PartialEq");
+      if (e.k === "bin" && ["<", ">", "<=", ">="].includes(e.op) && typeOf(e.a, c) === "T") need.add("PartialOrd");
       if (e.k === "call") { const s = spec(e.fn, c); (s.bounds || []).forEach((b) => need.add(b)); }
       for (const v of Object.values(e)) if (v && typeof v === "object") walkE(v, c);
     };
@@ -399,12 +453,15 @@
           if ((s.k === "print" || s.k === "println") && s.e && s.e.k !== "str" && typeOf(s.e, c) === "T") need.add("std::fmt::Display");
           if (s.k === "let") c.vars[s.name] = typeOf(s.e, c) === "null" ? "N" : typeOf(s.e, c);
           if (s.k === "take") c.vars[s.name] = "T";
+          if (s.k === "for") c.vars[s.name] = "int";
         }
         if (st.body) walk(st.body);
       }
     };
     walk(steps);
-    return ["PartialEq", "std::fmt::Display", "Default"].filter((b) => need.has(b));
+    (ctx.ownBounds || []).forEach((b) => need.add(b));
+    if (need.has("PartialOrd")) need.delete("PartialEq");   // (PartialOrd includes it)
+    return ["PartialEq", "PartialOrd", "std::fmt::Display", "Default"].filter((b) => need.has(b));
   }
 
   // does a function follow a node pointer (Rust then needs an unsafe block)?
@@ -441,28 +498,30 @@
     const struct = (k) => k.slice(k.indexOf(":") + 1);
     const isRefK = (k) => k.startsWith("mut:") || k.startsWith("ref:");
     if (L === "py") {
-      const pyType = (k) => (isRefK(k) ? `${struct(k)}${g ? "[T]" : ""}` : { N: `Node${g ? "[T]" : ""} | None`, int: "int", T: g ? "T" : "int" }[k]);
+      const pyType = (k) => (isRefK(k) ? `${struct(k)}${g ? "[T]" : ""}` : { N: `Node${g ? "[T]" : ""} | None`, int: "int", T: g ? "T" : "int",
+        Tref: g ? "T" : "int", Arr: g ? "list[T]" : "list[int]" }[k]);
       const ps = s.params.map(([p, k]) => (hints ? `${p}: ${pyType(k)}` : p)).join(", ");
-      const ret = hints ? ` -> ${{ void: "None", bool: "bool", int: "int", T: g ? "T" : "int", Tpeek: g ? "T" : "int" }[s.ret]}` : "";
+      const ret = hints ? ` -> ${{ void: "None", bool: "bool", int: "int", index: "int", T: g ? "T" : "int", Tpeek: g ? "T" : "int" }[s.ret]}` : "";
       return [`def ${n}${hints && g ? "[T]" : ""}(${ps})${ret}:`];
     }
     const tg = g ? "<T>" : "";
     if (L === "cpp") {
       const ps = s.params.map(([p, k]) => (k.startsWith("mut:") ? `${struct(k)}${tg}& ${p}` : k.startsWith("ref:") ? `const ${struct(k)}${tg}& ${p}`
-        : { N: `Node${tg}* ${p}`, int: `int ${p}`, T: `${T} ${p}` }[k])).join(", ");
-      const ret = { void: "void", bool: "bool", int: "int", T, Tpeek: T }[s.ret];
+        : { N: `Node${tg}* ${p}`, int: `int ${p}`, T: `${T} ${p}`, Tref: g ? `const T& ${p}` : `${T} ${p}`, Arr: `const std::vector<${T}>& ${p}` }[k])).join(", ");
+      const ret = { void: "void", bool: "bool", int: "int", index: "int", T, Tpeek: T }[s.ret];
       return [...(g ? ["template <typename T>"] : []), `${ret} ${n}(${ps}) {`];
     }
     if (L === "java") {
-      const ps = s.params.map(([p, k]) => (isRefK(k) ? `${struct(k)}${tg} ${p}` : { N: `Node${tg} ${p}`, int: `int ${p}`, T: `${T} ${p}` }[k])).join(", ");
-      const ret = { void: "void", bool: "boolean", int: "int", T, Tpeek: T }[s.ret];
-      return [`static ${g ? "<T> " : ""}${ret} ${n}(${ps}) {`];
+      const ps = s.params.map(([p, k]) => (isRefK(k) ? `${struct(k)}${tg} ${p}` : { N: `Node${tg} ${p}`, int: `int ${p}`, T: `${T} ${p}`, Tref: `${T} ${p}`, Arr: `${T}[] ${p}` }[k])).join(", ");
+      const ret = { void: "void", bool: "boolean", int: "int", index: "int", T, Tpeek: T }[s.ret];
+      const gen = !g ? "" : (s.rsBounds || []).includes("PartialOrd") ? "<T extends Comparable<T>> " : "<T> ";
+      return [`static ${gen}${ret} ${n}(${ps}) {`];
     }
     const ps = s.params.map(([p, k]) => (k.startsWith("mut:") ? `${p}: &mut ${struct(k)}${tg}` : k.startsWith("ref:") ? `${p}: &${struct(k)}${tg}`
-      : { N: `${p}: *mut Node${tg}`, int: `${p}: usize`, T: `${p}: ${T}` }[k])).join(", ");
+      : { N: `${p}: *mut Node${tg}`, int: `${p}: usize`, T: `${p}: ${T}`, Tref: `${p}: &${T}`, Arr: `${p}: &[${T}]` }[k])).join(", ");
     const bounds = g ? s.rsBounds : [];
     const gen = g ? `<T${bounds.length ? ": " + bounds.join(" + ") : ""}>` : "";
-    const ret = { void: "", bool: " -> bool", int: " -> usize", T: ` -> ${T}`, Tpeek: g ? " -> &T" : ` -> ${T}` }[s.ret];
+    const ret = { void: "", bool: " -> bool", int: " -> usize", index: " -> isize", T: ` -> ${T}`, Tpeek: g ? " -> &T" : ` -> ${T}` }[s.ret];
     return [`fn ${n}${gen}(${ps})${ret} {`];
   }
 
@@ -470,8 +529,12 @@
   function renderFunction(fn, ctx0, opts = {}) {
     const s = ctx0.fns[fn.name];
     const ctx = { ...ctx0, vars: {}, muts: reassigned(fn.steps), harnessFn: !!s.harness, ret: s.ret, owner: s.owner || null };
-    s.params.forEach(([p, k]) => { ctx.vars[p] = k.startsWith("mut:") || k.startsWith("ref:") ? `R:${k.slice(4)}` : k; });
-    const sp = { ...s, rsBounds: ctx.lang === "rs" && ctx.generic ? rustBounds(fn.steps, { ...ctx, vars: { ...ctx.vars } }) : [] };
+    s.params.forEach(([p, k]) => { ctx.vars[p] = k.startsWith("mut:") || k.startsWith("ref:") ? `R:${k.slice(4)}` : k === "Tref" ? "T" : k; });
+    // Rust reads an element passed by reference as *x
+    if (ctx.lang === "rs") ctx.derefs = new Set(s.params.filter(([, k]) => k === "Tref").map(([p]) => p));
+    // what T must support: Rust's trait bounds, and Java's Comparable for ordering
+    const needsBounds = ctx.generic && (ctx.lang === "rs" || ctx.lang === "java");
+    const sp = { ...s, rsBounds: needsBounds ? rustBounds(fn.steps, { ...ctx, vars: { ...ctx.vars }, ownBounds: s.bounds }) : [] };
     const head = signature(fn.name, sp, ctx);
     const body = toDisplay(fn.steps, ctx);
     const L = ctx.lang;

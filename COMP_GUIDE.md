@@ -28,7 +28,7 @@ A syntax-first practice guide covering 12 tools. **Part I** covers NumPy, pandas
 
 **[Part III — Data Structures & Algorithms](#part-iii--data-structures--algorithms)**
 
-- **[13. Data Structures & Algorithms](#13-data-structures--algorithms)** — [13.01 Linked lists](#1301-linked-lists) · [13.02 Stacks](#1302-stacks) · [13.03 Queues](#1303-queues) · [13.04 Unbounded arrays](#1304-unbounded-arrays) · [13.05 Hash tables](#1305-hash-tables) · [13.06 Binary search trees](#1306-binary-search-trees) · [13.07 Dictionaries and sets](#1307-dictionaries-and-sets) · [13.08 Heaps](#1308-heaps) · [13.09 Priority queues](#1309-priority-queues) · [13.10 Binary search](#1310-binary-search) · [13.11 Merge sort](#1311-merge-sort) · [13.12 Quicksort](#1312-quicksort)
+- **[13. Data Structures & Algorithms](#13-data-structures--algorithms)** — [13.01 Binary search](#1301-binary-search) · [13.02 Mergesort](#1302-mergesort) · [13.03 Quicksort](#1303-quicksort) · [13.04 Linked lists](#1304-linked-lists) · [13.05 Stacks](#1305-stacks) · [13.06 Queues](#1306-queues) · [13.07 Unbounded arrays](#1307-unbounded-arrays) · [13.08 Hash tables](#1308-hash-tables) · [13.09 Binary search trees](#1309-binary-search-trees) · [13.10 Dictionaries and sets](#1310-dictionaries-and-sets) · [13.11 Heaps](#1311-heaps) · [13.12 Priority queues](#1312-priority-queues)
 
 ---
 
@@ -5953,7 +5953,115 @@ Part III teaches differently from Parts I and II. Each module is **one guided tu
 
 **How the tests read a structure.** Each test program adds its own `main` with its own helpers, built on the learner's types: an independent walker that prints the contents and the first broken invariant, and builders for corrupted structures. Every printed line is compared with the expected output, and the first line that differs is shown. Each step's tests are mutation-tested: deleting any one statement of the reference makes them fail (`scripts/dsa_selftest.mjs --mutants`).
 
-### 13.01 Linked lists
+### 13.01 Binary search
+
+**Interface.** The arguments go array, segment, value. The array is `A`; its segments are `A[lo, hi)`, so an empty segment is `lo == hi`.
+
+| Function | Behaviour | Time |
+|---|---|---|
+| `is_sorted(A, lo, hi)` | is `A[lo, hi)` in order? | O(n) |
+| `is_in(A, lo, hi, x)` | linear search, for contracts | O(n) |
+| `all_smaller(A, lo, hi, x)` | every element < x | O(n) |
+| `all_bigger(A, lo, hi, x)` | every element > x | O(n) |
+| `all_at_least(A, lo, hi, x)` | every element ≥ x | O(n) |
+| `binsearch(A, n, x)` | an index of `x`, or -1 | O(log n) |
+| `lower_bound(A, n, x)` | the first index with `A[i] >= x` (`n` if none), which is also the insertion point | O(log n) |
+
+`binsearch` requires `is_sorted(A, 0, n)`; when it returns -1, it ensures `!is_in(A, 0, n, x)`. With the recursive option the steps add `binsearch_rec(A, lo, hi, x)` and `lower_bound_rec(A, lo, hi, x)`.
+
+**Invariant.** `A[0, lo) < x < A[hi, n)`, so `x` can only be in [lo, hi). It is checked with `all_smaller` and `all_bigger` at the top of every round.
+
+* The loop runs `while lo < hi`, with `mid = lo + (hi - lo) / 2` (the same value as `(lo + hi) / 2`, but no overflow).
+* Found: return `mid`. Smaller: `lo = mid + 1`. Bigger: `hi = mid`.
+* Each round shrinks `hi - lo`, which proves termination.
+* Lower bound uses `A[0, lo) < x <= A[hi, n)` and returns `lo` once `lo == hi`.
+
+**Options:**
+
+* **Iterative:** O(1) extra space.
+* **Recursive:** `binsearch_rec` with the base case `lo == hi`, using O(log n) stack space.
+
+Plus int or generic elements. Generic needs ordering:
+* Python: `<`.
+* C++: templates.
+* Java: `<T extends Comparable<T>>` and `compareTo`.
+* Rust: `T: PartialOrd`, with `x: &T`.
+
+**Complexity:** O(log n) time. Space is O(1) iterative or O(log n) recursive. With contracts on it's O(n log n), because the invariant checks scan the array every round. Comparison boxes:
+* linear search: O(n);
+* minimum and maximum of a sorted array: O(1);
+* inserting while keeping it sorted: O(n).
+
+**Steps:**
+
+1. Sorted arrays and their contracts: `is_sorted`, which compares `A[i - 1]` with `A[i]` for `i` in [lo + 1, hi), so an empty segment can't underflow an index; and `is_in`.
+2. The loop invariant: `all_smaller`, `all_bigger`.
+3. `binsearch`, or `binsearch_rec` plus `binsearch`.
+4. Lower bound: `all_at_least`, then `lower_bound`, or `lower_bound_rec` plus `lower_bound`.
+
+**Tests:**
+* distinct sorted arrays, every element and absent values below, between and above;
+* empty, one- and two-element arrays;
+* `n` smaller than the array;
+* duplicates for the lower bound;
+* random arrays in the final.
+
+Results are checked against a linear scan.
+
+### 13.02 Mergesort
+
+**Interface:**
+
+* `merge(A, lo, mid, hi)`: requires `A[lo, mid)` and `A[mid, hi)` sorted; ensures `A[lo, hi)` sorted.
+* `mergesort(A, lo, hi)`: sorts `A[lo, hi)`.
+
+**Implementation (one option, as requested).**
+
+1. Recurse on `[lo, mid)` and `[mid, hi)`.
+2. `merge` into a temporary array of length `hi - lo`, taking from the left half on ties; this makes it **stable**.
+3. Copy back.
+
+**Complexity:** O(n log n) time in every case. O(n) extra space for the temporary arrays, plus O(log n) stack. Stable.
+
+**Steps:**
+
+1. `is_sorted(A, lo, hi)`.
+2. `merge`, with its loop invariant: the output prefix is sorted, and both cursors stay in range.
+3. The `mergesort` base case: `hi - lo <= 1`.
+4. The recursive case.
+5. A counted-comparisons check that the tests verify against n log n.
+
+### 13.03 Quicksort
+
+**Interface:**
+
+* `partition(A, lo, pi, hi) -> mid`: requires `lo <= pi < hi`. It ensures `A[lo, mid) ≤ A[mid] ≤ A[mid+1, hi)`, with the pivot at `mid`.
+* `quicksort(A, lo, hi)`: sorts `A[lo, hi)`.
+
+**Implementation (one option, as requested).** The 15-122 partition:
+
+1. Swap the pivot to `A[lo]`.
+2. Grow `[lo+1, left)` ≤ pivot and `[right, hi)` > pivot until they meet.
+3. Swap the pivot into place.
+
+A **random pivot index** (or median of three) gives expected O(n log n) on every input.
+
+**Complexity:**
+
+* Time: O(n log n) expected; O(n²) worst case, which a fixed first-element pivot hits on sorted input.
+* Space: in place. The stack is O(log n) expected if the recursion goes into the smaller side first and loops on the larger one.
+* Not stable.
+
+**Steps:**
+
+1. Contracts: `le_seg`, `ge_seg` and `is_sorted`.
+2. `swap`.
+3. `partition`, with its loop invariants.
+4. `quicksort`'s base case and recursion.
+5. The random pivot.
+6. A test on sorted and all-equal input, which a naive version takes O(n²) on.
+
+### 13.04 Linked lists
 
 **Interface:**
 
@@ -6023,7 +6131,7 @@ Space is n nodes × (element + 1 or 2 pointers), plus 1 dummy.
 * Java `==` on generic elements, which compares references instead of calling `.equals`.
 * A function that falls off its end without returning.
 
-### 13.02 Stacks
+### 13.05 Stacks
 
 **Interface:**
 
@@ -6057,9 +6165,9 @@ Space is n nodes × (element + 1 or 2 pointers), plus 1 dummy.
 
 `is_segment` is also called past the end.
 
-**Rust.** Raw pointers here too. A stack alone could own its nodes with `Option<Box<…>>`, but the queue in 13.03 can't, and 13.03's two-stack queue builds on this stack. So the tutorials keep one style.
+**Rust.** Raw pointers here too. A stack alone could own its nodes with `Option<Box<…>>`, but the queue in 13.06 can't, and 13.06's two-stack queue builds on this stack. So the tutorials keep one style.
 
-### 13.03 Queues
+### 13.06 Queues
 
 **Interface:**
 
@@ -6087,7 +6195,7 @@ Space is n nodes × (element + 1 or 2 pointers), plus 1 dummy.
     4. `deq`.
     5. `queue_peek` and `queue_size`.
 * **Two stacks.**
-  * `Q.inbox` and `Q.outbox` are 13.02 stacks.
+  * `Q.inbox` and `Q.outbox` are 13.05 stacks.
   * `enq` pushes onto the inbox.
   * `refill(Q)` moves the whole inbox onto the outbox, but only when the outbox is empty. Popping reverses the order, so the oldest element lands on top.
   * `deq` and `queue_peek` refill first, then pop or peek the outbox.
@@ -6104,7 +6212,7 @@ Space is n nodes × (element + 1 or 2 pointers), plus 1 dummy.
 
 **Tests.** The two-stack tests print both stacks (`out=[…] in=[…]`), so the expected output pins down exactly when the transfer happens.
 
-### 13.04 Unbounded arrays
+### 13.07 Unbounded arrays
 
 **Interface:** `uba_new(capacity)`, `is_uba(A)`, `uba_len(A)`, `uba_get(A, i)`, `uba_set(A, i, x)`, `uba_add(A, x)` (push back), `uba_rem(A) -> x` (pop back).
 
@@ -6137,7 +6245,7 @@ Space is up to 2n with doubling, 1.5n with ×1.5.
 5. `rem` with the shrink rule.
 6. Amortized analysis: the token argument, with a counter of copies that the tests check.
 
-### 13.05 Hash tables
+### 13.08 Hash tables
 
 **Interface:**
 
@@ -6186,7 +6294,7 @@ The hash is a polynomial hash for strings and a multiplicative hash for ints, re
 6. `resize`.
 7. `delete`, with tombstones or chain unlinking.
 
-### 13.06 Binary search trees
+### 13.09 Binary search trees
 
 **Interface:** `bst_new()`, `is_bst(T)`, `bst_lookup(T, k)`, `bst_insert(T, k)`, `bst_delete(T, k)`, `bst_min` / `bst_max`, `bst_inorder(T)`, `height(T)`.
 
@@ -6227,7 +6335,7 @@ Space is O(n).
 
 Children use `Option<Box<Node>>` in Rust.
 
-### 13.07 Dictionaries and sets
+### 13.10 Dictionaries and sets
 
 **Interface:**
 
@@ -6237,8 +6345,8 @@ Children use `Option<Box<Node>>` in Rust.
 
 **Options: what it's built on.**
 
-* **Hash table** (13.05): expected O(1) operations, no order.
-* **Binary search tree** (13.06, plain or AVL): O(log n) operations with order. This adds `min`, `successor`, range queries and sorted iteration.
+* **Hash table** (13.08): expected O(1) operations, no order.
+* **Binary search tree** (13.09, plain or AVL): O(log n) operations with order. This adds `min`, `successor`, range queries and sorted iteration.
 
 The complexity boxes show this trade-off directly. The tutorial wraps the earlier structure behind a client interface (the abstraction boundary), so the client code is the same for both options.
 
@@ -6250,7 +6358,7 @@ The complexity boxes show this trade-off directly. The tutorial wraps the earlie
 4. Set operations: union, intersection, difference.
 5. A client: word counts.
 
-### 13.08 Heaps
+### 13.11 Heaps
 
 **Interface:**
 
@@ -6275,7 +6383,7 @@ The complexity boxes show this trade-off directly. The tutorial wraps the earlie
 
 * Min-heap or max-heap, or generic with a comparison function.
 * 0- or 1-indexed.
-* An unbounded backing array (13.04) or a fixed capacity.
+* An unbounded backing array (13.07) or a fixed capacity.
 
 **Steps:**
 
@@ -6287,7 +6395,7 @@ The complexity boxes show this trade-off directly. The tutorial wraps the earlie
 6. Bottom-up `heapify`: sift down from n/2 to 1, O(n) in total.
 7. `heapsort`.
 
-### 13.09 Priority queues
+### 13.12 Priority queues
 
 **Interface:** `pq_new()`, `pq_add(P, x, priority)`, `pq_peek(P)`, `pq_rem(P)` (highest priority first), `pq_size(P)`, and optionally `pq_decrease_key`.
 
@@ -6297,7 +6405,7 @@ The complexity boxes show this trade-off directly. The tutorial wraps the earlie
 |---|---|---|---|
 | unsorted array | O(1) | O(n) | |
 | sorted linked list | O(n) | O(1) | |
-| binary heap (13.08) | O(log n) | O(log n) | the optimal general-purpose choice |
+| binary heap (13.11) | O(log n) | O(log n) | the optimal general-purpose choice |
 | heap + index map | O(log n) | O(log n) | `decrease_key` also O(log n), as Dijkstra needs |
 
 The complexity boxes compare all of them.
@@ -6309,87 +6417,3 @@ The complexity boxes compare all of them.
 3. Wrap the heap.
 4. Ties: stable order by insertion counter.
 5. A client that merges k sorted lists.
-
-### 13.10 Binary search
-
-**Interface:** `binsearch(x, A, n) -> index or -1` on a sorted array. It requires `is_sorted(A, 0, n)` and ensures the result is -1 if `x` is not in `A`, or that `A[result] == x`.
-
-**Invariant (on [lo, hi)).**
-
-* `A[0, lo) < x` and `A[hi, n) > x` (or `≥ x` for the lower-bound variant).
-* The loop runs `while lo < hi`, with `mid = lo + (hi - lo) / 2`, then sets either `lo = mid + 1` or `hi = mid`.
-* Each round shrinks `hi - lo`, which proves termination.
-
-**Options:**
-
-* **Iterative:** O(1) space.
-* **Recursive:** `search(x, A, lo, hi)`, using O(log n) stack space.
-
-Variants included as steps:
-
-* Find any match.
-* Find the first occurrence: the lower bound.
-* The insertion point.
-
-**Complexity:** O(log n) time. Space is O(1) iterative or O(log n) recursive. A linear search, shown for comparison, is O(n).
-
-**Steps:**
-
-1. `is_sorted`, and `is_in(x, A, lo, hi)` for contracts.
-2. The loop invariant written as asserts.
-3. The loop or the recursion.
-4. Overflow-safe `mid`.
-5. Lower bound.
-
-### 13.11 Merge sort
-
-**Interface:**
-
-* `merge(A, lo, mid, hi)`: requires `A[lo, mid)` and `A[mid, hi)` sorted; ensures `A[lo, hi)` sorted.
-* `mergesort(A, lo, hi)`: sorts `A[lo, hi)`.
-
-**Implementation (one option, as requested).**
-
-1. Recurse on `[lo, mid)` and `[mid, hi)`.
-2. `merge` into a temporary array of length `hi - lo`, taking from the left half on ties; this makes it **stable**.
-3. Copy back.
-
-**Complexity:** O(n log n) time in every case. O(n) extra space for the temporary arrays, plus O(log n) stack. Stable.
-
-**Steps:**
-
-1. `is_sorted(A, lo, hi)`.
-2. `merge`, with its loop invariant: the output prefix is sorted, and both cursors stay in range.
-3. The `mergesort` base case: `hi - lo <= 1`.
-4. The recursive case.
-5. A counted-comparisons check that the tests verify against n log n.
-
-### 13.12 Quicksort
-
-**Interface:**
-
-* `partition(A, lo, pi, hi) -> mid`: requires `lo <= pi < hi`. It ensures `A[lo, mid) ≤ A[mid] ≤ A[mid+1, hi)`, with the pivot at `mid`.
-* `quicksort(A, lo, hi)`: sorts `A[lo, hi)`.
-
-**Implementation (one option, as requested).** The 15-122 partition:
-
-1. Swap the pivot to `A[lo]`.
-2. Grow `[lo+1, left)` ≤ pivot and `[right, hi)` > pivot until they meet.
-3. Swap the pivot into place.
-
-A **random pivot index** (or median of three) gives expected O(n log n) on every input.
-
-**Complexity:**
-
-* Time: O(n log n) expected; O(n²) worst case, which a fixed first-element pivot hits on sorted input.
-* Space: in place. The stack is O(log n) expected if the recursion goes into the smaller side first and loops on the larger one.
-* Not stable.
-
-**Steps:**
-
-1. Contracts: `le_seg`, `ge_seg` and `is_sorted`.
-2. `swap`.
-3. `partition`, with its loop invariants.
-4. `quicksort`'s base case and recursion.
-5. The random pivot.
-6. A test on sorted and all-equal input, which a naive version takes O(n²) on.
