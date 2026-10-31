@@ -130,8 +130,9 @@ def run_all_steps(pg, label, wrong_at=None):
         if wrong_at == k:
             # break one line of the reference (the newest "size += 1"): the step must fail and say where
             code = program(pg, k)
-            i = code.rfind("size += 1")
-            code = code[:i] + "size += 2" + code[i + len("size += 1"):]
+            bad, good = ("size += 1", "size += 2") if "size += 1" in code else ("mid + 1", "mid + 2")
+            i = code.rfind(bad)
+            code = code[:i] + good + code[i + len(bad):]
             pg.evaluate(SET, code)
             pg.click(".check")
             v = wait_verdict(pg)
@@ -170,8 +171,11 @@ try:
         check(any("part iii" in h.lower() and "data structures" in h.lower() for h in heads), "home has Part III · Data Structures & Algorithms")
         row = pg.locator("a.topic[href='#/dsa/linked-lists']")
         check(row.count() == 1 and "not started" in row.inner_text().lower(), "Linked lists row says Not Started")
-        check(pg.locator(".part:last-child .topic.soon").count() == 9, "the other 9 tutorials say soon")
-        for tid in ("stacks", "queues"):
+        check(pg.locator(".part:last-child .topic.soon").count() == 8, "the other 8 tutorials say soon")
+        first = pg.locator(".part:last-child li").first.inner_text()
+        check("13.01" in first and "Binary search" in first, "Part III starts with 13.01 Binary search")
+        check("Mergesort" in pg.inner_text(".part:last-child") and "Merge sort" not in pg.inner_text(".part:last-child"), "Mergesort is one word")
+        for tid in ("binary-search", "stacks", "queues"):
             r = pg.locator(f"a.topic[href='#/dsa/{tid}']")
             check(r.count() == 1 and "not started" in r.inner_text().lower(), f"{tid}: live and Not Started")
         pg.screenshot(path=str(OUT / "home.png"), full_page=True)
@@ -313,7 +317,27 @@ try:
                 if pg.locator(".modal button").count():
                     pg.click(".modal button")
 
-        # ---- 13.02 Stacks: Python (with a wrong step) and C++ generic
+        # ---- 13.01 Binary search: the style option, then four languages
+        pg.goto(BASE + "/#/dsa/binary-search")
+        pg.wait_for_selector(".begin")
+        TID[0] = "binary-search"
+        space = lambda: pg.inner_text(".cx[data-id='space'] .cx-big")
+        choose(pg, {"style": "iterative"})
+        check(space() == "O(1)", "binary search, iterative: O(1) extra space")
+        choose(pg, {"style": "recursive"})
+        check(space() == "O(log n)", "recursive: O(log n) stack space")
+        check("hi = n" in pg.inner_text(".diagram"), "the diagram shows the segment [lo, hi)")
+        pg.screenshot(path=str(OUT / "bs-setup.png"), full_page=True)
+        start(pg, "binary-search", {"lang": "py", "type": "int", "style": "iterative"})
+        check(pg.locator(".outline li").count() == 4, "binary search: 4 steps")
+        if run_all_steps(pg, "bs-py", wrong_at=3):
+            finish(pg, "bs-py")
+        for lang, typ, style in (("cpp", "generic", "recursive"), ("rs", "generic", "iterative"), ("java", "generic", "recursive")):
+            start(pg, "binary-search", {"lang": lang, "type": typ, "style": style})
+            if run_all_steps(pg, f"bs-{lang}"):
+                finish(pg, f"bs-{lang}")
+
+        # ---- 13.05 Stacks: Python (with a wrong step) and C++ generic
         start(pg, "stacks", {"lang": "py", "type": "int"})
         check(pg.evaluate(STATUS) == "In Progress" and pg.locator(".outline li").count() == 5, "stacks: 5 steps, In Progress")
         if run_all_steps(pg, "stack-py", wrong_at=3):
@@ -324,7 +348,7 @@ try:
         if run_all_steps(pg, "stack-cpp"):
             finish(pg, "stack-cpp")
 
-        # ---- 13.03 Queues: the options change the steps and the complexity
+        # ---- 13.06 Queues: the options change the steps and the complexity
         pg.goto(BASE + "/#/dsa/queues")
         pg.wait_for_selector(".begin")
         TID[0] = "queues"

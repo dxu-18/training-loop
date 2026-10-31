@@ -1,4 +1,4 @@
-// 13.02 Stacks: a stack on a singly linked list (push and pop at the head), in Python, C++, Java or Rust.
+// 13.05 Stacks: a stack on a singly linked list (push and pop at the head), in Python, C++, Java or Rust.
 (function (root) {
   "use strict";
   const DL = root.DSALang || (typeof require !== "undefined" ? require("./lang.js") : null);
@@ -56,7 +56,7 @@
   const ENS = S("**Ensures**: the stack is still valid when it returns.", "assert is_stack(S)");
   const NONEMPTY = S("**Requires**: the stack is not empty.", "assert not stack_empty(S)");
 
-  // the stack's segment ends at null (shared with 13.03's two-stack queue)
+  // the stack's segment ends at null (shared with 13.06's two-stack queue)
   function isSegment() {
     return [
       S("Start at `start`.", "let p = start"),
@@ -119,7 +119,7 @@
     ];
   }
 
-  const RUST_WHY = "A stack alone could own its nodes with `Option<Box<…>>`, but a queue (13.03) points at its last node from two places, which needs raw pointers, so these tutorials use them throughout. `std::collections::LinkedList` is built the same way.";
+  const RUST_WHY = "A stack alone could own its nodes with `Option<Box<…>>`, but a queue (13.06) points at its last node from two places, which needs raw pointers, so these tutorials use them throughout. `std::collections::LinkedList` is built the same way.";
 
   function steps() {
     const fn = (name, body, headerSay) => ({ name, steps: body(), headerSay });
@@ -247,7 +247,7 @@
   }
 
   const DEF = {
-    id: "stacks", num: "13.02", title: "Stacks", heading: "Build a stack, step by step", diagramLabel: "Your stack",
+    id: "stacks", num: "13.05", title: "Stacks", heading: "Build a stack, step by step", diagramLabel: "Your stack",
     OPTIONS, DEFAULTS, FNS, STRUCTS, describe, complexity, diagram, steps, handlers, testGroups, refFns, problem,
     _internals: { isSegment, isStack, stackEmpty, push, pop, peek, stackSize, stackDecl, showFn, BREAKS, RUST_WHY },
   };

@@ -26,7 +26,7 @@ const args = process.argv.slice(2);
 const flag = (f) => args.includes(f);
 const opt = (f, d) => { const i = args.indexOf(f); return i >= 0 ? args[i + 1] : d; };
 // every tutorial in docs/dsa/ (--only linked-lists,stacks to pick some)
-const TUTORIALS = Object.fromEntries(["linked-list", "stack", "queue"]
+const TUTORIALS = Object.fromEntries(["binary-search", "linked-list", "stack", "queue"]
   .filter((f) => existsSync(join(ROOT, `docs/dsa/${f}.js`)))
   .map((f) => { const t = require(join(ROOT, `docs/dsa/${f}.js`)); return [t.id, t]; })
   .filter(([id]) => !opt("--only", "") || opt("--only", "").split(",").includes(id)));

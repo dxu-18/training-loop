@@ -2406,114 +2406,6 @@
    "modules": [
     {
      "id": "13.01",
-     "title": "Linked lists",
-     "live": false,
-     "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
-     }
-    },
-    {
-     "id": "13.02",
-     "title": "Stacks",
-     "live": false,
-     "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
-     }
-    },
-    {
-     "id": "13.03",
-     "title": "Queues",
-     "live": false,
-     "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
-     }
-    },
-    {
-     "id": "13.04",
-     "title": "Unbounded arrays",
-     "live": false,
-     "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
-     }
-    },
-    {
-     "id": "13.05",
-     "title": "Hash tables",
-     "live": false,
-     "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
-     }
-    },
-    {
-     "id": "13.06",
-     "title": "Binary search trees",
-     "live": false,
-     "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
-     }
-    },
-    {
-     "id": "13.07",
-     "title": "Dictionaries and sets",
-     "live": false,
-     "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
-     }
-    },
-    {
-     "id": "13.08",
-     "title": "Heaps",
-     "live": false,
-     "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
-     }
-    },
-    {
-     "id": "13.09",
-     "title": "Priority queues",
-     "live": false,
-     "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
-     }
-    },
-    {
-     "id": "13.10",
      "title": "Binary search",
      "live": false,
      "templates": {
@@ -2525,8 +2417,116 @@
      }
     },
     {
+     "id": "13.02",
+     "title": "Mergesort",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "13.03",
+     "title": "Quicksort",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "13.04",
+     "title": "Linked lists",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "13.05",
+     "title": "Stacks",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "13.06",
+     "title": "Queues",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "13.07",
+     "title": "Unbounded arrays",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "13.08",
+     "title": "Hash tables",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "13.09",
+     "title": "Binary search trees",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
+     "id": "13.10",
+     "title": "Dictionaries and sets",
+     "live": false,
+     "templates": {
+      "lite": 0,
+      "easy": 0,
+      "medium": 0,
+      "hard": 0,
+      "challenge": 0
+     }
+    },
+    {
      "id": "13.11",
-     "title": "Merge sort",
+     "title": "Heaps",
      "live": false,
      "templates": {
       "lite": 0,
@@ -2538,7 +2538,7 @@
     },
     {
      "id": "13.12",
-     "title": "Quicksort",
+     "title": "Priority queues",
      "live": false,
      "templates": {
       "lite": 0,

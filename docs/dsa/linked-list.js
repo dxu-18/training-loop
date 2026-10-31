@@ -1,4 +1,4 @@
-// 13.01 Linked lists: the step-by-step tutorial (options, complexity, steps, tests) for docs/dsa/page.js.
+// 13.04 Linked lists: the step-by-step tutorial (options, complexity, steps, tests) for docs/dsa/page.js.
 //
 // Eight layouts: {NULL-terminated, dummy node} x {singly, doubly} x {linear, circular}, each in four languages
 // with int or generic elements. Every function is written once as micro-steps in DSALang's statement language.
@@ -774,7 +774,7 @@
   }
 
   const DEF = {
-    id: "linked-lists", num: "13.01", title: "Linked lists", heading: "Build a linked list, step by step", diagramLabel: "Your list",
+    id: "linked-lists", num: "13.04", title: "Linked lists", heading: "Build a linked list, step by step", diagramLabel: "Your list",
     OPTIONS, DEFAULTS, FNS, STRUCTS, describe, complexity, diagram, steps, handlers, testGroups, refFns, problem,
     variant, fields, breaks, _internals: { isSegment, isList, insertFront, insertBack, deleteHead, deleteNode, lookup, printList, showFn },
   };
