@@ -707,12 +707,16 @@ can be renamed. Upload should accept only that file type.
   - the extension lets the picker filter on it and tells the file apart from any other `.json`.
 
 **Download.**
-- Where the browser has a Save dialog (`showSaveFilePicker`: Chrome, Edge), it opens with
-  `training-loop-progress-<date>.tlsave` suggested and the `.tlsave` type, so the file can be named and placed.
-- Firefox and Safari save straight to the downloads folder, so a small box asks for the name first.
+- A small box asks for the file name, suggesting `training-loop-progress-<date>`. The file is then an ordinary
+  download, to the downloads folder, or to wherever the browser asks if it is set to ask where to save.
   - Path and reserved characters become `-`.
   - A typed `.tlsave` isn't doubled.
   - The blob is `application/octet-stream`, so Safari doesn't append `.json`.
+- At first, Chrome and Edge used the system Save dialog (`showSaveFilePicker`). It was dropped the same day: that API
+  gives the site edit access to the chosen file, and Chrome shows a warning that the site can see edits made to it.
+  The site should never have access to anything on the person's disk.
+- Upload uses a plain file input, which lets the page read only the one chosen file. The browser test checks that
+  neither button ever calls the File System Access API.
 
 **Upload.**
 - `<input type=file accept=".tlsave">`. The content is what's checked:
@@ -731,8 +735,7 @@ can be renamed. Upload should accept only that file type.
   so.
 
 **Tests.** `scripts/progress_e2e.py`:
-- Download through a stubbed Save dialog and through the name box, with the file compared with storage. Chromium's
-  real dialog accepts the `.tlsave` type.
+- Download through the name box, with the file compared with storage; no File System Access calls.
 - Restore, Merge, Replace and Cancel, and the pages reading restored progress.
 - Rejected files: not JSON, not a progress file, a newer version, damaged.
 - Phone and dark layouts.
