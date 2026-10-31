@@ -21,6 +21,10 @@ finally build it again with no hints. Binary search, mergesort, quicksort, linke
 (plain, AVL, splay) are live; Python runs in the browser, while C++, Java and Rust
 are compiled and run on [Compiler Explorer](https://godbolt.org).
 
+Progress is kept in your browser. **Download** (top right of the main page) saves it to a `.tlsave` file, and
+**Upload** restores it, after clearing the browser's data or on another computer. Upload can merge with what is already
+there or replace it.
+
 ## Develop
 
 ```

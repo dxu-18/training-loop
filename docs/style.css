@@ -44,6 +44,26 @@ button { font: inherit; cursor: pointer; }
 .home { max-width: 720px; margin: 0 auto; padding: 64px 16px 96px; }
 .home h1 { font: 500 2.4rem/1.1 var(--serif); margin: 0 0 6px; letter-spacing: -0.01em; }
 .home .tag { color: var(--muted); margin: 0 0 48px; }
+/* Download / Upload (docs/progress.js): the page's top right corner */
+.save-bar { position: absolute; top: 16px; right: 16px; display: flex; gap: 8px; }
+.save-bar .btn { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); }
+.save-bar .btn:hover { color: var(--ink); }
+.save-bar svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.modal .card.save-card { max-width: 440px; width: 100%; }
+.save-card .save-meta { color: var(--ink); overflow-wrap: anywhere; margin-bottom: 14px; }
+.save-name { display: flex; align-items: center; border: 1px solid var(--line); border-radius: 8px; background: var(--bg);
+             margin: 0 0 20px; padding: 0 12px; font: 0.95rem var(--sans); }
+.save-name:focus-within { border-color: var(--accent); }
+.save-name input { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--ink); font: inherit; padding: 10px 0; outline: none; }
+.save-name span { color: var(--muted); }
+.save-cmp { width: 100%; border-collapse: collapse; margin: 0 0 16px; font-size: 0.92rem; text-align: left; }
+.save-cmp th { font: 600 0.7rem var(--sans); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); padding: 0 0 6px; }
+.save-cmp td { padding: 6px 0; border-top: 1px solid var(--line); }
+.save-cmp th:not(:first-child), .save-cmp td:not(:first-child) { text-align: right; width: 28%; font-variant-numeric: tabular-nums; }
+.save-toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 20; max-width: calc(100% - 32px);
+              background: var(--ink); color: var(--bg); padding: 10px 18px; border-radius: 10px; font-size: 0.9rem;
+              transition: opacity 0.4s; }
+.save-toast.out { opacity: 0; }
 .part h2 { font: 600 0.75rem var(--sans); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 40px 0 8px; }
 .topics { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
 .topic { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 4px;

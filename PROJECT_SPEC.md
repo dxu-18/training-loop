@@ -98,7 +98,7 @@ NumPy/pandas standard, running in the browser.
 | Instructions (was: Examples) | The functions a problem practises, each with a one-line description, only the new ones (session 9). Until then: another random instance of the same template, with its solution | Examples were long and often unrelated to the problem at hand; the function list says what to reach for without solving it. |
 | Template registry | `REGISTRY[section][module][tier]`, registered with `@template(module, tier)` (the section is fixed per package). A module is **live** once all 5 tiers have templates. | Matches the one-page-per-subsection structure (session 3). |
 | Template choice | Uniform over the templates registered for (section, module, tier), then a uniform theme, then random parameters | Gives every template an equal chance and keeps the questions varied. |
-| State | `localStorage` key `training-loop:v2`: per module (`"numpy/1.05"`) solved count, current seed and tier, medal, code draft. | A static site has no accounts. The session-1 key `training-loop:v1` (one counter per topic) is left untouched but no longer read. |
+| State | `localStorage` key `training-loop:v2`: per module (`"numpy/1.05"`) solved count, current seed and tier, medal, code draft. The home page's Download / Upload save all of it to a `.tlsave` file and restore it (session 20). | A static site has no accounts. The session-1 key `training-loop:v1` (one counter per topic) is left untouched but no longer read. |
 | Catalog | `scripts/build.py` parses COMP_GUIDE's `##`/`###` headings into `docs/build.json` (topics → modules, titles, live flag, template counts) | The site lists every subsection, even unfinished ones ("soon"), straight from the guide. `10.00 Practice schema` is skipped (reference material). |
 | Printed-output answers | `answer=["<stdout>"]` grades what the code printed | Needed for 1.01 (print options, `np.info`). |
 | Post checks | `post`: code run after the user's; its value is graded (e.g. `np.load('x.npy')`, `np.shares_memory(v, a)`) | Lets 1.06 check views vs copies and 1.17 check files the code wrote. |
@@ -682,6 +682,61 @@ Request: "go ahead and do binary search trees (default, AVL, splay)".
   are marked `noMutate` (provably equivalent).
 - 696 mutants, all caught; 376 runs, all passing.
 
+### Session 20 (2026-10-31): saving progress to a file
+Request: progress lives only in the browser, so clearing its data loses it. Add Download and Upload buttons to the
+top right of the main page. Choose the best file format. Download should open the system's Save dialog so the file
+can be renamed. Upload should accept only that file type.
+
+**Format: `.tlsave`, UTF-8 JSON** (`docs/progress.js`).
+```
+{ "format": "training-loop-progress", "version": 1, "savedAt": "<ISO time>", "site": "<page URL>",
+  "stores": { "<localStorage key>": <its value, parsed>, ... } }
+```
+- `stores` holds every `training-loop:*` key except the retired `v1` counter:
+  - Part I/II modules (`v2`);
+  - Part III tutorials (`dsa:v1`);
+  - the terminal font size;
+  - open Bash terminal sessions (`term:<module>`).
+- New stores are included without code changes. Each store's key carries its own version, so the envelope's
+  `version` changes only if the envelope does.
+- The file is written one store per line: readable and diffable, but terminal logs don't explode into thousands of
+  lines.
+- Why JSON with its own extension, rather than gzip or a binary format:
+  - progress is a few kilobytes;
+  - a person (or a future version) can read and repair the file;
+  - the extension lets the picker filter on it and tells the file apart from any other `.json`.
+
+**Download.**
+- Where the browser has a Save dialog (`showSaveFilePicker`: Chrome, Edge), it opens with
+  `training-loop-progress-<date>.tlsave` suggested and the `.tlsave` type, so the file can be named and placed.
+- Firefox and Safari save straight to the downloads folder, so a small box asks for the name first.
+  - Path and reserved characters become `-`.
+  - A typed `.tlsave` isn't doubled.
+  - The blob is `application/octet-stream`, so Safari doesn't append `.json`.
+
+**Upload.**
+- `<input type=file accept=".tlsave">`. The content is what's checked:
+  - the format marker;
+  - the version: a newer one says to reload;
+  - every known store's shape, since the pages read stores without checking.
+- Keys that aren't the site's are ignored. A refused file changes nothing.
+- The confirmation box compares this browser with the file (problems solved, medals, tutorials completed and started).
+  - **Merge** (the default): per module and per tutorial, whichever is further along wins whole. A tie keeps this
+    browser's, with its draft. A terminal session is kept only if it belongs to the winning record's current problem.
+  - **Replace**: the browser matches the file exactly.
+  - With no local progress there is a single **Restore**.
+- Then the page reloads, because both `app.js` and `dsa/page.js` read storage once at load, and a toast says what
+  happened.
+- Progress is written first. If storage is full, terminal sessions are the part that gets dropped, and the toast says
+  so.
+
+**Tests.** `scripts/progress_e2e.py`:
+- Download through a stubbed Save dialog and through the name box, with the file compared with storage. Chromium's
+  real dialog accepts the `.tlsave` type.
+- Restore, Merge, Replace and Cancel, and the pages reading restored progress.
+- Rejected files: not JSON, not a progress file, a newer version, damaged.
+- Phone and dark layouts.
+
 ### Open problem: Hugging Face in the browser
 Pyodide has no `transformers`. Options: extend the shim idea (a tiny tokenizer/pipeline layer over torch-lite),
 AST and pattern checks, or an optional "run locally" mode. **Not decided yet.**
@@ -714,7 +769,8 @@ scripts/
 ci/pages.yml          optional GitHub Actions deploy (inactive, see its header)
 tests/                pytest: every template passes its own grader; every challenge matches a brute force
 docs/                 the static website (GitHub Pages root): app.js (pages), terminal.js (the Bash terminal, nano,
-                      Files panel), worker.js (Pyodide), style.css
+                      Files panel), worker.js (Pyodide), progress.js (Download / Upload of a .tlsave progress file),
+                      style.css
   dsa/                Part III tutorials: lang.js (the statement language -> Python/C++/Java/Rust), common.js (what
                       every tutorial shares: rendering, reference programs, tests), run.js (Compiler Explorer + Pyodide
                       runner, the tests around the user's file, output diff), page.js (setup, steps with the typing
@@ -722,6 +778,7 @@ docs/                 the static website (GitHub Pages root): app.js (pages), te
                       stack.js, queue.js, unbounded-array.js, hash-table.js, bst.js
 scripts/dsa_selftest.mjs  every tutorial reference x option x language, step by step (+ --mutants)
 scripts/dsa_e2e.py        browser click-through of Part III (Compiler Explorer answered by local compilers)
+scripts/progress_e2e.py   browser check of the progress file: Download, Upload, Merge / Replace, rejected files
 ```
 
 Local dev:
