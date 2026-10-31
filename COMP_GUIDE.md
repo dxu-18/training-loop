@@ -5948,7 +5948,7 @@ Part III teaches differently from Parts I and II. Each module is **one guided tu
   * Python: type parameters, `class Node[T]`.
 
   C's `void*` with client-supplied comparison functions (15-122's C1 style) is the pre-template way to do the same thing. The tutorials explain it but use templates, which are type-checked and cost nothing at run time.
-* **Rust and pointers.** A structure where one node is reachable from two places uses raw pointers (`*mut Node<T>`) inside `unsafe` blocks. That covers tail pointers, `prev` pointers, dummies and cycles; `std::collections::LinkedList` is written the same way. Strictly tree-shaped ownership uses `Option<Box<…>>`: BST children, and stacks with no tail.
+* **Rust and pointers.** A structure where one node is reachable from two places uses raw pointers (`*mut Node<T>`) inside `unsafe` blocks. That covers tail pointers, `prev` pointers, dummies and cycles; `std::collections::LinkedList` is written the same way. The linked-list, stack and queue tutorials all use raw pointers, so the queue can build on the stack. Strictly tree-shaped ownership will use `Option<Box<…>>`, as in BST children.
 * **Running code.** Python runs in the browser (Pyodide). C++ (GCC 15.2), Java (JDK 25) and Rust (rustc 1.94, edition 2021) are compiled and run on **Compiler Explorer** (godbolt.org), which accepts requests from any web page. No in-browser compiler covers all three, and none exists at all for Rust.
 
 **How the tests read a structure.** Each test program adds its own `main` with its own helpers, built on the learner's types: an independent walker that prints the contents and the first broken invariant, and builders for corrupted structures. Every printed line is compared with the expected output, and the first line that differs is shown. Each step's tests are mutation-tested: deleting any one statement of the reference makes them fail (`scripts/dsa_selftest.mjs --mutants`).
@@ -6030,55 +6030,79 @@ Space is n nodes × (element + 1 or 2 pointers), plus 1 dummy.
 | Function | Behaviour | Time |
 |---|---|---|
 | `Stack()` | an empty stack | O(1) |
-| `is_stack(S)` | | |
-| `is_empty(S)` | | |
+| `is_segment(start, end, n)` | | O(n) |
+| `is_stack(S)` | true when [`S.top`, null) holds exactly `S.size` nodes | O(n) |
+| `stack_empty(S)` | | O(1) |
 | `push(S, x)` | | O(1) |
 | `pop(S) -> x` | requires non-empty | O(1) |
-| `peek(S) -> x` | requires non-empty | O(1) |
-| `size(S)` | | O(1) |
+| `peek(S) -> x` | requires non-empty; Rust's generic version returns `&T`, since it can't move the element out of the node | O(1) |
+| `stack_size(S)` | | O(1) |
 
-**Implementation (the requested option).** A linked list where `S.top` is the head and nodes are added and removed at the head. That gives O(1) worst case with no resizing. The invariant is `is_segment(S.top, null, S.size)`.
+**Implementation (the requested option).** A singly linked list whose first node is the top: `S.top` and `S.size`. Push and pop both happen at the top, so every operation is O(1) worst case, with no resizing.
 
 **Comparison box (not built here).** An unbounded array: amortized O(1), but better locality.
 
 **Steps:**
 
-1. Node.
-2. Stack and its contracts.
+1. The node.
+2. The stack and its contracts: `Stack`, `is_segment`, `is_stack`, `stack_empty`.
 3. `push`.
 4. `pop`.
-5. `peek`.
-6. `size` / `is_empty`.
+5. `peek` and `stack_size`.
 
-**Final challenge:** a balanced-brackets checker as the client.
+**Tests.** The broken stacks the contract must reject:
+* the size one too big or one too small;
+* the bottom node pointing back to the top;
+* a null top.
+
+`is_segment` is also called past the end.
+
+**Rust.** Raw pointers here too. A stack alone could own its nodes with `Option<Box<…>>`, but the queue in 13.03 can't, and 13.03's two-stack queue builds on this stack. So the tutorials keep one style.
 
 ### 13.03 Queues
 
 **Interface:**
 
-| Function | Behaviour | Time |
-|---|---|---|
-| `Queue()` | an empty queue | |
-| `is_queue(Q)` | | |
-| `enq(Q, x)` | | O(1) |
-| `deq(Q) -> x` | requires non-empty | O(1) |
-| `peek(Q)` | | |
-| `size(Q)` | | |
+| Function | Behaviour |
+|---|---|
+| `Queue()` | |
+| `is_queue(Q)` | |
+| `queue_empty(Q)` | |
+| `enq(Q, x)` | |
+| `deq(Q) -> x` | requires non-empty |
+| `queue_peek(Q)` | requires non-empty |
+| `queue_size(Q)` | |
 
 **Options:**
 
-* **Linked list (15-122):** `Q.front` and a dummy `Q.back`, so the queue is the segment [front, back). `enq` writes into the dummy and adds a new one; `deq` advances `front`. Both are O(1) worst case.
-* **Two stacks:** `enq` pushes onto `in`. `deq` pops from `out`, first moving everything from `in` when `out` is empty. Each element moves at most once, so `deq` is **amortized O(1)** and O(n) in the worst case. The tutorial shows the potential argument: every element in `in` pays one future move.
+* **Linked list with a dummy node (15-122).**
+  * Fields: `Q.front`, `Q.back` (the dummy) and `Q.size`. The queue is the segment [front, back), and `is_queue` is `is_segment(Q.front, Q.back, Q.size)` with a dummy whose `next` is null.
+  * `enq` writes into the dummy and adds a new one after it.
+  * `deq` advances `front`.
+  * Every operation is O(1) worst case.
+  * Steps:
+    1. Node.
+    2. Queue and contracts.
+    3. `enq`.
+    4. `deq`.
+    5. `queue_peek` and `queue_size`.
+* **Two stacks.**
+  * `Q.inbox` and `Q.outbox` are 13.02 stacks.
+  * `enq` pushes onto the inbox.
+  * `refill(Q)` moves the whole inbox onto the outbox, but only when the outbox is empty. Popping reverses the order, so the oldest element lands on top.
+  * `deq` and `queue_peek` refill first, then pop or peek the outbox.
+  * Each element moves at most once, so `deq` is **amortized O(1)**; a single `deq` is O(n) in the worst case. The complexity boxes show both.
+  * `queue_peek` takes `Q` mutably, because it may refill.
+  * Steps:
+    1. Node.
+    2. Stack and contracts.
+    3. `push`, `pop`, `peek`.
+    4. Queue and contracts.
+    5. `enq`.
+    6. `refill` and `deq`.
+    7. `queue_peek` and `queue_size`.
 
-**Steps:**
-
-1. Node (or reuse the stack).
-2. Queue and its contracts.
-3. `enq`.
-4. `deq`.
-5. `peek` and `size`.
-
-The two-stacks option has an extra step: the transfer function.
+**Tests.** The two-stack tests print both stacks (`out=[…] in=[…]`), so the expected output pins down exactly when the transfer happens.
 
 ### 13.04 Unbounded arrays
 

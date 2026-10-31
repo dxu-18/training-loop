@@ -3,8 +3,9 @@
 // A tutorial writes each function once, as micro-steps whose code is one statement of this language
 // ("n.next = L.head", "if L.tail == null", "let x = take n"). Rendering one source gives the code every
 // micro-step shows, the reference solution the self-test compiles (scripts/dsa_selftest.mjs), and the test
-// programs the Check button runs. Types are inferred: N = node pointer, T = element, int, bool, L = the list
-// (a reference parameter), Lv = a list held in a local variable (the tests' main).
+// programs the Check button runs. Types are inferred: N = node pointer, T = element, int, bool, and the tutorial's
+// structures (ctx.structs: {Stack: {fields}}): R:Stack = a reference parameter, V:Stack = a value (a local variable in
+// the tests' main, or a field such as a queue's two stacks).
 (function (root) {
   "use strict";
 
@@ -85,14 +86,14 @@
     if ((m = line.match(/^return(?: (.+))?$/))) return { k: "return", e: m[1] ? parseExpr(m[1]) : null };
     if ((m = line.match(/^(assert|free) (.+)$/))) return { k: m[1], e: parseExpr(m[2]) };
     if ((m = line.match(/^(print|println|printb)(?: (.+))?$/))) return { k: m[1], e: m[2] ? parseExpr(m[2]) : null };
-    if ((m = line.match(/^list (\w+)$/))) return { k: "list", name: m[1] };
+    if ((m = line.match(/^make (\w+) (\w+)$/))) return { k: "make", struct: m[1], name: m[2] };
     if ((m = line.match(/^(.+?) (\+=|-=|=) (.+)$/))) return { k: "assign", lhs: parseExpr(m[1]), op: m[2], e: parseExpr(m[3]) };
     return { k: "expr", e: parseExpr(line) };
   }
 
   // ---------------------------------------------------------------- types
   const NODE_FIELDS = { data: "T", next: "N", prev: "N" };
-  const LIST_FIELDS = { head: "N", tail: "N", dummy: "N", size: "int" };
+  const isStruct = (t) => typeof t === "string" && (t.startsWith("R:") || t.startsWith("V:"));
 
   function typeOf(e, ctx) {
     switch (e.k) {
@@ -109,11 +110,11 @@
       }
       case "field": {
         const ot = typeOf(e.obj, ctx);
-        const t = ot === "N" ? NODE_FIELDS[e.name] : (ot === "L" || ot === "Lv") ? LIST_FIELDS[e.name] : null;
+        const t = ot === "N" ? NODE_FIELDS[e.name] : isStruct(ot) ? ((ctx.structs[ot.slice(2)] || {}).fields || {})[e.name] : null;
         if (!t) throw new Error(`IR: no field ${e.name} on ${ot}`);
         return t;
       }
-      case "call": return spec(e.fn, ctx).ret;
+      case "call": { const r = spec(e.fn, ctx).ret; return r === "Tpeek" ? "T" : r; }
       case "bin": return e.op === "+" || e.op === "-" ? "int" : "bool";
       case "not": return "bool";
     }
@@ -179,8 +180,11 @@
       case "call": {
         const s = spec(e.fn, ctx);
         const args = e.args.map((a, i) => arg(a, s.params[i][1], ctx));
-        const qual = L === "java" && ctx.main && !e.fn.startsWith("ref_") && !s.harness ? "LinkedList." : "";
-        return `${qual}${fnName(e.fn, ctx)}(${args.join(", ")})`;
+        // Java: a static method of another class is called through it (LinkedList.insertFront(L, x))
+        const qual = L === "java" && s.owner && s.owner !== ctx.owner && !e.fn.startsWith("ref_") && !ctx.ref && !s.harness ? `${s.owner}.` : "";
+        // C++: a template can't deduce T from nullptr, so name it
+        const targs = L === "cpp" && ctx.generic && e.args.some((a) => a.k === "null") ? `<${ctx.T}>` : "";
+        return `${qual}${fnName(e.fn, ctx)}${targs}(${args.join(", ")})`;
       }
       case "not": {
         const INV = { "==": "!=", "!=": "==", "<": ">=", ">": "<=", "<=": ">", ">=": "<" };
@@ -218,10 +222,10 @@
     return `${a} ${e.op} ${b}`;
   }
 
-  // a call argument: Rust borrows a list held in a local variable
+  // a call argument: Rust borrows a structure held by value (a local, or a field like Q.inbox)
   function arg(a, kind, ctx) {
     const s = expr(a, ctx);
-    if (ctx.lang === "rs" && a.k === "id" && typeOf(a, ctx) === "Lv") return kind === "Lmut" ? `&mut ${s}` : `&${s}`;
+    if (ctx.lang === "rs" && String(typeOf(a, ctx)).startsWith("V:")) return kind.startsWith("mut:") ? `&mut ${s}` : `&${s}`;
     return s;
   }
 
@@ -277,8 +281,12 @@
         return { code: [head], close: end };
       }
       case "block": return { code: L === "py" ? [] : ["{"], close: end };
-      case "return":
-        return { code: [s.e ? `return ${expr(s.e, ctx)}${semi}` : `return${semi}`] };
+      case "return": {
+        if (!s.e) return { code: [`return${semi}`] };
+        // Rust's generic peek returns a reference to the element (it can't move it out of the node)
+        const borrow = L === "rs" && ctx.generic && ctx.ret === "Tpeek" && s.e.k === "field" ? "&" : "";
+        return { code: [`return ${borrow}${expr(s.e, ctx)}${semi}`] };
+      }
       case "assert": {
         if (ctx.ref) return { code: [] };
         const c = expr(s.e, ctx);
@@ -291,12 +299,13 @@
         return { code: [], note: `Nothing to write in ${LANGS[L].name}: once nothing points to \`${n}\`, the garbage collector frees it.` };
       }
       case "print": case "println": case "printb": return { code: [printStmt(s, ctx)] };
-      case "list": {
-        ctx.vars[s.name] = "Lv";
+      case "make": {
+        const N = s.struct;
+        ctx.vars[s.name] = `V:${N}`;
         const g = ctx.generic ? `<${ctx.T}>` : "";
-        return { code: [{ py: `${s.name} = LinkedList()`, cpp: `LinkedList${g} ${s.name};`,
-          java: `LinkedList${g} ${s.name} = new LinkedList${ctx.generic ? "<>" : ""}();`,
-          rs: `let mut ${s.name}${ctx.generic ? `: LinkedList${g}` : ""} = LinkedList::new();` }[L]] };
+        return { code: [{ py: `${s.name} = ${N}()`, cpp: `${N}${g} ${s.name};`,
+          java: `${N}${g} ${s.name} = new ${N}${ctx.generic ? "<>" : ""}();`,
+          rs: `let mut ${s.name}${ctx.generic ? `: ${N}${g}` : ""} = ${N}::new();` }[L]] };
       }
       case "expr": return { code: [`${expr(s.e, ctx)}${semi}`] };
     }
@@ -342,7 +351,7 @@
       const body = st.body ? toDisplay(st.body, ctx) : [];
       const say = typeof st.say === "function" ? st.say(ctx) : st.say || "";
       return { say, code: r.code, body, close: r.close || [], note: r.note || st.note || null, isElse: st.ir && /^(else|elif)\b/.test(st.ir),
-        deferClose: !!st.deferClose };
+        deferClose: !!st.deferClose, cls: st.cls || null };
     });
     // C-like: an if's "}" merges into the following "} else {"
     for (let i = 0; i + 1 < out.length; i++) if (out[i + 1].isElse && LANGS[ctx.lang].cLike) out[i].close = [];
@@ -398,9 +407,29 @@
     return ["PartialEq", "std::fmt::Display", "Default"].filter((b) => need.has(b));
   }
 
-  function usesPointers(steps) {
-    return steps.some((st) => (st.ir && (/\.(data|next|prev)\b/.test(st.ir) || /^(free|let \w+ = take)\b/.test(st.ir) ||
-      /\b(L\.\w+)\.\w+/.test(st.ir))) || (st.body && usesPointers(st.body)));
+  // does a function follow a node pointer (Rust then needs an unsafe block)?
+  function usesPointers(steps, ctx0) {
+    const c = { ...ctx0, vars: { ...ctx0.vars } };
+    let found = false;
+    const walkE = (e) => {
+      if (!e || typeof e !== "object" || found) return;
+      if (e.k === "field" && typeOf(e.obj, c) === "N") found = true;
+      for (const v of Object.values(e)) if (v && typeof v === "object") walkE(v);
+    };
+    const walk = (list) => {
+      for (const st of list) {
+        if (found) return;
+        if (st.ir !== undefined && (!st.only || st.only.includes("rs"))) {
+          const s = parseStmt(st.ir);
+          if (s.k === "free" || s.k === "take") { found = true; return; }
+          walkE(s.e); walkE(s.lhs);
+          if (s.k === "let") c.vars[s.name] = typeOf(s.e, c) === "null" ? "N" : typeOf(s.e, c);
+        }
+        if (st.body) walk(st.body);
+      }
+    };
+    walk(steps);
+    return found;
   }
 
   // the header line(s) of a function, from its spec
@@ -409,46 +438,44 @@
     const T = ctx.T;
     const hints = !ctx.ref && !ctx.harnessFn;
     const n = fnName(name, ctx);
-    const pyType = (k) => ({ Lmut: `LinkedList${g ? "[T]" : ""}`, Lref: `LinkedList${g ? "[T]" : ""}`,
-      N: `Node${g ? "[T]" : ""} | None`, int: "int", T: g ? "T" : "int" }[k]);
+    const struct = (k) => k.slice(k.indexOf(":") + 1);
+    const isRefK = (k) => k.startsWith("mut:") || k.startsWith("ref:");
     if (L === "py") {
+      const pyType = (k) => (isRefK(k) ? `${struct(k)}${g ? "[T]" : ""}` : { N: `Node${g ? "[T]" : ""} | None`, int: "int", T: g ? "T" : "int" }[k]);
       const ps = s.params.map(([p, k]) => (hints ? `${p}: ${pyType(k)}` : p)).join(", ");
-      const ret = hints ? ` -> ${{ void: "None", bool: "bool", T: g ? "T" : "int" }[s.ret]}` : "";
+      const ret = hints ? ` -> ${{ void: "None", bool: "bool", int: "int", T: g ? "T" : "int", Tpeek: g ? "T" : "int" }[s.ret]}` : "";
       return [`def ${n}${hints && g ? "[T]" : ""}(${ps})${ret}:`];
     }
+    const tg = g ? "<T>" : "";
     if (L === "cpp") {
-      const tg = g ? "<T>" : "";
-      const ps = s.params.map(([p, k]) => ({ Lmut: `LinkedList${tg}& ${p}`, Lref: `const LinkedList${tg}& ${p}`,
-        N: `Node${tg}* ${p}`, int: `int ${p}`, T: `${T} ${p}` }[k])).join(", ");
-      const ret = { void: "void", bool: "bool", T }[s.ret];
+      const ps = s.params.map(([p, k]) => (k.startsWith("mut:") ? `${struct(k)}${tg}& ${p}` : k.startsWith("ref:") ? `const ${struct(k)}${tg}& ${p}`
+        : { N: `Node${tg}* ${p}`, int: `int ${p}`, T: `${T} ${p}` }[k])).join(", ");
+      const ret = { void: "void", bool: "bool", int: "int", T, Tpeek: T }[s.ret];
       return [...(g ? ["template <typename T>"] : []), `${ret} ${n}(${ps}) {`];
     }
     if (L === "java") {
-      const tg = g ? "<T>" : "";
-      const ps = s.params.map(([p, k]) => ({ Lmut: `LinkedList${tg} ${p}`, Lref: `LinkedList${tg} ${p}`,
-        N: `Node${tg} ${p}`, int: `int ${p}`, T: `${T} ${p}` }[k])).join(", ");
-      const ret = { void: "void", bool: "boolean", T }[s.ret];
+      const ps = s.params.map(([p, k]) => (isRefK(k) ? `${struct(k)}${tg} ${p}` : { N: `Node${tg} ${p}`, int: `int ${p}`, T: `${T} ${p}` }[k])).join(", ");
+      const ret = { void: "void", bool: "boolean", int: "int", T, Tpeek: T }[s.ret];
       return [`static ${g ? "<T> " : ""}${ret} ${n}(${ps}) {`];
     }
-    const tg = g ? "<T>" : "";
-    const ps = s.params.map(([p, k]) => ({ Lmut: `${p}: &mut LinkedList${tg}`, Lref: `${p}: &LinkedList${tg}`,
-      N: `${p}: *mut Node${tg}`, int: `${p}: usize`, T: `${p}: ${T}` }[k])).join(", ");
+    const ps = s.params.map(([p, k]) => (k.startsWith("mut:") ? `${p}: &mut ${struct(k)}${tg}` : k.startsWith("ref:") ? `${p}: &${struct(k)}${tg}`
+      : { N: `${p}: *mut Node${tg}`, int: `${p}: usize`, T: `${p}: ${T}` }[k])).join(", ");
     const bounds = g ? s.rsBounds : [];
     const gen = g ? `<T${bounds.length ? ": " + bounds.join(" + ") : ""}>` : "";
-    const ret = { void: "", bool: " -> bool", T: ` -> ${T}` }[s.ret];
+    const ret = { void: "", bool: " -> bool", int: " -> usize", T: ` -> ${T}`, Tpeek: g ? " -> &T" : ` -> ${T}` }[s.ret];
     return [`fn ${n}${gen}(${ps})${ret} {`];
   }
 
   // A function: { name, steps } -> { header, display (top-level micro-steps incl. header and closing), code }
   function renderFunction(fn, ctx0, opts = {}) {
     const s = ctx0.fns[fn.name];
-    const ctx = { ...ctx0, vars: {}, muts: reassigned(fn.steps), harnessFn: !!s.harness };
-    s.params.forEach(([p, k]) => { ctx.vars[p] = k === "Lmut" || k === "Lref" ? "L" : k; });
+    const ctx = { ...ctx0, vars: {}, muts: reassigned(fn.steps), harnessFn: !!s.harness, ret: s.ret, owner: s.owner || null };
+    s.params.forEach(([p, k]) => { ctx.vars[p] = k.startsWith("mut:") || k.startsWith("ref:") ? `R:${k.slice(4)}` : k; });
     const sp = { ...s, rsBounds: ctx.lang === "rs" && ctx.generic ? rustBounds(fn.steps, { ...ctx, vars: { ...ctx.vars } }) : [] };
     const head = signature(fn.name, sp, ctx);
     const body = toDisplay(fn.steps, ctx);
     const L = ctx.lang;
-    const unsafe = L === "rs" && usesPointers(fn.steps);
+    const unsafe = L === "rs" && usesPointers(fn.steps, ctx);
     const display = [];
     display.push({ say: opts.headerSay || "", code: head, body: [], close: [], note: null, header: true });
     if (unsafe) {

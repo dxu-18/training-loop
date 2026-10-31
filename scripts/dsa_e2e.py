@@ -85,9 +85,38 @@ def wait_verdict(pg, timeout=120000):
     return pg.evaluate(VERDICT)
 
 
+TID = ["linked-lists"]   # the tutorial being clicked through
+
+
 def program(pg, upto):
-    return pg.evaluate(f"""() => {{ const s = JSON.parse(localStorage.getItem('training-loop:dsa:v1')).tutorials['linked-lists'];
-        return DSATutorials['linked-lists'].program(s.opts, {upto}); }}""")
+    return pg.evaluate(f"""() => {{ const s = JSON.parse(localStorage.getItem('training-loop:dsa:v1')).tutorials['{TID[0]}'];
+        return DSATutorials['{TID[0]}'].program(s.opts, {upto}); }}""")
+
+
+def step_count(pg):
+    return pg.evaluate(f"""() => {{ const s = JSON.parse(localStorage.getItem('training-loop:dsa:v1')).tutorials['{TID[0]}'];
+        return DSATutorials['{TID[0]}'].stepCount(s.opts); }}""")
+
+
+def start(pg, tid, opts):
+    """Open a tutorial from its options page (resetting it first) and begin with these options."""
+    TID[0] = tid
+    pg.goto(BASE + f"/#/dsa/{tid}")
+    pg.wait_for_selector(".begin, .reset")
+    if pg.locator(".reset").count():
+        pg.click(".reset"); pg.click(".modal .confirm"); pg.wait_for_selector(".begin")
+    choose(pg, opts)
+    pg.click(".begin")
+    pg.wait_for_selector(".check")
+
+
+def finish(pg, label):
+    pg.wait_for_selector(".submit")
+    pg.evaluate(SET, program(pg, step_count(pg)))
+    pg.click(".submit")
+    check("Completed" in wait_verdict(pg), f"{label}: the final passes")
+    if pg.locator(".modal button").count():
+        pg.click(".modal button")
 
 
 def choose(pg, opts):
@@ -96,11 +125,13 @@ def choose(pg, opts):
 
 
 def run_all_steps(pg, label, wrong_at=None):
-    for k in range(1, 9):
+    for k in range(1, step_count(pg) + 1):
         pg.wait_for_selector(".check")
         if wrong_at == k:
-            # drop one line of the reference: the step must fail and say where
-            code = program(pg, k).replace("L.size += 1", "L.size += 2").replace("L->size += 1", "L->size += 2")
+            # break one line of the reference (the newest "size += 1"): the step must fail and say where
+            code = program(pg, k)
+            i = code.rfind("size += 1")
+            code = code[:i] + "size += 2" + code[i + len("size += 1"):]
             pg.evaluate(SET, code)
             pg.click(".check")
             v = wait_verdict(pg)
@@ -139,7 +170,10 @@ try:
         check(any("part iii" in h.lower() and "data structures" in h.lower() for h in heads), "home has Part III · Data Structures & Algorithms")
         row = pg.locator("a.topic[href='#/dsa/linked-lists']")
         check(row.count() == 1 and "not started" in row.inner_text().lower(), "Linked lists row says Not Started")
-        check(pg.locator(".part:last-child .topic.soon").count() == 11, "the other 11 tutorials say soon")
+        check(pg.locator(".part:last-child .topic.soon").count() == 9, "the other 9 tutorials say soon")
+        for tid in ("stacks", "queues"):
+            r = pg.locator(f"a.topic[href='#/dsa/{tid}']")
+            check(r.count() == 1 and "not started" in r.inner_text().lower(), f"{tid}: live and Not Started")
         pg.screenshot(path=str(OUT / "home.png"), full_page=True)
 
         # ---- setup: options and live complexity
@@ -177,7 +211,8 @@ try:
         check("Check" in pg.inner_text(".coach.done"), "the whole step typed: the bubble says to press Check")
         # every step of every layout and language: its reference satisfies all its bubbles, in a monotonic order
         bad = pg.evaluate(r"""() => {
-          const T = DSATutorials['linked-lists'], C = DSAPage._coach, bad = [];
+          const C = DSAPage._coach, bad = [];
+          for (const T of Object.values(DSATutorials)) {
           let combos = [{}];
           for (const o of T.OPTIONS) combos = combos.flatMap((c) => o.choices.map(([v]) => ({ ...c, [o.id]: v })));
           for (const o of combos) {
@@ -187,20 +222,21 @@ try:
               ts.forEach((t) => { t.want = C.coachWant(t, o.lang); });
               const before = k ? T.program(o, k) : "", after = T.program(o, k + 1);
               const p0 = C.coachProgress(ts, before, o.lang, new Set()).k, p1 = C.coachProgress(ts, after, o.lang, new Set()).k;
-              if (p1 !== ts.length) bad.push(`${JSON.stringify(o)} step ${k + 1}: reference reaches ${p1}/${ts.length}`);
-              if (p0 !== 0) bad.push(`${JSON.stringify(o)} step ${k + 1}: ${p0} hints done before typing`);
+              if (p1 !== ts.length) bad.push(`${T.id} ${JSON.stringify(o)} step ${k + 1}: reference reaches ${p1}/${ts.length}`);
+              if (p0 !== 0) bad.push(`${T.id} ${JSON.stringify(o)} step ${k + 1}: ${p0} hints done before typing`);
               const lines = after.split("\n");
               let prev = 0;
               for (let i = 1; i <= lines.length; i++) {
                 const q = C.coachProgress(ts, lines.slice(0, i).join("\n"), o.lang, new Set()).k;
-                if (q < prev) { bad.push(`${JSON.stringify(o)} step ${k + 1}: progress went back at line ${i}`); break; }
+                if (q < prev) { bad.push(`${T.id} ${JSON.stringify(o)} step ${k + 1}: progress went back at line ${i}`); break; }
                 prev = q;
               }
             }
           }
+          }
           return bad;
         }""")
-        check(not bad, "every layout x language x step: the reference satisfies all its hint bubbles, in order" + (": " + "; ".join(bad[:4]) if bad else ""))
+        check(not bad, "every tutorial x option x language x step: the reference satisfies all its hint bubbles, in order" + (": " + "; ".join(bad[:4]) if bad else ""))
 
         # empty and broken code
         pg.evaluate(SET, "")
@@ -276,6 +312,44 @@ try:
                 pg.screenshot(path=str(OUT / f"{lang}-final-done.png"), full_page=True)
                 if pg.locator(".modal button").count():
                     pg.click(".modal button")
+
+        # ---- 13.02 Stacks: Python (with a wrong step) and C++ generic
+        start(pg, "stacks", {"lang": "py", "type": "int"})
+        check(pg.evaluate(STATUS) == "In Progress" and pg.locator(".outline li").count() == 5, "stacks: 5 steps, In Progress")
+        if run_all_steps(pg, "stack-py", wrong_at=3):
+            check(pg.evaluate(STATUS) == "Almost!", "stacks: all steps -> Almost!")
+            finish(pg, "stack-py")
+            check(pg.evaluate(STATUS) == "Completed", "stacks: Completed")
+        start(pg, "stacks", {"lang": "cpp", "type": "generic"})
+        if run_all_steps(pg, "stack-cpp"):
+            finish(pg, "stack-cpp")
+
+        # ---- 13.03 Queues: the options change the steps and the complexity
+        pg.goto(BASE + "/#/dsa/queues")
+        pg.wait_for_selector(".begin")
+        TID[0] = "queues"
+        choose(pg, {"impl": "list"})
+        n_list = pg.locator(".dsa-preview li").count()
+        worst = lambda: pg.inner_text(".cx[data-id='deq_worst'] .cx-big")
+        check(n_list == 5 and worst() == "O(1)", "queues on a list: 5 steps, every deq O(1)")
+        choose(pg, {"impl": "stacks"})
+        check(pg.locator(".dsa-preview li").count() == 7 and worst() == "O(n)" and "amortized" in pg.inner_text(".cx[data-id='deq']"),
+              "queues on two stacks: 7 steps, deq amortized O(1), one deq O(n)")
+        check("outbox" in pg.inner_text(".diagram") and "inbox" in pg.inner_text(".diagram"), "the two-stack diagram shows both stacks")
+        pg.screenshot(path=str(OUT / "queue-setup.png"), full_page=True)
+        start(pg, "queues", {"lang": "py", "type": "generic", "impl": "stacks"})
+        if run_all_steps(pg, "queue2-py", wrong_at=3):
+            finish(pg, "queue2-py")
+        start(pg, "queues", {"lang": "rs", "type": "generic", "impl": "list"})
+        if run_all_steps(pg, "queue-rs", wrong_at=3):
+            finish(pg, "queue-rs")
+        start(pg, "queues", {"lang": "java", "type": "int", "impl": "stacks"})
+        if run_all_steps(pg, "queue2-java"):
+            finish(pg, "queue2-java")
+        pg.goto(BASE + "/#/")
+        pg.wait_for_selector("a.topic[href='#/dsa/queues']")
+        check("completed" in pg.inner_text("a.topic[href='#/dsa/queues']").lower() and "completed" in pg.inner_text("a.topic[href='#/dsa/stacks']").lower(),
+              "home: Stacks and Queues say Completed")
 
         # ---- phone layout
         ph = b.new_page(viewport={"width": 390, "height": 844})
