@@ -264,7 +264,8 @@ details.setup { margin-top: 14px; }
 .dg-row { display: flex; align-items: flex-end; gap: 4px; min-width: max-content; }
 .dg-cell { display: flex; flex-direction: column; align-items: center; gap: 3px; }
 .dg-tags { min-height: 1.2em; display: flex; flex-direction: column; align-items: center; font: 0.72rem var(--mono); color: var(--accent); }
-.dg-tags.wide { width: 0; align-self: flex-start; align-items: flex-start; white-space: nowrap; overflow: visible; }
+.dg-tags { align-self: stretch; }
+.dg-tags span.wide { width: 0; align-self: flex-start; white-space: nowrap; overflow: visible; }
 .dg-box { font: 0.88rem var(--mono); border: 1.5px solid var(--ink); border-radius: 5px; padding: 3px 10px; background: var(--surface); }
 .dg-box.dummy { border-style: dashed; color: var(--muted); }
 .dg-box.pivot { border-color: var(--accent); color: var(--accent); font-weight: 700; }

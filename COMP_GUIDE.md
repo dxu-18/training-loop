@@ -6247,36 +6247,58 @@ Space is n nodes × (element + 1 or 2 pointers), plus 1 dummy.
 
 ### 13.07 Unbounded arrays
 
-**Interface:** `uba_new(capacity)`, `is_uba(A)`, `uba_len(A)`, `uba_get(A, i)`, `uba_set(A, i, x)`, `uba_add(A, x)` (push back), `uba_rem(A) -> x` (pop back).
+**Interface:**
 
-**Representation.** `A.size`, `A.limit` (capacity), and the backing array `A.data[0, limit)`, whose live part is `[0, size)`. The invariant is `0 <= size < limit` (15-122 keeps one free slot) and `length(data) == limit`.
+| Function | Behaviour | Time |
+|---|---|---|
+| `UnboundedArray()` | empty, with `limit` 1 | |
+| `is_uba(A)` | | O(1) |
+| `uba_len(A)` | | |
+| `uba_get(A, i)` | Rust's generic version returns `&T` | |
+| `uba_set(A, i, x)` | | |
+| `uba_resize(A, new_limit)` | | |
+| `uba_add(A, x)` | push back | |
+| `uba_rem(A) -> x` | pop back | |
+
+**Representation (15-122).**
+* `A.size` elements live in `A.data[0, A.size)`, inside a fixed block of `A.limit` slots.
+* The block per language:
+  * Python: a list made with `[0] * limit`.
+  * C++: a `std::vector` used only as a fixed block.
+  * Java: `int[]`, or `(T[]) new Object[n]`.
+  * Rust: a `Vec`, filled with `T::default()`, so `T: Clone + Default`.
+* **Invariant** (`is_uba`): `size < limit`, so one slot is always free, and `len(data) == limit`.
+* `uba_resize` requires only `size <= limit`, because `uba_add` calls it exactly when the block is full.
 
 **Options: the resizing mechanism.**
 
-* **Doubling (×2):** amortized O(1) per add. This is the default and is optimal.
-* **×1.5:** amortized O(1) with less wasted space; many standard libraries do this.
-* **+c (arithmetic growth):** amortized **O(n)** per add. It's included so the learner sees why geometric growth matters.
-* **Shrink policy:** halve when a quarter full, which never thrashes (amortized O(1)); or never shrink. Halving when half full is shown as the bad choice: alternating add and remove at the boundary costs O(n) each time.
+| Growth | Rule | Amortized add | Copies for n adds |
+|---|---|---|---|
+| ×2 | | O(1) | < 2n |
+| ×1.5 | `limit + (limit + 1) / 2` | O(1) | < 3n |
+| +4 | constant growth | **O(n)** | ≈ n²/8 |
 
-**Complexity:**
+The +4 row is there so the learner sees why geometric growth matters.
 
-| Operation | Time |
-|---|---|
-| get, set | O(1) |
-| add, rem | amortized O(1) (geometric); a single call is O(n) worst case |
-| lookup | O(n) |
-| find min | O(n) |
+| Shrinking | Rule | Amortized remove | Space |
+|---|---|---|---|
+| at ¼ full | halve when `limit >= 4` and `size <= limit / 4` | O(1) | at most about 4× the elements |
+| below ½ full | halve when `limit >= 2` and `size < limit / 2` | O(n): thrashes, since every add then remove at the boundary resizes | |
+| never | | | O(peak) |
 
-Space is up to 2n with doubling, 1.5n with ×1.5.
+**Complexity:** get, set and length are O(1). One add that resizes is O(n). Inserting in the middle is O(n), shown for comparison. The contract is O(1).
 
 **Steps:**
 
-1. The struct and its contracts.
-2. `get` and `set`, with bounds contracts: `0 <= i < size`.
-3. `resize(A, new_limit)`: allocate, copy `[0, size)`, swap.
-4. `add` with the growth rule.
-5. `rem` with the shrink rule.
-6. Amortized analysis: the token argument, with a counter of copies that the tests check.
+1. The struct and its contracts (`is_uba`, `uba_len`).
+2. `uba_get` and `uba_set`, which require `0 <= i < size`.
+3. `uba_resize`: allocate, copy `[0, size)`, switch.
+4. `uba_add`, with the chosen growth.
+5. `uba_rem`, with the chosen shrink rule.
+
+**Tests.** The checker prints `size` and `limit` after every operation, so the chosen policy itself is checked. A JavaScript model replays it exactly.
+* Long runs: 20 or 33 adds, then removes.
+* Broken arrays: size equal to limit, a wrong limit, a wrong block length, a negative size.
 
 ### 13.08 Hash tables
 

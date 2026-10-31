@@ -124,8 +124,9 @@
     const cell = (c) => {
       if (c.box !== undefined) {
         // a label longer than its box hangs over the next cells instead of widening its column
-        const wide = (c.tags || []).some((x) => x.length > String(c.box).length + 1);
-        return `<div class="dg-cell"><div class="dg-tags${wide ? " wide" : ""}">${(c.tags || []).map((x) => `<span>${esc(x)}</span>`).join("")}</div><div class="dg-box ${c.cls || ""}">${esc(c.box)}</div></div>`;
+        const wide = (x) => x.length > String(c.box).length + 1;
+        const tags = (c.tags || []).map((x) => `<span${wide(x) ? ' class="wide"' : ""}>${esc(x) || "&nbsp;"}</span>`).join("");
+        return `<div class="dg-cell"><div class="dg-tags">${tags}</div><div class="dg-box ${c.cls || ""}">${esc(c.box)}</div></div>`;
       }
       if (c.label) return `<div class="dg-cell"><div class="dg-tags"></div><div class="dg-label">${esc(c.label)}</div></div>`;
       if (c.arrow) return `<div class="dg-cell"><div class="dg-tags"></div><div class="dg-arrow">${esc(c.arrow)}</div></div>`;
@@ -134,7 +135,7 @@
     };
     const rows = (d.rows || [d.cells]).map((r) => `<div class="dg-row">${r.map(cell).join("")}</div>`).join("");
     // [segments) and X.field names in the caption read as code
-    return `<div class="diagram">${rows}<div class="dg-caption">${deps.inline(d.caption.replace(/((?:\b[A-Z])?\[[^\[\]()]*[\])]|\b[A-Z]\.\w+(?:\.\w+)*)/g, "`$1`"))}</div></div>`;
+    return `<div class="diagram">${rows}<div class="dg-caption">${deps.inline(d.caption.replace(/((?:\b[A-Z](?:\.\w+)*)?\[[^\[\]()]*[\])]|\b[A-Z]\.\w+(?:\.\w+)*)/g, "`$1`"))}</div></div>`;
   }
 
   function runnerNote(lang) {

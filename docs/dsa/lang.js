@@ -83,6 +83,10 @@
       if (s === "true" || s === "false") return { k: "bool", v: s === "true" };
       if (s === "default") return { k: "default" };
       if (s === "vec" && peek() === "(") { next(); expect(")"); return { k: "vec" }; }   // an empty growable array
+      if ((s === "alloc" || s === "len") && peek() === "(") {   // a fixed block of n slots; an array's length
+        next(); const a = or(); expect(")");
+        return s === "alloc" ? { k: "alloc", n: a } : { k: "len", a };
+      }
       if (peek() === "(") {
         next();
         const args = [];
@@ -123,6 +127,8 @@
       case "num": return "int";
       case "array": return "ArrV";
       case "vec": return "Vec";
+      case "alloc": return "ArrV";
+      case "len": return "int";
       case "index": {
         const ot = typeOf(e.obj, ctx);
         if (!["Arr", "ArrV", "Vec"].includes(ot)) throw new Error(`IR: can't index a ${ot}`);
@@ -205,6 +211,16 @@
         return `${expr(e.obj, ctx, 9)}[${expr(e.idx, ctx)}]`;
       }
       case "vec": return { py: "[]", cpp: `std::vector<${ctx.T}>{}`, java: "new ArrayList<>()", rs: "Vec::new()" }[L];
+      case "alloc": {   // slots hold a placeholder until written
+        const n = expr(e.n, ctx), n9 = expr(e.n, ctx, 9);
+        const param = ctx.T === "T";   // (inside a generic function, as opposed to the tests' concrete type)
+        return { py: `[${ctx.generic ? "None" : "0"}] * ${n9}`, cpp: `std::vector<${ctx.T}>(${n})`,
+          java: param ? `(T[]) new Object[${n}]` : `new ${ctx.T}[${n}]`, rs: `vec![${ctx.generic ? `${ctx.T}::default()` : "0"}; ${n}]` }[L];
+      }
+      case "len": {
+        const a = expr(e.a, ctx, 9);
+        return { py: `len(${expr(e.a, ctx)})`, cpp: `(int) ${a}.size()`, java: `${a}.length`, rs: `${a}.len()` }[L];
+      }
       case "array": {
         const items = e.items.map((x) => expr(x, ctx)).join(", ");
         return { py: `[${items}]`, cpp: `std::vector<${ctx.T}>{${items}}`, java: `new ${ctx.T}[]{${items}}`, rs: `vec![${items}]` }[L];
@@ -369,7 +385,7 @@
       case "return": {
         if (!s.e) return { code: [`return${semi}`] };
         // Rust's generic peek returns a reference to the element (it can't move it out of the node)
-        const borrow = L === "rs" && ctx.generic && ctx.ret === "Tpeek" && s.e.k === "field" ? "&" : "";
+        const borrow = L === "rs" && ctx.generic && ctx.ret === "Tpeek" && (s.e.k === "field" || s.e.k === "index") ? "&" : "";
         // Rust: an index (or -1) is an isize, the positions themselves usize
         if (L === "rs" && ctx.ret === "index" && s.e.k !== "num" && typeOf(s.e, ctx) === "int") return { code: [`return ${expr(s.e, ctx, 9)} as isize;`] };
         return { code: [`return ${borrow}${expr(s.e, ctx)}${semi}`] };
@@ -473,6 +489,7 @@
     const walkE = (e, c) => {
       if (!e || typeof e !== "object") return;
       if (e.k === "default") need.add("Default");
+      if (e.k === "alloc") { need.add("Default"); need.add("Clone"); }   // (vec![T::default(); n])
       if (e.k === "bin" && (e.op === "==" || e.op === "!=") && typeOf(e.a, c) === "T") need.add("PartialEq");
       if (e.k === "bin" && ["<", ">", "<=", ">="].includes(e.op) && typeOf(e.a, c) === "T") need.add("PartialOrd");
       if (e.k === "call") { const s = spec(e.fn, c); (s.bounds || []).forEach((b) => need.add(b)); }
