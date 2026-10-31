@@ -275,6 +275,7 @@
   const DEF = {
     id: "binary-search", num: "13.01", title: "Binary search", heading: "Build binary search, step by step", diagramLabel: "Your search",
     OPTIONS, DEFAULTS, FNS, STRUCTS: {}, describe, complexity, diagram, steps, handlers, testGroups, refFns, problem,
+    _internals: { isSorted, all },   // (the sorting tutorials reuse them)
   };
   const tutorial = C.make(DEF);
   if (typeof module !== "undefined" && module.exports) module.exports = tutorial;

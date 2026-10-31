@@ -82,6 +82,7 @@
       if (s === "null") return { k: "null" };
       if (s === "true" || s === "false") return { k: "bool", v: s === "true" };
       if (s === "default") return { k: "default" };
+      if (s === "vec" && peek() === "(") { next(); expect(")"); return { k: "vec" }; }   // an empty growable array
       if (peek() === "(") {
         next();
         const args = [];
@@ -107,6 +108,8 @@
     if ((m = line.match(/^(assert|free) (.+)$/))) return { k: m[1], e: parseExpr(m[2]) };
     if ((m = line.match(/^(print|println|printb)(?: (.+))?$/))) return { k: m[1], e: m[2] ? parseExpr(m[2]) : null };
     if ((m = line.match(/^make (\w+) (\w+)$/))) return { k: "make", struct: m[1], name: m[2] };
+    if ((m = line.match(/^push (\w+), (.+)$/))) return { k: "push", name: m[1], e: parseExpr(m[2]) };
+    if ((m = line.match(/^swap (\w+), (.+), (.+)$/))) return { k: "swap", arr: m[1], i: parseExpr(m[2]), j: parseExpr(m[3]) };
     if ((m = line.match(/^(.+?) (\+=|-=|=) (.+)$/))) return { k: "assign", lhs: parseExpr(m[1]), op: m[2], e: parseExpr(m[3]) };
     return { k: "expr", e: parseExpr(line) };
   }
@@ -119,9 +122,10 @@
     switch (e.k) {
       case "num": return "int";
       case "array": return "ArrV";
+      case "vec": return "Vec";
       case "index": {
         const ot = typeOf(e.obj, ctx);
-        if (ot !== "Arr" && ot !== "ArrV") throw new Error(`IR: can't index a ${ot}`);
+        if (!["Arr", "ArrV", "Vec"].includes(ot)) throw new Error(`IR: can't index a ${ot}`);
         return "T";
       }
       case "str": return "T";
@@ -196,7 +200,11 @@
       case "default": return defaultLit(ctx);
       case "new": return newNode(e.arg, ctx);
       case "id": return ctx.derefs && ctx.derefs.has(e.name) ? `*${e.name}` : e.name;   // (Rust: an element passed as &T)
-      case "index": return `${expr(e.obj, ctx, 9)}[${expr(e.idx, ctx)}]`;
+      case "index": {
+        if (L === "java" && typeOf(e.obj, ctx) === "Vec") return `${expr(e.obj, ctx, 9)}.get(${expr(e.idx, ctx)})`;   // an ArrayList
+        return `${expr(e.obj, ctx, 9)}[${expr(e.idx, ctx)}]`;
+      }
+      case "vec": return { py: "[]", cpp: `std::vector<${ctx.T}>{}`, java: "new ArrayList<>()", rs: "Vec::new()" }[L];
       case "array": {
         const items = e.items.map((x) => expr(x, ctx)).join(", ");
         return { py: `[${items}]`, cpp: `std::vector<${ctx.T}>{${items}}`, java: `new ${ctx.T}[]{${items}}`, rs: `vec![${items}]` }[L];
@@ -256,6 +264,11 @@
     return `${a} ${e.op} ${b}`;
   }
 
+  // Rust can't move a generic element out of an array: copying one (into a variable, another array or a slot) clones it
+  function copyOut(e, rendered, ctx) {
+    return ctx.lang === "rs" && ctx.generic && e && e.k === "index" ? `${rendered}.clone()` : rendered;
+  }
+
   // a call argument: Rust borrows a structure held by value (a local, or a field like Q.inbox), an array, and an
   // element passed by reference (&T)
   function arg(a, kind, ctx) {
@@ -267,7 +280,7 @@
     if (ctx.lang !== "rs") return s;
     const t = String(typeOf(a, ctx));
     if (t.startsWith("V:")) return kind.startsWith("mut:") ? `&mut ${s}` : `&${s}`;
-    if (t === "ArrV") return `&${s}`;
+    if (t === "ArrV") return kind === "ArrMut" ? `&mut ${s}` : `&${s}`;
     return s;
   }
 
@@ -276,6 +289,10 @@
     const g = ctx.generic ? `<${ctx.T}>` : "";
     if (t === "N") return ctx.lang === "cpp" ? `Node${g}*` : `Node${g}`;
     if (t === "ArrV") return ctx.lang === "cpp" ? `std::vector<${ctx.T}>` : `${ctx.T}[]`;
+    if (t === "Vec") {
+      const boxed = { int: "Integer" }[ctx.T] || ctx.T;
+      return ctx.lang === "cpp" ? `std::vector<${ctx.T}>` : `${ctx.qual ? "java.util." : ""}ArrayList<${boxed}>`;
+    }
     if (t === "index") return "int";
     if (t === "T") return ctx.T;
     if (t === "int") return "int";
@@ -298,7 +315,12 @@
         ctx.vars[s.name] = t === "null" ? "N" : t;
         const vt = ctx.vars[s.name];
         if (L === "py") return { code: [`${s.name} = ${val}`] };
-        if (L === "rs") return { code: [`let ${ctx.muts.has(s.name) ? "mut " : ""}${s.name}${vt === "ArrV" ? `: Vec<${ctx.T}>` : ""} = ${val};`] };
+        if (L === "rs") {
+          const mut = ctx.muts.has(s.name) || vt === "Vec" || vt === "ArrV" ? "mut " : "";   // (arrays may be changed through &mut)
+          return { code: [`let ${mut}${s.name}${vt === "ArrV" || vt === "Vec" ? `: Vec<${ctx.T}>` : ""} = ${copyOut(s.e, val, ctx)};`] };
+        }
+        if (vt === "Vec" && L === "cpp") return { code: [`${typeName(vt, ctx)} ${s.name};`] };
+        if (vt === "Vec" && L === "java") return { code: [`${typeName(vt, ctx)} ${s.name} = new ${ctx.qual ? "java.util." : ""}ArrayList<>();`] };
         return { code: [`${typeName(vt, ctx)} ${s.name} = ${val};`] };
       }
       case "take": {
@@ -312,7 +334,19 @@
       }
       case "assign": {
         const lhs = expr(s.lhs, ctx);
-        return { code: [`${lhs} ${s.op} ${expr(s.e, ctx)}${semi}`] };
+        return { code: [`${lhs} ${s.op} ${copyOut(s.e, expr(s.e, ctx), ctx)}${semi}`] };
+      }
+      case "push": {   // append to a growable array
+        const v = copyOut(s.e, expr(s.e, ctx), ctx);
+        const b = s.name;
+        return { code: [{ py: `${b}.append(${v})`, cpp: `${b}.push_back(${v});`, java: `${b}.add(${v});`, rs: `${b}.push(${v});` }[L]] };
+      }
+      case "swap": {   // the checker's own swaps (the tutorials teach swap as a function)
+        const [x, i, j] = [s.arr, expr(s.i, ctx), expr(s.j, ctx)];
+        const vec = ctx.vars[x] === "Vec";
+        return { code: [{ py: `${x}[${i}], ${x}[${j}] = ${x}[${j}], ${x}[${i}]`, cpp: `std::swap(${x}[${i}], ${x}[${j}]);`,
+          java: vec ? `java.util.Collections.swap(${x}, ${i}, ${j});` : `{ ${ctx.T} t = ${x}[${i}]; ${x}[${i}] = ${x}[${j}]; ${x}[${j}] = t; }`,
+          rs: `${x}.swap(${i}, ${j});` }[L]] };
       }
       case "if": return { code: [open(`if ${cond(s.e)}`)], close: end };
       case "elif": return { code: [L === "py" ? `elif ${expr(s.e, ctx)}:` : `} else if ${cond(s.e)} {`], close: end };
@@ -454,6 +488,7 @@
           if (s.k === "let") c.vars[s.name] = typeOf(s.e, c) === "null" ? "N" : typeOf(s.e, c);
           if (s.k === "take") c.vars[s.name] = "T";
           if (s.k === "for") c.vars[s.name] = "int";
+          if ((s.k === "assign" || s.k === "push" || s.k === "let") && s.e && s.e.k === "index") need.add("Clone");
         }
         if (st.body) walk(st.body);
       }
@@ -461,7 +496,7 @@
     walk(steps);
     (ctx.ownBounds || []).forEach((b) => need.add(b));
     if (need.has("PartialOrd")) need.delete("PartialEq");   // (PartialOrd includes it)
-    return ["PartialEq", "PartialOrd", "std::fmt::Display", "Default"].filter((b) => need.has(b));
+    return ["PartialEq", "PartialOrd", "Clone", "std::fmt::Display", "Default"].filter((b) => need.has(b));
   }
 
   // does a function follow a node pointer (Rust then needs an unsafe block)?
@@ -499,7 +534,7 @@
     const isRefK = (k) => k.startsWith("mut:") || k.startsWith("ref:");
     if (L === "py") {
       const pyType = (k) => (isRefK(k) ? `${struct(k)}${g ? "[T]" : ""}` : { N: `Node${g ? "[T]" : ""} | None`, int: "int", T: g ? "T" : "int",
-        Tref: g ? "T" : "int", Arr: g ? "list[T]" : "list[int]" }[k]);
+        Tref: g ? "T" : "int", Arr: g ? "list[T]" : "list[int]", ArrMut: g ? "list[T]" : "list[int]" }[k]);
       const ps = s.params.map(([p, k]) => (hints ? `${p}: ${pyType(k)}` : p)).join(", ");
       const ret = hints ? ` -> ${{ void: "None", bool: "bool", int: "int", index: "int", T: g ? "T" : "int", Tpeek: g ? "T" : "int" }[s.ret]}` : "";
       return [`def ${n}${hints && g ? "[T]" : ""}(${ps})${ret}:`];
@@ -507,18 +542,18 @@
     const tg = g ? "<T>" : "";
     if (L === "cpp") {
       const ps = s.params.map(([p, k]) => (k.startsWith("mut:") ? `${struct(k)}${tg}& ${p}` : k.startsWith("ref:") ? `const ${struct(k)}${tg}& ${p}`
-        : { N: `Node${tg}* ${p}`, int: `int ${p}`, T: `${T} ${p}`, Tref: g ? `const T& ${p}` : `${T} ${p}`, Arr: `const std::vector<${T}>& ${p}` }[k])).join(", ");
+        : { N: `Node${tg}* ${p}`, int: `int ${p}`, T: `${T} ${p}`, Tref: g ? `const T& ${p}` : `${T} ${p}`, Arr: `const std::vector<${T}>& ${p}`, ArrMut: `std::vector<${T}>& ${p}` }[k])).join(", ");
       const ret = { void: "void", bool: "bool", int: "int", index: "int", T, Tpeek: T }[s.ret];
       return [...(g ? ["template <typename T>"] : []), `${ret} ${n}(${ps}) {`];
     }
     if (L === "java") {
-      const ps = s.params.map(([p, k]) => (isRefK(k) ? `${struct(k)}${tg} ${p}` : { N: `Node${tg} ${p}`, int: `int ${p}`, T: `${T} ${p}`, Tref: `${T} ${p}`, Arr: `${T}[] ${p}` }[k])).join(", ");
+      const ps = s.params.map(([p, k]) => (isRefK(k) ? `${struct(k)}${tg} ${p}` : { N: `Node${tg} ${p}`, int: `int ${p}`, T: `${T} ${p}`, Tref: `${T} ${p}`, Arr: `${T}[] ${p}`, ArrMut: `${T}[] ${p}` }[k])).join(", ");
       const ret = { void: "void", bool: "boolean", int: "int", index: "int", T, Tpeek: T }[s.ret];
       const gen = !g ? "" : (s.rsBounds || []).includes("PartialOrd") ? "<T extends Comparable<T>> " : "<T> ";
       return [`static ${gen}${ret} ${n}(${ps}) {`];
     }
     const ps = s.params.map(([p, k]) => (k.startsWith("mut:") ? `${p}: &mut ${struct(k)}${tg}` : k.startsWith("ref:") ? `${p}: &${struct(k)}${tg}`
-      : { N: `${p}: *mut Node${tg}`, int: `${p}: usize`, T: `${p}: ${T}`, Tref: `${p}: &${T}`, Arr: `${p}: &[${T}]` }[k])).join(", ");
+      : { N: `${p}: *mut Node${tg}`, int: `${p}: usize`, T: `${p}: ${T}`, Tref: `${p}: &${T}`, Arr: `${p}: &[${T}]`, ArrMut: `${p}: &mut [${T}]` }[k])).join(", ");
     const bounds = g ? s.rsBounds : [];
     const gen = g ? `<T${bounds.length ? ": " + bounds.join(" + ") : ""}>` : "";
     const ret = { void: "", bool: " -> bool", int: " -> usize", index: " -> isize", T: ` -> ${T}`, Tpeek: g ? " -> &T" : ` -> ${T}` }[s.ret];
@@ -529,7 +564,7 @@
   function renderFunction(fn, ctx0, opts = {}) {
     const s = ctx0.fns[fn.name];
     const ctx = { ...ctx0, vars: {}, muts: reassigned(fn.steps), harnessFn: !!s.harness, ret: s.ret, owner: s.owner || null };
-    s.params.forEach(([p, k]) => { ctx.vars[p] = k.startsWith("mut:") || k.startsWith("ref:") ? `R:${k.slice(4)}` : k === "Tref" ? "T" : k; });
+    s.params.forEach(([p, k]) => { ctx.vars[p] = k.startsWith("mut:") || k.startsWith("ref:") ? `R:${k.slice(4)}` : k === "Tref" ? "T" : k === "ArrMut" ? "Arr" : k; });
     // Rust reads an element passed by reference as *x
     if (ctx.lang === "rs") ctx.derefs = new Set(s.params.filter(([, k]) => k === "Tref").map(([p]) => p));
     // what T must support: Rust's trait bounds, and Java's Comparable for ordering
