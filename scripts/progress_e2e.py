@@ -2,9 +2,9 @@
 
     python scripts/progress_e2e.py <screenshot-dir>
 
-Covers: the buttons in the page's top right corner (desktop and phone); Download through the browser's Save dialog
-(stubbed: a real one can't be clicked here) and through the name box browsers without one get, with the downloaded
-file checked against the browser's storage; the upload picker accepting only .tlsave; restoring into an empty browser,
+Covers: the buttons in the page's top right corner (desktop and phone); Download through the name box and an ordinary
+download, never the File System Access API (it gives the site edit access to the file, and Chrome warns about it),
+with the downloaded file checked against the browser's storage; the upload picker accepting only .tlsave; restoring into an empty browser,
 then Merge, Replace and Cancel into one that has progress; the pages reading restored progress; and files that are
 rejected (not JSON, not a progress file, a newer version, damaged).
 """
@@ -35,12 +35,12 @@ def check(cond, what):
 STORAGE = """() => Object.fromEntries(Object.keys(localStorage).filter(k => k.startsWith('training-loop:') && k !== 'training-loop:v1')
                                      .map(k => [k, JSON.parse(localStorage.getItem(k))]))"""
 HEADS = "[...document.querySelectorAll('.save-cmp th')].slice(1).map(t => t.textContent)"   # (not uppercased by CSS)
-NO_PICKER = "delete window.showSaveFilePicker; delete Window.prototype.showSaveFilePicker;"
-FAKE_PICKER = """window.showSaveFilePicker = async (opts) => {
-  window.__pickerOpts = opts;
-  if (window.__abort) throw new DOMException('closed', 'AbortError');
-  return { name: 'picked.tlsave', createWritable: async () => ({ write: async (t) => { window.__written = t; }, close: async () => {} }) };
-};"""
+# Chromium has the File System Access pickers: note any call to them (there must be none)
+SPY = """window.__fsa = [];
+for (const f of ['showSaveFilePicker', 'showOpenFilePicker', 'showDirectoryPicker']) {
+  const real = window[f];
+  if (real) window[f] = function (...a) { window.__fsa.push(f); return real.apply(this, a); };
+}"""
 
 
 def module(solved, seed, medal=False):
@@ -79,7 +79,7 @@ try:
 
         # ---------------------------------------------------------------- a browser with progress
         ctx = b.new_context(viewport={"width": 1280, "height": 900}, accept_downloads=True)
-        ctx.add_init_script(NO_PICKER)
+        ctx.add_init_script(SPY)
         pg = ctx.new_page()
         errors = []
         pg.on("pageerror", lambda e: errors.append(str(e)))
@@ -144,35 +144,9 @@ try:
         pg.click(".save-dl")
         pg.keyboard.press("Escape")
         check(pg.locator(".modal").count() == 0, "Escape closes the name box")
+        check(pg.evaluate("typeof window.showSaveFilePicker") == "function" and pg.evaluate("window.__fsa") == [],
+              "the browser has the File System Access API, and Download never calls it")
 
-        # ---------------------------------------------------------------- Download with a Save dialog (stubbed)
-        ctx2 = b.new_context(viewport={"width": 1280, "height": 900})
-        ctx2.add_init_script(FAKE_PICKER)
-        pg2 = ctx2.new_page()
-        home(pg2)
-        pg2.evaluate("s => { for (const [k, v] of Object.entries(s)) localStorage.setItem(k, JSON.stringify(v)); }", original)
-        pg2.click(".save-dl")
-        pg2.wait_for_function("window.__written")
-        opts = pg2.evaluate("window.__pickerOpts")
-        check(opts["suggestedName"] == f"training-loop-progress-{today}.tlsave", "the Save dialog suggests training-loop-progress-<date>.tlsave")
-        check(opts["types"][0]["accept"] == {"application/x-training-loop-progress": [".tlsave"]}, "the Save dialog offers the .tlsave type")
-        check(json.loads(pg2.evaluate("window.__written"))["stores"] == original, "the file written through the dialog holds this browser's stores")
-        check(pg2.locator(".modal").count() == 0 and wait_reload_toast(pg2) == "Saved picked.tlsave", "no name box; a toast names the saved file")
-        pg2.evaluate("window.__abort = true; window.__written = null")
-        pg2.click(".save-dl")
-        pg2.wait_for_timeout(300)
-        check(pg2.locator(".modal").count() == 0 and not pg2.evaluate("window.__written"), "closing the Save dialog does nothing")
-        # the real dialog accepts these options: without a click it refuses for that reason, not for the options
-        pg3 = b.new_page()
-        pg3.goto(BASE + "/#/")
-        err = pg3.evaluate("""async () => {
-          const t = async (o) => { try { await window.showSaveFilePicker(o); return 'opened'; } catch (e) { return e.name; } };
-          return [await t({ suggestedName: 'x.tlsave', types: [{ description: 'training-loop progress', accept: { 'application/x-training-loop-progress': ['.tlsave'] } }] }),
-                  await t({ types: [{ accept: { 'not a type': ['.tlsave'] } }] })];
-        }""")
-        check(err[0] != "TypeError" and err[1] == "TypeError", f"Chromium's own Save dialog takes the .tlsave type ({err})")
-        pg3.close()
-        ctx2.close()
 
         # ---------------------------------------------------------------- Upload into an empty browser: Restore
         fresh = b.new_context(viewport={"width": 1280, "height": 900})
@@ -267,6 +241,7 @@ try:
                 pg.screenshot(path=str(OUT / "refused.png"))
             pg.click(".modal .ok")
         check(pg.evaluate(STORAGE) == before, "a refused file changes nothing")
+        check(pg.evaluate("window.__fsa") == [], "Upload never asks for file access either: it reads only the chosen file")
         # a store this version doesn't know is kept as it is; keys that aren't the site's are ignored
         (OUT / "extra.tlsave").write_text(json.dumps({"format": "training-loop-progress", "version": 1, "savedAt": "2026-10-31T00:00:00Z",
                                                       "stores": {"training-loop:future:v1": {"x": 1}, "someone-else": 1}}))

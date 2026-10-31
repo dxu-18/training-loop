@@ -1,8 +1,8 @@
 // Progress files: everything the site keeps in this browser (localStorage), saved to and restored from one file, so
 // clearing the browser's data (or moving to another computer) loses nothing. The home page's Download and Upload.
 //
-//   Download  the system Save dialog where the browser has one (showSaveFilePicker: Chrome, Edge), so the file can be
-//             named and placed; elsewhere a box to name it, then an ordinary download.
+//   Download  a box to name the file, then an ordinary download. (Not the File System Access Save dialog: that gives
+//             the site edit access to the chosen file, and Chrome warns about it.)
 //   Upload    a file picker that accepts .tlsave files. The file is checked, its progress shown next to this
 //             browser's, then merged (per module and tutorial, whichever is further along) or used to replace it all.
 //
@@ -17,7 +17,6 @@
   const FORMAT = "training-loop-progress";
   const VERSION = 1;
   const EXT = ".tlsave";
-  const MIME = "application/x-training-loop-progress";
   const PREFIX = "training-loop:";
   const RETIRED = new Set(["training-loop:v1"]);   // Part I/II's first counter (one per topic): nothing reads it
   const MODULES = "training-loop:v2";
@@ -209,22 +208,11 @@
     catch { notice("Can't read your progress", "This browser isn't letting the page use its storage, so there is nothing saved to download."); return; }
     const text = serialize(stores, new Date().toISOString(), location.origin + location.pathname);
     const name = `training-loop-progress-${today()}`;
-    // the Save dialog must open while the click still counts as the person's: nothing is awaited before it
-    if (typeof root.showSaveFilePicker === "function") {
-      root.showSaveFilePicker({ suggestedName: name + EXT, types: [{ description: "training-loop progress", accept: { [MIME]: [EXT] } }] })
-        .then(async (handle) => {
-          const w = await handle.createWritable();
-          await w.write(text);
-          await w.close();
-          toast(`Saved ${handle.name}`);
-        }, (e) => { if (e.name !== "AbortError") askName(name, text); })   // closed: nothing to do; refused: the name box
-        .catch((e) => notice("Couldn't save the file", e.message || String(e)));
-      return;
-    }
     askName(name, text);
   }
 
-  // browsers without a Save dialog download straight to the downloads folder: let the person name the file first
+  // a download goes to the downloads folder without asking (unless the browser is set to ask where to save): so the
+  // person names the file first
   function askName(name, text) {
     const m = modal(`<h2>Download progress</h2>
       <p>Name the file. It goes to your browser's downloads folder.</p>
