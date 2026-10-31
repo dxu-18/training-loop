@@ -6012,54 +6012,87 @@ Results are checked against a linear scan.
 
 **Interface:**
 
-* `merge(A, lo, mid, hi)`: requires `A[lo, mid)` and `A[mid, hi)` sorted; ensures `A[lo, hi)` sorted.
-* `mergesort(A, lo, hi)`: sorts `A[lo, hi)`.
+| Function | Behaviour |
+|---|---|
+| `is_sorted(A, lo, hi)` | |
+| `merge(A, lo, mid, hi)` | requires `A[lo, mid)` and `A[mid, hi)` sorted; ensures `A[lo, hi)` sorted |
+| `mergesort(A, lo, hi)` | sorts `A[lo, hi)` |
+
+The array is changed in place: Python `list`, C++ `std::vector<T>&`, Java `T[]`, Rust `&mut [T]`.
 
 **Implementation (one option, as requested).**
 
-1. Recurse on `[lo, mid)` and `[mid, hi)`.
-2. `merge` into a temporary array of length `hi - lo`, taking from the left half on ties; this makes it **stable**.
-3. Copy back.
+`merge` walks the halves with `i` (over `[lo, mid)`) and `j` (over `[mid, hi)`):
+1. It appends the smaller front element to a temporary growable array `B`: a list, `std::vector`, `ArrayList` (so Java imports it) or `Vec`. On a tie it takes the left one, which makes the sort **stable**.
+2. Then it appends whatever is left of either half.
+3. Finally it copies `B` back into `A[lo, hi)`.
 
-**Complexity:** O(n log n) time in every case. O(n) extra space for the temporary arrays, plus O(log n) stack. Stable.
+Rust's generic version clones elements, since it can't move them out of a slice, so `T: PartialOrd + Clone`.
+
+`mergesort` returns when `hi - lo <= 1`. Otherwise it splits at `mid = lo + (hi - lo) / 2`, sorts both halves and merges them.
+
+**Complexity:** O(n log n) time in every case, sorted input included; `merge` is O(n). O(n) extra space for `B`, plus O(log n) stack. Stable. Quicksort is shown for comparison.
 
 **Steps:**
 
-1. `is_sorted(A, lo, hi)`.
-2. `merge`, with its loop invariant: the output prefix is sorted, and both cursors stay in range.
-3. The `mergesort` base case: `hi - lo <= 1`.
-4. The recursive case.
-5. A counted-comparisons check that the tests verify against n log n.
+1. Sorted segments (`is_sorted`).
+2. `merge`.
+3. `mergesort`.
+
+**Tests.** The checker prints the whole array after every `merge` and `mergesort`.
+* `merge` covers empty halves, ties and a sub-segment, leaving the rest of the array untouched.
+* `mergesort` covers mixed, reversed, sorted, empty, one-element and duplicate arrays, plus a sub-segment.
+* The final adds random arrays.
 
 ### 13.03 Quicksort
 
 **Interface:**
 
-* `partition(A, lo, pi, hi) -> mid`: requires `lo <= pi < hi`. It ensures `A[lo, mid) ≤ A[mid] ≤ A[mid+1, hi)`, with the pivot at `mid`.
-* `quicksort(A, lo, hi)`: sorts `A[lo, hi)`.
+| Function | Behaviour |
+|---|---|
+| `is_sorted(A, lo, hi)` | |
+| `all_at_most(A, lo, hi, x)` | |
+| `all_bigger(A, lo, hi, x)` | |
+| `swap(A, i, j)` | |
+| `partition(A, lo, pi, hi) -> mid` | requires `lo <= pi < hi`; ensures `A[lo, mid)` ≤ `A[mid]` < `A[mid + 1, hi)`, with the pivot at `mid` |
+| `quicksort(A, lo, hi)` | |
 
 **Implementation (one option, as requested).** The 15-122 partition:
-
 1. Swap the pivot to `A[lo]`.
-2. Grow `[lo+1, left)` ≤ pivot and `[right, hi)` > pivot until they meet.
-3. Swap the pivot into place.
+2. Grow `A[lo + 1, left)` (≤ pivot) and `A[right, hi)` (> pivot) until `left == right`. A small element advances `left`; a big one is swapped to `right - 1`, which then moves left. The loop invariant checks both sides every round.
+3. Swap the pivot to `left - 1` and return that index.
 
-A **random pivot index** (or median of three) gives expected O(n log n) on every input.
+`swap` is written each language's own way:
+* Python: tuple assignment.
+* C++ and Java: a temporary variable.
+* Rust: `A.swap(i, j)`, because it can't move a generic element into a temporary.
+
+**Option: the pivot.**
+* **Middle element** (`lo + (hi - lo) / 2`): sorted input is O(n log n).
+* **First element:** sorted input is O(n²), and the complexity boxes show it.
+
+A random pivot makes bad inputs unlikely; the boxes mention it.
 
 **Complexity:**
-
-* Time: O(n log n) expected; O(n²) worst case, which a fixed first-element pivot hits on sorted input.
-* Space: in place. The stack is O(log n) expected if the recursion goes into the smaller side first and loops on the larger one.
+* Time: O(n log n) on typical input; O(n²) worst case.
+* `partition`: O(n).
+* Space: in place, with an O(log n) stack (O(n) worst case).
 * Not stable.
 
 **Steps:**
 
-1. Contracts: `le_seg`, `ge_seg` and `is_sorted`.
+1. Contracts: `is_sorted`, `all_at_most`, `all_bigger`.
 2. `swap`.
-3. `partition`, with its loop invariants.
-4. `quicksort`'s base case and recursion.
-5. The random pivot.
-6. A test on sorted and all-equal input, which a naive version takes O(n²) on.
+3. `partition`.
+4. `quicksort`.
+
+**Tests.** After a `partition` the checker prints:
+* the returned `mid`;
+* the untouched outside of `A[lo, hi)`;
+* each side **sorted** (by a small insertion sort of its own);
+* the pivot.
+
+So any correct partition passes, not only the tutorial's exact arrangement. Duplicates of the pivot belong on its left. Full sorts print the array, and the final adds random arrays.
 
 ### 13.04 Linked lists
 

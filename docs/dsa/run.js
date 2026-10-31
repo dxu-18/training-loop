@@ -31,7 +31,7 @@
     // Nothing goes before the user's code, so line numbers in errors match the editor.
     if (lang === "cpp") {
       const u = user.replace(/\bint(\s+)main\s*\(/g, "int$1tl_user_main(");
-      return { source: `${u}\n\n// ---- the checker's tests\n#include <iostream>\n#include <string>\n#include <cassert>\n${tests.helpers}\n\n` +
+      return { source: `${u}\n\n// ---- the checker's tests\n#include <iostream>\n#include <string>\n#include <cassert>\n#include <vector>\n#include <utility>\n${tests.helpers}\n\n` +
         `int main() {\n    std::cout << std::unitbuf;\n${DL.indent(tests.main, 1)}\n    return 0;\n}\n` };
     }
     if (lang === "java") {

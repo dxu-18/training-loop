@@ -496,6 +496,39 @@ The hints skip an empty Java class's closing brace, which comes after all the fu
     generic;
   - the hint bubbles matching their reference code for every tutorial.
 
+### Session 15 (2026-10-30): mergesort and quicksort
+Request: "go ahead and do mergesort and quicksort".
+
+**13.02 Mergesort** (`docs/dsa/mergesort.js`). Options: language, int/generic. Steps:
+1. sorted segments (`is_sorted`, reused from binary search);
+2. `merge(A, lo, mid, hi)`: two cursors into a temporary growable `B`, ties from the left (stable), then copy back;
+3. `mergesort(A, lo, hi)`.
+
+**13.03 Quicksort** (`docs/dsa/quicksort.js`). Options: language, int/generic, pivot (middle or first; the boxes show
+sorted input at O(n log n) vs O(n²)). Steps:
+1. contracts (`is_sorted`, `all_at_most`, `all_bigger`);
+2. `swap`: Python tuple, C++/Java temporary, Rust `A.swap`;
+3. `partition(A, lo, pi, hi)`: 15-122's two-sided version with its loop invariant;
+4. `quicksort`.
+
+**More in `lang.js`.**
+- In-place arrays (`ArrMut`: `std::vector<T>&`, `&mut [T]`).
+- A growable array: `vec()` and `push B, x`; Java's `ArrayList` reads with `.get`.
+- Rust clones a generic element copied out of an array, and adds `Clone` to the bounds.
+- A `swap X, i, j` statement for the checker (`java.util.Collections.swap` on lists).
+- Steps limited to some languages with `only`. Raw per-language code is allowed inside functions.
+
+**Tests.**
+- Partition prints each side sorted, through the checker's own insertion sort, so any correct partition passes.
+- The mutation check skips statements that exist only in other languages.
+- `dsa_selftest.mjs`: 112 runs and 126 mutants for the two sorts, all passing and all caught.
+- `dsa_e2e.py`:
+  - mergesort in Python (with a wrong step) and Java generic;
+  - quicksort's pivot option changing the boxes;
+  - quicksort in Python (with a wrong step), Rust generic with a first-element pivot, and C++ generic.
+
+A diagram label longer than its box now hangs over the next cells instead of widening its column.
+
 ### Open problem: Hugging Face in the browser
 Pyodide has no `transformers`. Options: extend the shim idea (a tiny tokenizer/pipeline layer over torch-lite),
 AST and pattern checks, or an optional "run locally" mode. **Not decided yet.**
@@ -532,7 +565,8 @@ docs/                 the static website (GitHub Pages root): app.js (pages), te
   dsa/                Part III tutorials: lang.js (the statement language -> Python/C++/Java/Rust), common.js (what
                       every tutorial shares: rendering, reference programs, tests), run.js (Compiler Explorer + Pyodide
                       runner, the tests around the user's file, output diff), page.js (setup, steps with the typing
-                      coach, final, status, reset); one file per tutorial: binary-search.js, linked-list.js, stack.js, queue.js
+                      coach, final, status, reset); one file per tutorial: binary-search.js, mergesort.js, quicksort.js, linked-list.js,
+                      stack.js, queue.js
 scripts/dsa_selftest.mjs  every tutorial reference x option x language, step by step (+ --mutants)
 scripts/dsa_e2e.py        browser click-through of Part III (Compiler Explorer answered by local compilers)
 ```
@@ -566,7 +600,7 @@ Legend: ✅ done · 🟡 partial · ⬜ not started
 | 10 | SQL | ⬜ | sqlite3 exec | |
 | 11 | LaTeX | ⬜ | normalized / KaTeX | |
 | 12 | Docker | ⬜ | command / Dockerfile | |
-| 13 | Data Structures & Algorithms (Part III) | 🟡 **13.01 Binary search, 13.04 Linked lists, 13.05 Stacks, 13.06 Queues live** (all options × int/generic × Python/C++/Java/Rust); the rest researched in COMP_GUIDE §13, "soon" | Pyodide (Python), Compiler Explorer (C++/Java/Rust); line-by-line output diff | session 11 |
+| 13 | Data Structures & Algorithms (Part III) | 🟡 **13.01 Binary search, 13.02 Mergesort, 13.03 Quicksort, 13.04 Linked lists, 13.05 Stacks, 13.06 Queues live** (all options × int/generic × Python/C++/Java/Rust); 13.07–13.12 researched in COMP_GUIDE §13, "soon" | Pyodide (Python), Compiler Explorer (C++/Java/Rust); line-by-line output diff | session 11 |
 
 ### What exists (as of session 5; the Bash topic and its terminal are described in §2, sessions 7–8)
 - `generator/`: core (tiers, registry, Instructions), grader (answer comparison, AST checks,

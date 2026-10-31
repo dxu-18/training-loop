@@ -130,7 +130,8 @@ def run_all_steps(pg, label, wrong_at=None):
         if wrong_at == k:
             # break one line of the reference (the newest "size += 1"): the step must fail and say where
             code = program(pg, k)
-            bad, good = ("size += 1", "size += 2") if "size += 1" in code else ("mid + 1", "mid + 2")
+            bad = next(x for x in ("size += 1", "mid + 1", "i += 1", "left += 1") if x in code)
+            good = bad[:-1] + "2"
             i = code.rfind(bad)
             code = code[:i] + good + code[i + len(bad):]
             pg.evaluate(SET, code)
@@ -171,11 +172,11 @@ try:
         check(any("part iii" in h.lower() and "data structures" in h.lower() for h in heads), "home has Part III · Data Structures & Algorithms")
         row = pg.locator("a.topic[href='#/dsa/linked-lists']")
         check(row.count() == 1 and "not started" in row.inner_text().lower(), "Linked lists row says Not Started")
-        check(pg.locator(".part:last-child .topic.soon").count() == 8, "the other 8 tutorials say soon")
+        check(pg.locator(".part:last-child .topic.soon").count() == 6, "the other 6 tutorials say soon")
         first = pg.locator(".part:last-child li").first.inner_text()
         check("13.01" in first and "Binary search" in first, "Part III starts with 13.01 Binary search")
         check("Mergesort" in pg.inner_text(".part:last-child") and "Merge sort" not in pg.inner_text(".part:last-child"), "Mergesort is one word")
-        for tid in ("binary-search", "stacks", "queues"):
+        for tid in ("binary-search", "mergesort", "quicksort", "stacks", "queues"):
             r = pg.locator(f"a.topic[href='#/dsa/{tid}']")
             check(r.count() == 1 and "not started" in r.inner_text().lower(), f"{tid}: live and Not Started")
         pg.screenshot(path=str(OUT / "home.png"), full_page=True)
@@ -336,6 +337,35 @@ try:
             start(pg, "binary-search", {"lang": lang, "type": typ, "style": style})
             if run_all_steps(pg, f"bs-{lang}"):
                 finish(pg, f"bs-{lang}")
+
+        # ---- 13.02 Mergesort: Python (with a wrong step) and Java generic
+        start(pg, "mergesort", {"lang": "py", "type": "int"})
+        check(pg.locator(".outline li").count() == 3, "mergesort: 3 steps")
+        if run_all_steps(pg, "ms-py", wrong_at=2):
+            finish(pg, "ms-py")
+        start(pg, "mergesort", {"lang": "java", "type": "generic"})
+        if run_all_steps(pg, "ms-java"):
+            finish(pg, "ms-java")
+
+        # ---- 13.03 Quicksort: the pivot option, then Python (with a wrong step), Rust and C++
+        pg.goto(BASE + "/#/dsa/quicksort")
+        pg.wait_for_selector(".begin")
+        TID[0] = "quicksort"
+        srt = lambda: pg.inner_text(".cx[data-id='sorted'] .cx-big")
+        choose(pg, {"pivot": "middle"})
+        check(srt() == "O(n log n)", "quicksort, middle pivot: sorted input O(n log n)")
+        choose(pg, {"pivot": "first"})
+        check(srt() == "O(n²)", "first-element pivot: sorted input O(n²)")
+        pg.screenshot(path=str(OUT / "qs-setup.png"), full_page=True)
+        start(pg, "quicksort", {"lang": "py", "type": "int", "pivot": "middle"})
+        if run_all_steps(pg, "qs-py", wrong_at=3):
+            finish(pg, "qs-py")
+        start(pg, "quicksort", {"lang": "rs", "type": "generic", "pivot": "first"})
+        if run_all_steps(pg, "qs-rs"):
+            finish(pg, "qs-rs")
+        start(pg, "quicksort", {"lang": "cpp", "type": "generic", "pivot": "middle"})
+        if run_all_steps(pg, "qs-cpp"):
+            finish(pg, "qs-cpp")
 
         # ---- 13.05 Stacks: Python (with a wrong step) and C++ generic
         start(pg, "stacks", {"lang": "py", "type": "int"})

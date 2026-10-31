@@ -123,7 +123,9 @@
     const d = page.t.diagram(o);
     const cell = (c) => {
       if (c.box !== undefined) {
-        return `<div class="dg-cell"><div class="dg-tags">${(c.tags || []).map((x) => `<span>${esc(x)}</span>`).join("")}</div><div class="dg-box ${c.cls || ""}">${esc(c.box)}</div></div>`;
+        // a label longer than its box hangs over the next cells instead of widening its column
+        const wide = (c.tags || []).some((x) => x.length > String(c.box).length + 1);
+        return `<div class="dg-cell"><div class="dg-tags${wide ? " wide" : ""}">${(c.tags || []).map((x) => `<span>${esc(x)}</span>`).join("")}</div><div class="dg-box ${c.cls || ""}">${esc(c.box)}</div></div>`;
       }
       if (c.label) return `<div class="dg-cell"><div class="dg-tags"></div><div class="dg-label">${esc(c.label)}</div></div>`;
       if (c.arrow) return `<div class="dg-cell"><div class="dg-tags"></div><div class="dg-arrow">${esc(c.arrow)}</div></div>`;
