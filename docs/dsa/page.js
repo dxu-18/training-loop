@@ -312,6 +312,31 @@
     return s;
   }
 
+  // A function's header may name its parameters differently (or add type hints), so it is matched by the function's
+  // name; but only once it is whole: as many parameters as the reference's, and the ":" or "{" after them. (The
+  // editor closes brackets as they're opened, so "def f()" is on the screen long before the header is written.)
+  function paramList(n, open) {   // n[open] is "(": -> { count, rest: what follows the ")" }, or null while it's open
+    let depth = 0, commas = 0;
+    for (let k = open + 1; k < n.length; k++) {
+      const c = n[k];
+      if (c === "," && !depth) commas++;
+      else if ("([{<".includes(c)) depth++;
+      else if (c === ">" && n[k - 1] === "-") continue;   // (an arrow inside a type)
+      else if (")]}>".includes(c)) {
+        if (!depth) return { count: k === open + 1 ? 0 : commas + 1, rest: n.slice(k + 1) };
+        depth--;
+      }
+    }
+    return null;
+  }
+  function headerDone(n, w, lang) {
+    const m = w.re.exec(n);
+    if (!m) return false;
+    if (!m[0].endsWith("(")) return /^template<.+>$/.test(n);   // (C++'s template line)
+    const p = paramList(n, m.index + m[0].length - 1);
+    return !!p && p.count === w.count && (lang === "py" ? /:$/ : /\{\}?$/).test(p.rest);
+  }
+
   function coachWant(t, lang) {
     const name = t.fn ? (lang === "java" ? DL.camel(t.fn) : t.fn) : null;
     return t.lines.map(({ text }) => {
@@ -321,6 +346,8 @@
       if (name && /^template</.test(n)) w.re = /^template</;
       else if (name) w.re = { py: new RegExp(`^def${name}(\\[.*\\])?\\(`), rs: new RegExp(`^(pub)?fn${name}(<.*>)?\\(`),
         java: new RegExp(`static.*\\b${name}\\(`), cpp: new RegExp(`\\b${name}\\((?!.*;$)`) }[lang];
+      const m = w.re && w.re.exec(n);
+      if (m && m[0].endsWith("(")) w.count = (paramList(n, m.index + m[0].length - 1) || {}).count;
       return w;
     }).filter(Boolean);
   }
@@ -329,7 +356,7 @@
   function coachProgress(targets, code, lang, skipped) {
     const U = [];
     code.split("\n").forEach((line, idx) => { const n = normLine(line, lang); if (n) U.push({ n, l: looseLine(n, lang), idx }); });
-    const hit = (u, w) => u.n === w.n || u.l === w.l || (w.re && w.re.test(u.n));
+    const hit = (u, w) => u.n === w.n || u.l === w.l || (w.re && headerDone(u.n, w, lang));
     let j = 0, k = 0, anchor = null;
     for (; k < targets.length; k++) {
       if (skipped.has(k)) continue;

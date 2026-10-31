@@ -232,6 +232,20 @@ try:
               if (p1 !== ts.length) bad.push(`${T.id} ${JSON.stringify(o)} step ${k + 1}: reference reaches ${p1}/${ts.length}`);
               if (p0 !== 0) bad.push(`${T.id} ${JSON.stringify(o)} step ${k + 1}: ${p0} hints done before typing`);
               const lines = after.split("\n");
+              // a function's header isn't done at "def f()" (brackets close themselves) or before its ":" / "{"
+              ts.forEach((t, ti) => {
+                if (!t.fn) return;
+                for (const { text: L } of t.lines) {
+                  const at = lines.findIndex((x) => x.trim() === L.trim());
+                  const w = C.coachWant({ fn: t.fn, lines: [{ text: L, depth: 0 }] }, o.lang)[0];
+                  if (at < 0 || !w || w.count === undefined) continue;   // (the header line itself)
+                  const ind = lines[at].match(/^\s*/)[0];
+                  const q = (line) => C.coachProgress(ts, [...lines.slice(0, at), ind + line].join("\n"), o.lang, new Set()).k;
+                  for (const part of [L.slice(0, L.indexOf("(") + 1) + ")", L.replace(/\s*[:{]\s*$/, "")]) {
+                    if (q(part) > ti) bad.push(`${T.id} ${JSON.stringify(o)} step ${k + 1}: "${part}" already finishes the header hint`);
+                  }
+                }
+              });
               let prev = 0;
               for (let i = 1; i <= lines.length; i++) {
                 const q = C.coachProgress(ts, lines.slice(0, i).join("\n"), o.lang, new Set()).k;
@@ -243,7 +257,7 @@ try:
           }
           return bad;
         }""")
-        check(not bad, "every tutorial x option x language x step: the reference satisfies all its hint bubbles, in order" + (": " + "; ".join(bad[:4]) if bad else ""))
+        check(not bad, "every tutorial x option x language x step: the reference satisfies all its hint bubbles, in order, and a function header's only once it's whole" + (": " + "; ".join(bad[:4]) if bad else ""))
 
         # empty and broken code
         pg.evaluate(SET, "")
