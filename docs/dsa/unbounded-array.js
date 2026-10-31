@@ -60,7 +60,7 @@
   // ---------------------------------------------------------------- specs
   const O = "UnboundedArray", M = "mut:UnboundedArray", R = "ref:UnboundedArray";
   const FNS = {
-    is_uba: { params: [["A", R]], ret: "bool", owner: O },
+    is_uba: { params: [["A", R]], ret: "bool", owner: O, contract: true },
     uba_len: { params: [["A", R]], ret: "int", owner: O },
     uba_get: { params: [["A", R], ["i", "int"]], ret: "Tpeek", owner: O },
     uba_set: { params: [["A", M], ["i", "int"], ["x", "T"]], ret: "void", owner: O },
@@ -152,10 +152,11 @@
   function steps(o) {
     const fn = (name, body, headerSay) => ({ name, steps: body(), headerSay });
     const growText = { double: "twice as big", half: "half as big again (rounding up)", plus: "with 4 more slots" }[o.grow];
+    const on = C.contractsOn(o);
     return [
-      { id: "uba", title: "The array and its contracts",
+      { id: "uba", title: on ? "The array and its contracts" : "The array",
         goal: "An unbounded array `A` keeps its elements in a fixed block `A.data` of `A.limit` slots, using the first `A.size` of them: the segment `A.data[0, A.size)`. " +
-          "One slot always stays free (`size < limit`). Write the struct, its contract {fn:is_uba(A)}, and {fn:uba_len(A)}.",
+          "One slot always stays free (`size < limit`). " + (on ? "Write the struct, its contract {fn:is_uba(A)}, and {fn:uba_len(A)}." : "Write the struct and {fn:uba_len(A)}."),
         decl: (c) => decl(c),
         fns: [fn("is_uba", isUba, "Write {fn:is_uba}, the representation invariant."), fn("uba_len", len, "Write {fn:uba_len}.")],
         contractNote: true, tests: ["uba"] },
@@ -315,6 +316,7 @@
   const DEF = {
     id: "unbounded-arrays", num: "13.07", title: "Unbounded arrays", heading: "Build an unbounded array, step by step", diagramLabel: "Your array",
     OPTIONS, DEFAULTS, FNS, STRUCTS, describe, complexity, diagram, steps, handlers, testGroups, refFns, problem,
+    CONTRACT_OPS: ["is_uba", "break"],
   };
   const tutorial = C.make(DEF);
   if (typeof module !== "undefined" && module.exports) module.exports = tutorial;

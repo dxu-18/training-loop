@@ -609,6 +609,50 @@ Request: "go ahead and do hash tables".
   table can't reach.
 - 252 mutants, all caught; 168 runs, all passing.
 
+### Session 18 (2026-10-31): the Contracts option
+Request: "create an option in each datastructure/alg tutorial to toggle contracts. if this option is unselected
+(untoggled is default), then the user need not implement things like representation invariants and such, and straight
+up practice implementing the data structure itself and its functionalities".
+
+**Built.** `DSACommon.make()` adds a **Contracts** option (off | on, default off) to every tutorial. Off means:
+- Function specs marked `contract: true` disappear, and so does every `assert` statement.
+  - The marked functions: `is_list`, `is_segment`, `is_stack`, `is_queue`, `is_uba`, `is_ht`; binary search's
+    `is_sorted`, `is_in` and `all_*`; the sorts' `is_sorted` and `all_*`.
+- A step left with nothing to write is dropped, and its declarations move into the next step (e.g. binary search's
+  setup into `binsearch`). Its tests leave the later steps' lists.
+- Test groups with a `break` op are dropped. Ops a tutorial lists in `CONTRACT_OPS` (is_list, segment, …) are removed.
+- The checker's own helpers (`ref_is_list`, `show`'s BROKEN messages) stay, so structure errors are still reported.
+- Complexity boxes with ids `is_*` or `contracts` are hidden.
+- The final problem drops the contract functions and its "Check …" sentence.
+- Step texts that talk about contracts have a no-contracts wording (via `C.contractsOn(o)`, and `ctx.contracts` in
+  step text).
+
+**Steps without contracts.**
+
+| Tutorial | Steps without | Steps with |
+|---|---|---|
+| Binary search | 2 | 4 |
+| Mergesort | 2 | 3 |
+| Quicksort | 3 | 4 |
+| Linked lists, stacks, queues, unbounded arrays, hash tables | same | same |
+
+The list, stack, queue and table steps stay, keeping their struct and `is_empty` / `size`.
+
+**Old saves.** Progress saved before the option existed (phase past setup, no `contracts` in the saved options) is read
+as contracts on, so step counts don't shift for anyone mid-tutorial.
+
+**Testing.**
+- `dsa_selftest.mjs`: every option combination now includes both modes: 3000 runs, 0 failures. Mutants: see the
+  release.
+- `dsa_e2e.py`:
+  - the option on all 8 tutorials, off by default;
+  - binary search 2 ↔ 4 steps, and the contracts box;
+  - the setup moving into the first remaining step, and a final without contract functions;
+  - full no-contracts runs: binary search in C++, hash tables in Rust, quicksort in Java, the two-stack queue in
+    Python, unbounded arrays in C++.
+
+  The earlier flows run with contracts on (`start()` defaults to on).
+
 ### Open problem: Hugging Face in the browser
 Pyodide has no `transformers`. Options: extend the shim idea (a tiny tokenizer/pipeline layer over torch-lite),
 AST and pattern checks, or an optional "run locally" mode. **Not decided yet.**

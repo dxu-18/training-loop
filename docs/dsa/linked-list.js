@@ -96,8 +96,8 @@
   // ---------------------------------------------------------------- function specs
   const M = "mut:LinkedList", R = "ref:LinkedList", O = "LinkedList";
   const FNS = {
-    is_segment: { params: [["start", "N"], ["end", "N"], ["n", "int"]], ret: "bool", owner: O },
-    is_list: { params: [["L", R]], ret: "bool", owner: O },
+    is_segment: { params: [["start", "N"], ["end", "N"], ["n", "int"]], ret: "bool", owner: O, contract: true },
+    is_list: { params: [["L", R]], ret: "bool", owner: O, contract: true },
     is_empty: { params: [["L", R]], ret: "bool", owner: O },
     insert_front: { params: [["L", M], ["x", "T"]], ret: "void", owner: O },
     insert_back: { params: [["L", M], ["x", "T"]], ret: "void", owner: O },
@@ -312,7 +312,8 @@
 
   function deleteNode(v) {
     const k = `${v.dummy ? "D" : "N"}${v.doubly ? "D" : "S"}${v.circular ? "C" : "L"}`;
-    const notFound = (cond, say) => S(say || "Not found: nothing changed, so there is nothing to re-check. Return false.", `if ${cond}`, [S("", "return false")]);
+    const notFound = (cond, say) => S(say || ((c) => (c.contracts ? "Not found: nothing changed, so there is nothing to re-check. Return false." : "Not found: return false.")),
+      `if ${cond}`, [S("", "return false")]);
     const tail = [LESS, S("Free the removed node.", "free p"), ENS, S("Found and removed.", "return true")];
     const body = {
       NSL: [
@@ -514,6 +515,7 @@
   // ---------------------------------------------------------------- steps
   function steps(o) {
     const v = variant(o);
+    const on = C.contractsOn(o);
     const fn = (name, stepsFn, headerSay) => ({ name, steps: stepsFn(v), headerSay });
     const first = { NSL: "`L.head`", NDL: "`L.head`", NSC: "{e:L.tail.next}", NDC: "`L.head`", DSL: "`L.head`", DDL: "`L.head`", DSC: "{e:L.dummy.next}", DDC: "{e:L.dummy.next}" };
     const k = `${v.dummy ? "D" : "N"}${v.doubly ? "D" : "S"}${v.circular ? "C" : "L"}`;
@@ -524,8 +526,9 @@
         decl: (c) => C.nodeSteps(c, { doubly: v.doubly, varName: "L", what: "list",
           rustWhy: "`Box` allows one owner per node, but in this list a node can be pointed at from two places (a tail pointer, a `prev`, a dummy, a circle). That needs raw pointers; `std::collections::LinkedList` is built the same way." }),
         tests: ["node"] },
-      { id: "list", title: "The list and its contracts",
-        goal: "Before writing any operation, write down what a correct list looks like, as code that checks it. These are the **contracts**:\n\n" +
+      { id: "list", title: on ? "The list and its contracts" : "The list",
+        goal: !on ? `The list \`L\` keeps pointers to the nodes it needs and its \`size\`. ${diagram(o).caption} Write the struct, its constructor, and {fn:is_empty(L)}.` :
+          "Before writing any operation, write down what a correct list looks like, as code that checks it. These are the **contracts**:\n\n" +
           "* {fn:is_segment(start, end, n)}: following `next` from `start` reaches `end` after exactly `n` nodes. The nodes [`start`, `end`) form a **segment**: `start` included, `end` excluded.\n" +
           "* {fn:is_list(L)}: the **representation invariant**, true exactly when `L` is a well-formed list.\n" +
           "* Every operation then starts with {s:assert is_list(L)} (what it **requires**) and checks it again before returning (what it **ensures**). If a function breaks the list, the very next check stops the program right there.\n\n" +
@@ -549,7 +552,7 @@
         }[k]),
         fns: [fn("insert_back", insertBack, "Write the header: {fn:insert_back} takes the list and the new element.")], tests: ["node", "list", "insert_front", "insert_back"] },
       { id: "delete_head", title: "Delete the head",
-        goal: "{fn:delete_head(L)} removes the first element and returns it. It **requires** a non-empty list, so add that to the contract. O(1).",
+        goal: "{fn:delete_head(L)} removes the first element and returns it. It **requires** a non-empty list" + (on ? ", so add that to the contract" : "") + ". O(1).",
         fns: [fn("delete_head", deleteHead, "Write the header: {fn:delete_head} returns the removed element.")], tests: ["node", "list", "insert_front", "insert_back", "delete_head"] },
       { id: "delete_node", title: "Delete a node",
         goal: "{fn:delete_node(L, x)} removes the first node holding `x` and returns true, or returns false if `x` isn't there. Finding the node is O(n); " +
@@ -557,7 +560,7 @@
         fns: [fn("delete_node", deleteNode, "Write the header: {fn:delete_node} takes the list and the element to remove, and returns a bool.")],
         tests: ["node", "list", "insert_front", "insert_back", "delete_head", "delete_node"] },
       { id: "lookup", title: "Lookup",
-        goal: "{fn:lookup(L, x)} returns true if some node holds `x`. Visit the nodes one by one: O(n). It doesn't change the list, so only the precondition is needed.",
+        goal: "{fn:lookup(L, x)} returns true if some node holds `x`. Visit the nodes one by one: O(n)." + (on ? " It doesn't change the list, so only the precondition is needed." : ""),
         fns: [fn("lookup", lookup, "Write the header: {fn:lookup} takes the list and the element, and returns a bool.")],
         tests: ["node", "list", "insert_front", "insert_back", "delete_head", "delete_node", "lookup"] },
       { id: "print_list", title: "Traverse and print",
@@ -776,7 +779,7 @@
   const DEF = {
     id: "linked-lists", num: "13.04", title: "Linked lists", heading: "Build a linked list, step by step", diagramLabel: "Your list",
     OPTIONS, DEFAULTS, FNS, STRUCTS, describe, complexity, diagram, steps, handlers, testGroups, refFns, problem,
-    variant, fields, breaks, _internals: { isSegment, isList, insertFront, insertBack, deleteHead, deleteNode, lookup, printList, showFn },
+    CONTRACT_OPS: ["is_list", "segment", "break"], variant, fields, breaks, _internals: { isSegment, isList, insertFront, insertBack, deleteHead, deleteNode, lookup, printList, showFn },
   };
   const tutorial = C.make(DEF);
   if (typeof module !== "undefined" && module.exports) module.exports = tutorial;

@@ -57,7 +57,7 @@
   function FNS(o) {
     const show = { harness: true, bounds: ["std::fmt::Display"], ret: "void" };
     const queue = (peekKind) => ({
-      is_queue: { params: [["Q", RQ]], ret: "bool", owner: "Queue" },
+      is_queue: { params: [["Q", RQ]], ret: "bool", owner: "Queue", contract: true },
       queue_empty: { params: [["Q", RQ]], ret: "bool", owner: "Queue" },
       enq: { params: [["Q", MQ], ["x", "T"]], ret: "void", owner: "Queue" },
       deq: { params: [["Q", MQ]], ret: "T", owner: "Queue" },
@@ -65,10 +65,10 @@
       queue_size: { params: [["Q", RQ]], ret: "int", owner: "Queue" },
       show: { params: [["Q", RQ]], ...show },
     });
-    if (!onStacks(o)) return { is_segment: { params: [["start", "N"], ["end", "N"], ["n", "int"]], ret: "bool", owner: "Queue" }, ...queue(RQ) };
+    if (!onStacks(o)) return { is_segment: { params: [["start", "N"], ["end", "N"], ["n", "int"]], ret: "bool", owner: "Queue", contract: true }, ...queue(RQ) };
     return {
-      is_segment: { params: [["start", "N"], ["end", "N"], ["n", "int"]], ret: "bool", owner: "Stack" },
-      is_stack: { params: [["S", RS]], ret: "bool", owner: "Stack" },
+      is_segment: { params: [["start", "N"], ["end", "N"], ["n", "int"]], ret: "bool", owner: "Stack", contract: true },
+      is_stack: { params: [["S", RS]], ret: "bool", owner: "Stack", contract: true },
       stack_empty: { params: [["S", RS]], ret: "bool", owner: "Stack" },
       push: { params: [["S", MS], ["x", "T"]], ret: "void", owner: "Stack" },
       pop: { params: [["S", MS]], ret: "T", owner: "Stack" },
@@ -210,14 +210,16 @@
   // ---------------------------------------------------------------- steps
   function steps(o) {
     const fn = (name, body, headerSay) => ({ name, steps: body(), headerSay });
+    const on = C.contractsOn(o);
     const node = (goal) => ({ id: "node", title: "The node", goal, tests: ["node"],
       decl: (c) => C.nodeSteps(c, { varName: "Q", what: "queue", rustWhy: onStacks(o) ? STK.RUST_WHY : RUST_WHY }) });
     const contracts = "Every operation checks {fn:is_queue(Q)} when it starts and before it returns.";
     if (!onStacks(o)) {
       return [
         node("The queue is a linked list: elements leave at the front and join at the back. Each node holds one element (`data`) and a pointer to the next node. A pointer that points nowhere is null."),
-        { id: "queue", title: "The queue and its contracts",
-          goal: "The queue `Q` keeps its `front` node, a dummy `back` node and its `size`. Write the **contracts** first: {fn:is_segment(start, end, n)} " +
+        { id: "queue", title: on ? "The queue and its contracts" : "The queue",
+          goal: !on ? "The queue `Q` keeps its `front` node, a dummy `back` node (an empty queue is just the dummy) and its `size`. Write the struct, its constructor, and {fn:queue_empty(Q)}." :
+            "The queue `Q` keeps its `front` node, a dummy `back` node and its `size`. Write the **contracts** first: {fn:is_segment(start, end, n)} " +
             "(exactly `n` nodes from `start` up to, not including, `end`) and {fn:is_queue(Q)}, true exactly when the segment [`Q.front`, `Q.back`) holds `Q.size` nodes. " + contracts,
           decl: (c) => listDecl(c),
           fns: [fn("is_segment", STK.isSegment, "Write {fn:is_segment}: does [`start`, `end`) hold exactly `n` nodes?"),
@@ -238,8 +240,9 @@
     }
     return [
       node("Two stacks make the queue, and each stack is a linked list whose first node is its top. Each node holds one element (`data`) and a pointer to the node below it. A pointer that points nowhere is null."),
-      { id: "stack", title: "The stack and its contracts",
-        goal: "First the stack (13.05 in brief): `S` keeps its `top` node and its `size`. Its contracts: {fn:is_segment(start, end, n)} and {fn:is_stack(S)}, true exactly when [`S.top`, null) holds `S.size` nodes.",
+      { id: "stack", title: on ? "The stack and its contracts" : "The stack",
+        goal: "First the stack (13.05 in brief): `S` keeps its `top` node and its `size`. " + (on ? "Its contracts: {fn:is_segment(start, end, n)} and {fn:is_stack(S)}, true exactly when [`S.top`, null) holds `S.size` nodes."
+          : "Write the struct, its constructor, and {fn:stack_empty(S)}."),
         decl: (c) => STK.stackDecl(c),
         fns: [fn("is_segment", STK.isSegment, "Write {fn:is_segment}: does [`start`, `end`) hold exactly `n` nodes?"),
           fn("is_stack", STK.isStack, "Write {fn:is_stack}."), fn("stack_empty", STK.stackEmpty, "Write {fn:stack_empty}.")],
@@ -248,8 +251,9 @@
         goal: "The stack's operations, all O(1): {fn:push(S, x)} puts `x` on top, {fn:pop(S)} removes and returns the top element, and {fn:peek(S)} returns it without removing it.",
         fns: [fn("push", STK.push, "Write {fn:push}."), fn("pop", STK.pop, "Write {fn:pop}."), fn("peek", STK.peek, "Write {fn:peek}.")],
         tests: ["node", "stack", "stack_ops"] },
-      { id: "queue", title: "The queue and its contracts",
-        goal: "The queue `Q` holds two stacks: `inbox`, where new elements arrive, and `outbox`, where the oldest wait on top. {fn:is_queue(Q)} holds when both stacks are valid. " + contracts,
+      { id: "queue", title: on ? "The queue and its contracts" : "The queue",
+        goal: "The queue `Q` holds two stacks: `inbox`, where new elements arrive, and `outbox`, where the oldest wait on top. " +
+          (on ? "{fn:is_queue(Q)} holds when both stacks are valid. " + contracts : "Write the struct, its constructor, and {fn:queue_empty(Q)}."),
         decl: (c) => twoDecl(c),
         fns: [fn("is_queue", two.isQueue, "Write {fn:is_queue}."), fn("queue_empty", two.queueEmpty, "Write {fn:queue_empty}.")],
         tests: ["node", "stack", "stack_ops", "queue"] },
@@ -451,6 +455,7 @@
   const DEF = {
     id: "queues", num: "13.06", title: "Queues", heading: "Build a queue, step by step", diagramLabel: "Your queue",
     OPTIONS, DEFAULTS, FNS, STRUCTS, describe, complexity, diagram, steps, handlers, testGroups, refFns, problem,
+    CONTRACT_OPS: ["is_queue", "segment", "break", "is_stack", "ssegment", "sbreak"],
   };
   const tutorial = C.make(DEF);
   if (typeof module !== "undefined" && module.exports) module.exports = tutorial;

@@ -40,7 +40,7 @@
   const O = "Mergesort";
   const seg = [["lo", "int"], ["hi", "int"]];
   const FNS = {
-    is_sorted: { params: [["A", "Arr"], ...seg], ret: "bool", owner: O },
+    is_sorted: { params: [["A", "Arr"], ...seg], ret: "bool", owner: O, contract: true },
     merge: { params: [["A", "ArrMut"], ["lo", "int"], ["mid", "int"], ["hi", "int"]], ret: "void", owner: O, bounds: ["PartialOrd", "Clone"] },
     mergesort: { params: [["A", "ArrMut"], ...seg], ret: "void", owner: O },
     print_arr: { params: [["A", "Arr"], ...seg], ret: "void", harness: true },
@@ -82,7 +82,7 @@
     }[c.lang];
   }
 
-  function steps() {
+  function steps(o) {
     const fn = (name, body, headerSay) => ({ name, steps: body(), headerSay });
     return [
       { id: "sorted", title: "Sorted segments",
@@ -90,7 +90,8 @@
           "Start with the contract every step checks, {fn:is_sorted(A, lo, hi)}.",
         decl: setup, fns: [fn("is_sorted", BS.isSorted, "Write {fn:is_sorted}: is `A[lo, hi)` in order?")], contractNote: true, tests: ["sorted"] },
       { id: "merge", title: "Merge",
-        goal: "{fn:merge(A, lo, mid, hi)} takes two sorted neighbours, `A[lo, mid)` and `A[mid, hi)`, and makes `A[lo, hi)` sorted. Walk both halves with `i` and `j`, " +
+        goal: (C.contractsOn(o) ? "" : "Mergesort sorts a segment `A[lo, hi)` in place: split it in half, sort each half the same way, and **merge** the two sorted halves. ") +
+          "{fn:merge(A, lo, mid, hi)} takes two sorted neighbours, `A[lo, mid)` and `A[mid, hi)`, and makes `A[lo, hi)` sorted. Walk both halves with `i` and `j`, " +
           "always taking the smaller front element into a temporary array `B`, then copy `B` back. O(n) for n = `hi - lo`.",
         fns: [fn("merge", merge, "Write the header: {fn:merge} takes the array and the three boundaries.")], tests: ["sorted", "merge"] },
       { id: "mergesort", title: "Mergesort",
@@ -189,6 +190,7 @@
   const DEF = {
     id: "mergesort", num: "13.02", title: "Mergesort", heading: "Build mergesort, step by step", diagramLabel: "Your sort",
     OPTIONS, DEFAULTS, FNS, STRUCTS: {}, describe, complexity, diagram, steps, handlers, testGroups, refFns, problem,
+    CONTRACT_OPS: ["is_sorted"],
   };
   const tutorial = C.make(DEF);
   if (typeof module !== "undefined" && module.exports) module.exports = tutorial;

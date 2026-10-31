@@ -103,7 +103,7 @@
   const of = (x, o) => (typeof x === "function" ? x(o) : x);
   function context(def, o, overrides = {}) {
     const T = o.type === "int" ? INT_T[o.lang] : "T";
-    return { lang: o.lang, generic: o.type === "generic", T, fns: of(def.FNS, o), structs: of(def.STRUCTS, o), vars: {}, muts: new Set(),
+    return { lang: o.lang, generic: o.type === "generic", T, fns: of(def.FNS, o), structs: of(def.STRUCTS, o), vars: {}, muts: new Set(), contracts: contractsOn(o),
       ...(def.ctxExtra ? def.ctxExtra(o) : {}), ...overrides };
   }
 
@@ -153,7 +153,7 @@
   function headers(def, o) {
     const c = context(def, o);
     const heads = {};
-    def.steps(o).forEach((st) => (st.fns || []).forEach((f) => { heads[f.name] = DL.renderFunction(f, c).header; }));
+    (def.rawSteps || def.steps)(o).forEach((st) => (st.fns || []).forEach((f) => { heads[f.name] = DL.renderFunction(f, c).header; }));
     return (n) => heads[n].filter((l) => !l.startsWith("template")).join(" ").replace(/\s*[{:]$/, "");
   }
 
@@ -208,7 +208,7 @@
   function harness(def, o, upto, opts = {}) {
     const st = def.steps(o);
     const names = opts.final ? st[st.length - 1].tests : st[upto - 1].tests;
-    const groups = def.testGroups(names, o, opts.final ? (opts.seed || 1) : 0);
+    const groups = withoutContractTests(def, o, def.testGroups(names, o, opts.final ? (opts.seed || 1) : 0));
     const { ir, expected } = compileGroups(groups, def.handlers(o));
     const refCtx = context(def, o, { ref: true, qual: true });
     const helpers = def.refFns(o, names).map((f) => DL.renderFunction(f, refCtx).code).join("\n\n");
@@ -217,10 +217,58 @@
     return { helpers, main: DL.renderLines(ir, mctx).join("\n"), expected };
   }
 
+  // ---------------------------------------------------------------- the Contracts option
+  // Off (the default): no representation invariants or checks; just the structure and its operations. On: the
+  // 15-122 way, with is_list(L) and friends, and checks at the start and end of every operation.
+  const CONTRACTS = { id: "contracts", label: "Contracts", choices: [["off", "off"], ["on", "on"]], summary: { off: "no contracts", on: "contracts" },
+    help: { off: "Write the structure and its operations, nothing else.",
+      on: "Also write the contracts: the representation invariant (is_list, is_sorted, …) and checks at the start and end of every operation, as in CMU 15-122. The checker runs them." } };
+  const contractsOn = (o) => o.contracts === "on";
+
+  // Steps without contracts: contract-only functions (spec.contract) and every assert go; a step left with nothing to
+  // write disappears, and its declarations (if any) move into the next step.
+  function withoutContracts(def, o, list) {
+    if (contractsOn(o)) return list;
+    const fns = of(def.FNS, o);
+    const strip = (steps) => steps.filter((st) => !(st.ir && /^assert\b/.test(st.ir))).map((st) => (st.body ? { ...st, body: strip(st.body) } : st));
+    const out = [], gone = new Set();
+    let carry = null;
+    for (const st of list) {
+      const kept = (st.fns || []).filter((f) => !fns[f.name].contract).map((f) => ({ ...f, steps: strip(f.steps) }));
+      let decl = st.decl;
+      if (carry) { const a = carry, b = decl; decl = b ? (c) => [...a(c), ...b(c)] : a; carry = null; }
+      if ((st.fns || []).length && !kept.length) { if (decl) carry = decl; gone.add(st.id); continue; }
+      out.push({ ...st, fns: kept, decl, contractNote: false });
+    }
+    return out.map((st) => ({ ...st, tests: st.tests.filter((n) => !gone.has(n)) }));
+  }
+  // ... and the tests that only exercise contracts
+  function withoutContractTests(def, o, groups) {
+    if (contractsOn(o)) return groups;
+    const ops = new Set(def.CONTRACT_OPS || []);
+    return groups.filter((g) => !g.some(([k]) => /break/.test(k))).map((g) => g.filter(([k]) => !ops.has(k)));
+  }
+
   // a tutorial object for docs/dsa/page.js and the self-test
   function make(def) {
+    const raw = def.steps;
+    def.rawSteps = raw;   // (the final problem's signatures come from every function, contracts included)
+    def.steps = (o) => withoutContracts(def, o, raw(o));
+    const problem = def.problem;
     const t = {
       ...def,
+      OPTIONS: [...def.OPTIONS, CONTRACTS],
+      DEFAULTS: { ...def.DEFAULTS, contracts: "off" },
+      // the boxes about contracts, and the contract functions and advice in the final problem, only with contracts on
+      complexity: (o) => def.complexity(o).filter((c) => contractsOn(o) || !(c.id.startsWith("is_") || c.id === "contracts")),
+      problem: (o) => {
+        let text = problem(o);
+        if (contractsOn(o)) return text;
+        const fns = of(def.FNS, o);
+        const names = Object.keys(fns).filter((n) => fns[n].contract).map((n) => fname(n, o.lang));
+        text = text.split("\n").filter((l) => !(l.startsWith("* `") && names.some((n) => l.slice(0, l.indexOf("(")).endsWith(n)))).join("\n");
+        return text.replace(/Check [^.]*\. /, "");
+      },
       stepCount: (o) => def.steps(o).length,
       render: (o, list) => render(def, o, list),
       program: (o, upto, list) => program(def, o, upto ?? def.steps(o).length, list),
@@ -232,7 +280,7 @@
     return t;
   }
 
-  const api = { S, fname, fmt, fmtDeep, contractNote, nodeSteps, context, render, program, headers, compileGroups, ops, lit, say,
+  const api = { S, fname, fmt, fmtDeep, contractNote, contractsOn, nodeSteps, context, render, program, headers, compileGroups, ops, lit, say,
     mulberry32, harness, make, VALUES, ABSENT, INT_T, STR_T };
   root.DSACommon = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;

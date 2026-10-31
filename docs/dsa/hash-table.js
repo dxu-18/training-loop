@@ -125,7 +125,7 @@
   function FNS(o) {
     const common = {
       ht_hash: { params: [["k", "Tref"], ["m", "int"]], ret: "int", owner: O },
-      is_ht: { params: [["H", R]], ret: "bool", owner: O },
+      is_ht: { params: [["H", R]], ret: "bool", owner: O, contract: true },
       ht_size: { params: [["H", R]], ret: "int", owner: O },
       ht_contains: { params: [["H", R], ["k", "Tref"]], ret: "bool", owner: O },
       ht_get: { params: [["H", R], ["k", "Tref"]], ret: "V", owner: O },
@@ -324,6 +324,7 @@
   function steps(o) {
     const fn = (name, body, headerSay) => ({ name, steps: body(), headerSay });
     const ch = chain(o), X = ch ? CHN : OAD;
+    const on = C.contractsOn(o);
     const hashGoal = `{fn:ht_hash(k, m)} turns a key into a slot number in [0, m). ` + (o.keys === "int" ? "For integer keys the key itself works, made non-negative." :
       "For strings, a polynomial hash: `h = h * 31 + code`, character by character, reduced mod `m` at every step (the same numbers in every language, and no overflow).");
     return [
@@ -334,11 +335,11 @@
         decl: (c) => decl(c, o),
         fns: [{ name: "ht_hash", steps: hashSteps(o), headerSay: "Write {fn:ht_hash}." }, ...(ch ? [] : [fn("ht_probe", () => probeSteps(o), "Write {fn:ht_probe}.")])],
         tests: ["hash"] },
-      { id: "table", title: "The contract",
+      { id: "table", title: on ? "The contract" : ch ? "Size" : "Finding a key's slot",
         goal: (ch ? "" : "{fn:ht_find_slot(H, k)} probes from `k`'s home slot until it finds `k` (its slot) or an empty slot (-1); tombstones don't stop it. ") +
-          "Write {fn:is_ht(H)}: " + (ch ? "every entry sits in the bucket its key hashes to, and there are exactly `size` of them." :
-            "searching for each entry's key finds it at its own slot, the counts match, and at most half the slots are in use.") +
-          " Every operation checks it.",
+          (on ? "Write {fn:is_ht(H)}: " + (ch ? "every entry sits in the bucket its key hashes to, and there are exactly `size` of them." :
+            "searching for each entry's key finds it at its own slot, the counts match, and at most half the slots are in use.") + " Every operation checks it."
+            : "And {fn:ht_size(H)}, the number of entries."),
         fns: [...(ch ? [] : [fn("ht_find_slot", X.findSlot, "First {fn:ht_find_slot}: probe for a key, stopping at an empty slot.")]),
           fn("is_ht", X.isHt, "Write {fn:is_ht}, the representation invariant."), fn("ht_size", () => [S("The number of entries.", "return H.size")], "Write {fn:ht_size}.")],
         contractNote: true, tests: ["hash", "table"] },
@@ -512,6 +513,7 @@
   const DEF = {
     id: "hash-tables", num: "13.08", title: "Hash tables", heading: "Build a hash table, step by step", diagramLabel: "Your table",
     OPTIONS, DEFAULTS, FNS, STRUCTS, ctxExtra, describe, complexity, diagram, steps, handlers, testGroups, refFns, problem,
+    CONTRACT_OPS: ["is_ht", "break", "break_empty"],
   };
   const tutorial = C.make(DEF);
   if (typeof module !== "undefined" && module.exports) module.exports = tutorial;

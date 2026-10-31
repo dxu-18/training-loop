@@ -5934,7 +5934,16 @@ Part III teaches differently from Parts I and II. Each module is **one guided tu
   * Python, C++ and Rust: `insert_front(L, x)`.
   * Java: `insertFront(L, x)`, as `static` methods inside the class.
   * Rust silences its warning about the capital `L` with `#![allow(non_snake_case)]`.
-* **Contracts before code.** Step 2 of every data structure writes its **representation invariant** (`is_list(L)`, `is_heap(H)`, `is_bst(T)`, …), plus helpers such as `is_segment`. Every operation then begins with `assert is_X(S)`, the precondition (**requires**), and checks it again before returning, the postcondition (**ensures**). The assert syntax per language:
+* **Contracts: an option, off by default.** With contracts off, a tutorial is just the structure or algorithm and its operations:
+  * no invariant functions;
+  * no checks inside functions;
+  * no contract boxes or contract tests.
+
+  A step that held only contracts disappears, and its declarations move into the next step. Binary search goes from 4 steps to 2.
+
+  The checker still inspects the structure with its own invariant, so a broken list is still reported.
+
+  With contracts **on**, it's "contracts before code": step 2 of every data structure writes its **representation invariant** (`is_list(L)`, `is_heap(H)`, `is_bst(T)`, …), plus helpers such as `is_segment`. Every operation then begins with `assert is_X(S)`, the precondition (**requires**), and checks it again before returning, the postcondition (**ensures**). The assert syntax per language:
   * Python: `assert`, removed by `python -O`.
   * C++: `assert`, removed by `-DNDEBUG`.
   * Java: `assert`; the checker runs with assertions on.
