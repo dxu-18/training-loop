@@ -39,7 +39,7 @@
     const s = store.tutorials[id], t = tutorial(id);
     if (!s || !t || s.phase === "setup") return "not";
     if (s.final.passed) return "done";
-    return s.passed >= t.stepCount ? "almost" : "progress";
+    return s.passed >= t.stepCount(s.opts) ? "almost" : "progress";
   }
   const chip = (id) => `<span class="dsa-status st-${status(id)}">${STATUS[status(id)]}</span>`;
 
@@ -121,15 +121,18 @@
   function diagramHTML(o) {
     const esc = deps.esc;
     const d = page.t.diagram(o);
-    const cells = d.cells.map((c) => {
+    const cell = (c) => {
       if (c.box !== undefined) {
-        return `<div class="dg-cell"><div class="dg-tags">${c.tags.map((x) => `<span>L.${esc(x)}</span>`).join("")}</div><div class="dg-box ${c.cls || ""}">${esc(c.box)}</div></div>`;
+        return `<div class="dg-cell"><div class="dg-tags">${(c.tags || []).map((x) => `<span>${esc(x)}</span>`).join("")}</div><div class="dg-box ${c.cls || ""}">${esc(c.box)}</div></div>`;
       }
+      if (c.label) return `<div class="dg-cell"><div class="dg-tags"></div><div class="dg-label">${esc(c.label)}</div></div>`;
       if (c.arrow) return `<div class="dg-cell"><div class="dg-tags"></div><div class="dg-arrow">${esc(c.arrow)}</div></div>`;
       if (c.loop) return `<div class="dg-cell"><div class="dg-tags"></div><div class="dg-loop">${esc(c.loop)}</div></div>`;
       return `<div class="dg-cell"><div class="dg-tags"></div><div class="dg-null">${esc(c.text)}</div></div>`;
-    }).join("");
-    return `<div class="diagram"><div class="dg-row">${cells}</div><div class="dg-caption">${deps.inline(d.caption.replace(/(\[[^)]*\)|L\.\w+(?:\.\w+)*)/g, "`$1`"))}</div></div>`;
+    };
+    const rows = (d.rows || [d.cells]).map((r) => `<div class="dg-row">${r.map(cell).join("")}</div>`).join("");
+    // [segments) and X.field names in the caption read as code
+    return `<div class="diagram">${rows}<div class="dg-caption">${deps.inline(d.caption.replace(/(\[[^)]*\)|\b[A-Z]\.\w+(?:\.\w+)*)/g, "`$1`"))}</div></div>`;
   }
 
   function runnerNote(lang) {
@@ -147,7 +150,6 @@
       <div class="seg" role="radiogroup" aria-label="${esc(x.label)}">${x.choices.map(([v, label]) =>
         `<button type="button" role="radio" data-v="${v}" aria-checked="${o[x.id] === v}" class="${o[x.id] === v ? "on" : ""}">${esc(label)}</button>`).join("")}</div>
       <div class="opt-help"></div></div>`).join("");
-    const outline = t.render(o).map((st) => `<li>${esc(st.title)}</li>`).join("");
     deps.app().innerHTML = `${bar()}
       <div class="practice dsa-setup">
         <section>
@@ -156,10 +158,10 @@
             <p class="dsa-lead">You write every line yourself, from a blank file, following concrete steps. Each step is checked before the next opens.
               At the end you build the whole thing again with no hints. Choose how yours is built:</p>
             <div class="opts">${optHTML}</div>
-            <div class="label">Your list</div>
+            <div class="label">${esc(t.diagramLabel)}</div>
             <div class="dg-host"></div>
             <div class="label">The steps</div>
-            <ol class="dsa-preview">${outline}</ol>
+            <ol class="dsa-preview"></ol>
             <div class="actions"><button class="btn primary begin">Begin tutorial →</button>
               <span class="hint">Reset any time to start over with other options.</span></div>
           </article>
@@ -180,6 +182,7 @@
       }
       $(".cx-grid").innerHTML = cxHTML(o, prev);
       $(".dg-host").innerHTML = diagramHTML(o);
+      $(".dsa-preview").innerHTML = t.render(o).map((st) => `<li>${esc(st.title)}</li>`).join("");   // (options can change the steps)
       prev = cxValues(o);
       s.opts = { ...o };
       save();
@@ -457,7 +460,7 @@
   function showNext() {
     const { t, s } = page;
     const next = $(".next");
-    if (s.passed >= t.stepCount && s.view === t.stepCount - 1) {
+    if (s.passed >= t.stepCount(s.opts) && s.view === t.stepCount(s.opts) - 1) {
       next.textContent = "Final challenge →";
       next.onclick = () => { s.phase = "final"; save(); renderFinal(); };
     } else {
@@ -596,7 +599,7 @@
       }
       $(".bar .dsa-status").outerHTML = chip(page.id);
     }
-    if (s.passed >= t.stepCount) $(".verdict-msg").textContent = "Every step done. One more: build it again from scratch.";
+    if (s.passed >= t.stepCount(s.opts)) $(".verdict-msg").textContent = "Every step done. One more: build it again from scratch.";
     showNext();
   }
 
@@ -638,7 +641,7 @@
   async function doSubmit() {
     if (!page || page.busy) return;
     const { t, s } = page;
-    const tests = t.harness(s.opts, t.stepCount, { final: true, seed: 1 + Math.floor(Math.random() * 1e9) });
+    const tests = t.harness(s.opts, t.stepCount(s.opts), { final: true, seed: 1 + Math.floor(Math.random() * 1e9) });
     const ok = await runTests(tests, "Completed");
     if (!ok || !page || s.final.passed) return;
     s.final.passed = true;

@@ -6,11 +6,12 @@
 //   node scripts/dsa_selftest.mjs --quick         final challenge only
 //   node scripts/dsa_selftest.mjs --lang py,cpp   some languages
 //   node scripts/dsa_selftest.mjs --mutants       mutation check (Python)
+//   node scripts/dsa_selftest.mjs --only stacks   some tutorials
 //
 // C++, Java and Rust run locally here (the site sends them to Compiler Explorer); Python runs generator/api.py's
 // dsa_run, the function the site's Pyodide worker calls.
 import { execFile } from "node:child_process";
-import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
+import { mkdtempSync, writeFileSync, rmSync, existsSync } from "node:fs";
 import { tmpdir, cpus } from "node:os";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -19,13 +20,18 @@ import { createRequire } from "node:module";
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const require = createRequire(import.meta.url);
 require(join(ROOT, "docs/dsa/lang.js"));
+require(join(ROOT, "docs/dsa/common.js"));
 const RUN = require(join(ROOT, "docs/dsa/run.js"));
-const TUTORIALS = { "linked-lists": require(join(ROOT, "docs/dsa/linked-list.js")) };
-const PYTHON = process.env.PYTHON || join(ROOT, ".venv/bin/python");
-
 const args = process.argv.slice(2);
 const flag = (f) => args.includes(f);
 const opt = (f, d) => { const i = args.indexOf(f); return i >= 0 ? args[i + 1] : d; };
+// every tutorial in docs/dsa/ (--only linked-lists,stacks to pick some)
+const TUTORIALS = Object.fromEntries(["linked-list", "stack", "queue"]
+  .filter((f) => existsSync(join(ROOT, `docs/dsa/${f}.js`)))
+  .map((f) => { const t = require(join(ROOT, `docs/dsa/${f}.js`)); return [t.id, t]; })
+  .filter(([id]) => !opt("--only", "") || opt("--only", "").split(",").includes(id)));
+const PYTHON = process.env.PYTHON || join(ROOT, ".venv/bin/python");
+
 const LANGS = opt("--lang", "py,cpp,java,rs").split(",");
 
 function sh(cmd, argv, opts = {}) {
@@ -107,9 +113,9 @@ async function selftest() {
   const jobs = [];
   for (const [name, t] of Object.entries(TUTORIALS)) {
     for (const o of combos(t)) {
-      const ups = flag("--quick") ? [] : Array.from({ length: t.stepCount }, (_, k) => k + 1);
+      const ups = flag("--quick") ? [] : Array.from({ length: t.stepCount(o) }, (_, k) => k + 1);
       for (const upto of ups) jobs.push({ name, o, upto, final: false });
-      jobs.push({ name, o, upto: t.stepCount, final: true, seed: 7 });
+      jobs.push({ name, o, upto: t.stepCount(o), final: true, seed: 7 });
     }
   }
   const build = (j) => {
@@ -150,14 +156,15 @@ async function mutants() {
       });
       base.forEach((st, si) => (st.fns || []).forEach((f, fi) => walk(f.steps, [si, "fns", fi, "steps"])));
       for (const p of paths) {
-        const list = structuredClone(base.map((st) => ({ ...st, decl: undefined })));
-        list.forEach((st, i) => { st.decl = base[i].decl; });
+        // a deep copy that keeps functions (decl, and step text that depends on the language)
+        const clone = (x) => (Array.isArray(x) ? x.map(clone) : x && typeof x === "object" ? Object.fromEntries(Object.entries(x).map(([k, v]) => [k, clone(v)])) : x);
+        const list = clone(base);
         let parent = list;
         for (const k of p.slice(0, -1)) parent = parent[k];
         const removed = parent.splice(p[p.length - 1], 1)[0];
         let user;
-        try { user = t.program(o, t.stepCount, list); } catch (e) { continue; }
-        const h = t.harness(o, t.stepCount, { final: true, seed: 7 });
+        try { user = t.program(o, t.stepCount(o), list); } catch (e) { continue; }
+        const h = t.harness(o, t.stepCount(o), { final: true, seed: 7 });
         jobs.push({ o, p, removed: removed.ir, prog: RUN.assemble("py", user, h), expected: h.expected, fn: base[p[0]].fns[p[2]].name });
       }
     }

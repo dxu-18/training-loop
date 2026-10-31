@@ -5,7 +5,8 @@
 (function (root) {
   "use strict";
   const DL = root.DSALang || (typeof require !== "undefined" ? require("./lang.js") : null);
-  const { parseExpr, expr } = DL;
+  const C = root.DSACommon || (typeof require !== "undefined" ? require("./common.js") : null);
+  const { S, fname, VALUES, ABSENT } = C;
 
   // ---------------------------------------------------------------- options
   const OPTIONS = [
@@ -88,39 +89,25 @@
       : (v.circular ? (v.doubly ? "L.head.prev is the last node, so one pointer reaches both ends. Empty = L.head is null."
         : "L.tail.next is the first node, so one pointer reaches both ends. Empty = L.tail is null.")
         : "The list is the segment [L.head, null). L.tail makes the end reachable in one step. Empty = both are null.");
-    return { cells, caption };
+    cells.forEach((x) => { if (x.tags) x.tags = x.tags.map((t) => `L.${t}`); });
+    return { rows: [cells], caption };
   }
-
-  // ---------------------------------------------------------------- language helpers for step text
-  const NULLW = { py: "None", cpp: "nullptr", java: "null", rs: "ptr::null_mut()" };
-  function textCtx(c) {
-    return { ...c, vars: { L: "L", n: "N", p: "N", prev: "N", last: "N", d: "N", x: "T", i: "int", start: "N", end: "N" }, muts: new Set() };
-  }
-  // {null}, {fn:name} and {e:<expression>} in step text become code in the chosen language
-  function fmt(text, c) {
-    if (!text) return "";
-    return text.replace(/\{(null|fn:(\w+)(\([^)]*\))?|e:([^}]+)|s:([^}]+))\}/g, (m, a, fn, args, ex, st) => {
-      if (a === "null") return "`" + NULLW[c.lang] + "`";
-      if (fn) return "`" + (c.lang === "java" ? DL.camel(fn) : fn) + (args || "") + "`";
-      if (ex) return "`" + expr(parseExpr(ex), textCtx(c)) + "`";
-      return "`" + DL.stmt(DL.parseStmt(st), textCtx(c)).code.join(" ") + "`";
-    });
-  }
-  const S = (say, ir, body) => (body ? { say, ir, body } : { say, ir });
 
   // ---------------------------------------------------------------- function specs
+  const M = "mut:LinkedList", R = "ref:LinkedList", O = "LinkedList";
   const FNS = {
-    is_segment: { params: [["start", "N"], ["end", "N"], ["n", "int"]], ret: "bool" },
-    is_list: { params: [["L", "Lref"]], ret: "bool" },
-    is_empty: { params: [["L", "Lref"]], ret: "bool" },
-    insert_front: { params: [["L", "Lmut"], ["x", "T"]], ret: "void" },
-    insert_back: { params: [["L", "Lmut"], ["x", "T"]], ret: "void" },
-    delete_head: { params: [["L", "Lmut"]], ret: "T" },
-    delete_node: { params: [["L", "Lmut"], ["x", "T"]], ret: "bool" },
-    lookup: { params: [["L", "Lref"], ["x", "T"]], ret: "bool" },
-    print_list: { params: [["L", "Lref"]], ret: "void" },
-    show: { params: [["L", "Lref"]], ret: "void", harness: true, bounds: ["std::fmt::Display"] },
+    is_segment: { params: [["start", "N"], ["end", "N"], ["n", "int"]], ret: "bool", owner: O },
+    is_list: { params: [["L", R]], ret: "bool", owner: O },
+    is_empty: { params: [["L", R]], ret: "bool", owner: O },
+    insert_front: { params: [["L", M], ["x", "T"]], ret: "void", owner: O },
+    insert_back: { params: [["L", M], ["x", "T"]], ret: "void", owner: O },
+    delete_head: { params: [["L", M]], ret: "T", owner: O },
+    delete_node: { params: [["L", M], ["x", "T"]], ret: "bool", owner: O },
+    lookup: { params: [["L", R], ["x", "T"]], ret: "bool", owner: O },
+    print_list: { params: [["L", R]], ret: "void", owner: O },
+    show: { params: [["L", R]], ret: "void", harness: true, bounds: ["std::fmt::Display"] },
   };
+  const STRUCTS = { LinkedList: { fields: { head: "N", tail: "N", dummy: "N", size: "int" } } };
 
   // ---------------------------------------------------------------- the functions, per layout
   const REQ = S("**Requires** (precondition): the list is valid when the function starts.", "assert is_list(L)");
@@ -445,63 +432,6 @@
   }
 
   // ---------------------------------------------------------------- type declarations (step 1 and 2), per language
-  function nodeSteps(c, v) {
-    const g = c.generic, L = c.lang;
-    const T = c.T;
-    if (L === "py") {
-      const hint = g ? "Node[T] | None" : "Node | None";
-      return [{ say: g ? "Declare the node class, generic over the element type: `class Node[T]`." : "Declare the node class `Node`.",
-        code: [g ? "class Node[T]:" : "class Node:"], body: [
-          { say: "Its constructor `__init__` takes the element.", code: [`def __init__(self, data: ${T}) -> None:`], body: [
-            { say: "Store the element.", code: ["self.data = data"] },
-            { say: "`next`: the following node, `None` (null) until something links it.", code: [`self.next: ${hint} = None`] },
-            ...(v.doubly ? [{ say: "`prev`: the node before, also `None` for now.", code: [`self.prev: ${hint} = None`] }] : []),
-          ] },
-        ] }];
-    }
-    if (L === "cpp") {
-      const P = g ? "Node<T>*" : "Node*";
-      return [
-        { say: "At the top of the file: `<iostream>` for printing, `<cassert>` for contracts.", code: ["#include <iostream>", "#include <cassert>"] },
-        { say: g ? "Declare the node struct, as a template over the element type `T`." : "Declare the node struct `Node`.",
-          code: g ? ["template <typename T>", "struct Node {"] : ["struct Node {"], close: ["};"], body: [
-            { say: "A field for the element.", code: [`${T} data;`] },
-            { say: "A pointer to the next node, null by default.", code: [`${P} next = nullptr;`] },
-            ...(v.doubly ? [{ say: "A pointer to the previous node, null by default.", code: [`${P} prev = nullptr;`] }] : []),
-            { say: "A constructor that stores the element; the pointers keep their null defaults.", code: [`Node(${T} data) : data(data) {}`] },
-          ] },
-      ];
-    }
-    if (L === "java") {
-      const P = g ? "Node<T>" : "Node";
-      return [{ say: g ? "Declare the class `Node<T>`, generic over the element type." : "Declare the class `Node`.",
-        code: [g ? "class Node<T> {" : "class Node {"], close: ["}"], body: [
-          { say: "A field for the element.", code: [`${T} data;`] },
-          { say: "A reference to the next node. Java starts every reference field as `null`, so there's nothing else to write.", code: [`${P} next;`] },
-          ...(v.doubly ? [{ say: "A reference to the previous node (also `null` at first).", code: [`${P} prev;`] }] : []),
-          { say: "A constructor that stores the element.", code: [`Node(${T} data) {`], close: ["}"], body: [{ say: "", code: ["this.data = data;"] }] },
-        ] }];
-    }
-    const N = g ? "Node<T>" : "Node";
-    const init = v.doubly ? "Node { data, next: ptr::null_mut(), prev: ptr::null_mut() }" : "Node { data, next: ptr::null_mut() }";
-    return [
-      { say: "At the very top: allow capital variable names (the list is called `L`), and import `std::ptr` for null pointers.",
-        code: ["#![allow(non_snake_case)]", "use std::ptr;"] },
-      { say: g ? "Declare the struct `Node<T>`, generic over the element type." : "Declare the struct `Node`.",
-        code: [`struct ${N} {`], close: ["}"], body: [
-          { say: "A field for the element.", code: [`data: ${T},`] },
-          { say: "A raw pointer to the next node (`*mut`). `Box` allows one owner per node, but in this list a node can be pointed at from two places (a tail pointer, a `prev`, a dummy, a circle). That needs raw pointers; `std::collections::LinkedList` is built the same way.",
-            code: [`next: *mut ${N},`] },
-          ...(v.doubly ? [{ say: "A raw pointer to the previous node.", code: [`prev: *mut ${N},`] }] : []),
-        ] },
-      { say: "A constructor `Node::new` that puts the node on the heap and returns a raw pointer to it.",
-        code: [g ? "impl<T> Node<T> {" : "impl Node {"], close: ["}"], body: [
-          { say: "", code: [`fn new(data: ${T}) -> *mut ${N} {`], close: ["}"], body: [
-            { say: "Box the node (a heap allocation) with null pointers, then turn the box into a raw pointer.", code: [`Box::into_raw(Box::new(${init}))`] }] },
-        ] },
-    ];
-  }
-
   function fieldSay(f, v) {
     if (f === "size") return "`size`: the number of elements, so the length is O(1).";
     if (f === "head") return v.dummy ? "`head`: the first node, or the dummy itself when the list is empty."
@@ -561,7 +491,7 @@
       return [{ say: (g ? "Declare the class `LinkedList<T>`." : "Declare the class `LinkedList`.") +
         (v.dummy ? "" : " Fields start as `null` and 0, which is already an empty list.") +
         " Every function from here on goes inside this class, as a `static` method that takes the list `L`.",
-      code: [g ? "class LinkedList<T> {" : "class LinkedList {"], close: ["}"], body, deferClose: true }];   // its brace ends the file
+      code: [g ? "class LinkedList<T> {" : "class LinkedList {"], close: ["}"], body, deferClose: true, cls: "LinkedList" }];   // its brace comes after the functions
     }
     const N = g ? "Node<T>" : "Node";
     const body = fs.map((f) => ({ say: fieldSay(f, v), code: [`${f}: *mut ${N},`] }));
@@ -582,15 +512,6 @@
   }
 
   // ---------------------------------------------------------------- steps
-  function contractNote(lang) {
-    return {
-      py: "Python runs `assert` unless started with `python -O`.",
-      cpp: "C++ runs `assert` unless compiled with `-DNDEBUG`.",
-      java: "Java skips `assert` unless started with `java -ea`; the checker turns assertions on.",
-      rs: "`debug_assert!` runs in debug builds (what the checker uses) and disappears from release builds, like 15-122's contracts outside `-d` mode.",
-    }[lang];
-  }
-
   function steps(o) {
     const v = variant(o);
     const fn = (name, stepsFn, headerSay) => ({ name, steps: stepsFn(v), headerSay });
@@ -600,7 +521,9 @@
       { id: "node", title: "The node",
         goal: "A linked list is a chain of nodes. Each node holds one element (`data`) and a pointer to the next node" +
           (v.doubly ? ", plus one to the previous node" : "") + ". A pointer that points nowhere is null, and every pointer starts out null.",
-        decl: (c) => nodeSteps(c, v), tests: ["node"] },
+        decl: (c) => C.nodeSteps(c, { doubly: v.doubly, varName: "L", what: "list",
+          rustWhy: "`Box` allows one owner per node, but in this list a node can be pointed at from two places (a tail pointer, a `prev`, a dummy, a circle). That needs raw pointers; `std::collections::LinkedList` is built the same way." }),
+        tests: ["node"] },
       { id: "list", title: "The list and its contracts",
         goal: "Before writing any operation, write down what a correct list looks like, as code that checks it. These are the **contracts**:\n\n" +
           "* {fn:is_segment(start, end, n)}: following `next` from `start` reaches `end` after exactly `n` nodes. The nodes [`start`, `end`) form a **segment**: `start` included, `end` excluded.\n" +
@@ -644,55 +567,7 @@
     ];
   }
 
-  // ---------------------------------------------------------------- rendering a tutorial for one set of options
-  function context(o, overrides = {}) {
-    const T = o.type === "int" ? { py: "int", cpp: "int", java: "int", rs: "i32" }[o.lang] : "T";
-    return { lang: o.lang, generic: o.type === "generic", T, fns: FNS, vars: {}, muts: new Set(), ...overrides };
-  }
-
-  // rendered steps: [{id, title, goal, items: [display micro-steps], code (the step's code), names}]
-  function render(o, list = steps(o)) {
-    const c = context(o);
-    return list.map((st) => {
-      const items = [];
-      const parts = [];
-      if (st.decl) {
-        const d = DL.toDisplay(st.decl(c), c);
-        d.forEach((m) => { m.say = fmt(m.say, c); fmtDeep(m.body, c); });
-        items.push(...d);
-        parts.push(d.map((m) => DL.emit([m]).join("\n")).join("\n\n"));
-      }
-      for (const f of st.fns || []) {
-        const r = DL.renderFunction(f, c);
-        r.display.forEach((m) => { m.say = fmt(m.say, c); fmtDeep(m.body, c); });
-        items.push({ say: fmt(f.headerSay, c), group: true, fn: f.name, body: r.display.slice(0), code: [], close: [] });
-        parts.push(r.code);
-      }
-      return { id: st.id, title: st.title, goal: fmt(st.goal, c), items, code: parts.join("\n\n"), contractNote: st.contractNote ? contractNote(o.lang) : null,
-        names: (st.fns || []).map((f) => fname(f.name, o.lang)) };
-    });
-  }
-  function fmtDeep(list, c) { for (const m of list) { m.say = fmt(m.say, c); fmtDeep(m.body, c); } }
-  const fname = (n, lang) => (lang === "java" ? DL.camel(n) : n);
-
-  // the reference solution for steps [0, upto): the user's file, as the tutorial builds it
-  function program(o, upto = 8, list) {
-    const r = render(o, list).slice(0, upto);
-    if (o.lang !== "java") return r.map((s) => s.code).join("\n\n") + "\n";
-    // Java: the functions go inside class LinkedList, before its closing brace
-    const parts = r.map((s) => s.code);
-    if (upto < 2) return parts.join("\n\n") + "\n";
-    const step2 = parts[1];
-    const fnStart = step2.indexOf("\n\nstatic ");
-    const classPart = step2.slice(0, fnStart);
-    const fns = [step2.slice(fnStart + 2), ...parts.slice(2)].join("\n\n");
-    const closeAt = classPart.lastIndexOf("}");
-    return `${parts[0]}\n\n${classPart.slice(0, closeAt)}\n${DL.indent(fns, 1)}\n}\n`;
-  }
-
   // ---------------------------------------------------------------- tests
-  const VALUES = { int: [10, 20, 30, 40, 50, 60], generic: ["ant", "bee", "cat", "dog", "eel", "fox"] };
-  const ABSENT = { int: 99, generic: "yak" };
 
   function breaks(v) {
     const k = `${v.dummy ? "D" : "N"}${v.doubly ? "D" : "S"}${v.circular ? "C" : "L"}`;
@@ -799,16 +674,8 @@
     return groups;
   }
 
-  function mulberry32(seed) {
-    return () => {
-      seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
-      let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
-      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-    };
-  }
   function randomGroup(o, seed) {
-    const r = mulberry32(seed);
+    const r = C.mulberry32(seed);
     const vals = VALUES[o.type];
     const pick = () => vals[Math.floor(r() * vals.length)];
     const ops = [["new"]];
@@ -826,114 +693,59 @@
     return ops;
   }
 
-  // ops -> IR statements for the tests' main, and the output a correct list prints
-  function compile(groups, o) {
+  // test ops -> IR statements for the tests' main, and the line a correct list prints
+  function handlers(o) {
     const v = variant(o);
     const nm = (n) => fname(n, o.lang);
-    const lit = (x) => (typeof x === "number" ? String(x) : JSON.stringify(x));
-    const label = (x) => String(x);
-    const out = [];
-    const ir = [];
+    const { lit, say } = C;
     const show = (A) => `[${A.join(", ")}] size=${A.length}`;
     const [segFirst, segEnd, segOff] = segment(v);
     const bs = breaks(v);
-    for (const g of groups) {
-      const body = [];
-      let A = [];
-      for (const [kind, x] of g) {
-        switch (kind) {
-          case "node":
-            body.push(S("", `let n = new(${lit(x)})`), S("", `print "Node(${label(x)}): data="`), S("", "print n.data"),
-              S("", 'print ", next is null: "'), S("", "printb n.next == null"));
-            if (v.doubly) body.push(S("", 'print ", prev is null: "'), S("", "printb n.prev == null"));
-            body.push(S("", "println"));
-            out.push(`Node(${label(x)}): data=${label(x)}, next is null: true${v.doubly ? ", prev is null: true" : ""}`);
-            break;
-          case "new": A = []; body.push(S("", "list L"), S("", 'print "new list: "'), S("", "show(L)")); out.push(`new list: ${show(A)}`); break;
-          case "fill": for (const y of x) { body.push(S("", `ref_insert_back(L, ${lit(y)})`)); A.push(y); } break;
-          case "insert_front": case "insert_back":
-            body.push(S("", `print "${nm(kind)}(L, ${label(x)}): "`), S("", `${kind}(L, ${lit(x)})`), S("", "show(L)"));
-            kind === "insert_front" ? A.unshift(x) : A.push(x);
-            out.push(`${nm(kind)}(L, ${label(x)}): ${show(A)}`);
-            break;
-          case "delete_head": {
-            body.push(S("", `print "${nm("delete_head")}(L) = "`), S("", "print delete_head(L)"), S("", 'print ": "'), S("", "show(L)"));
-            const y = A.shift();
-            out.push(`${nm("delete_head")}(L) = ${label(y)}: ${show(A)}`);
-            break;
-          }
-          case "delete_node": {
-            body.push(S("", `print "${nm("delete_node")}(L, ${label(x)}) = "`), S("", `printb delete_node(L, ${lit(x)})`), S("", 'print ": "'), S("", "show(L)"));
-            const i = A.indexOf(x);
-            if (i >= 0) A.splice(i, 1);
-            out.push(`${nm("delete_node")}(L, ${label(x)}) = ${i >= 0}: ${show(A)}`);
-            break;
-          }
-          case "lookup":
-            body.push(S("", `print "${nm("lookup")}(L, ${label(x)}) = "`), S("", `printb lookup(L, ${lit(x)})`), S("", "println"));
-            out.push(`${nm("lookup")}(L, ${label(x)}) = ${A.includes(x)}`);
-            break;
-          case "is_empty": case "is_list":
-            body.push(S("", `print "${nm(kind)}(L) = "`), S("", `printb ${kind}(L)`), S("", "println"));
-            out.push(`${nm(kind)}(L) = ${kind === "is_empty" ? A.length === 0 : true}`);
-            break;
-          case "print_list":
-            body.push(S("", `print "${nm("print_list")}(L) prints: "`), S("", "print_list(L)"));
-            out.push(`${nm("print_list")}(L) prints: [${A.join(", ")}]`);
-            break;
-          case "break": {
-            const [stm, desc] = bs[x];
-            body.push(S("", stm), S("", `print "after ${desc}: ${nm("is_list")}(L) = "`), S("", "printb is_list(L)"), S("", "println"));
-            out.push(`after ${desc}: ${nm("is_list")}(L) = false`);
-            break;
-          }
-          case "segment": {
-            // "ring": once more around the circle, which comes back to `end` (wrong: it passes `end` on the way)
-            const nExpr = x === "ring" ? (v.dummy ? "L.size + L.size + 1" : "L.size - 1 + L.size")
-              : `L.size${segOff + x === 0 ? "" : segOff + x > 0 ? ` + ${segOff + x}` : ` - ${-(segOff + x)}`}`;
-            body.push(S("", `print "${nm("is_segment")}(${segFirst}, ${segEnd}, ${nExpr}) = "`), S("", `printb is_segment(${segFirst}, ${segEnd}, ${nExpr})`), S("", "println"));
-            out.push(`${nm("is_segment")}(${segFirst}, ${segEnd}, ${nExpr}) = ${x === 0}`);
-            break;
-          }
-        }
-      }
-      ir.push(S("", "block", body));
-    }
-    return { ir, expected: out.join("\n") + "\n" };
+    return {
+      node: C.ops.node(v.doubly),
+      new: (x, st) => { st.A = []; return { ir: [S("", "make LinkedList L"), say("new list: "), S("", "show(L)")], out: `new list: ${show(st.A)}` }; },
+      fill: (xs, st) => { xs.forEach((y) => st.A.push(y)); return { ir: xs.map((y) => S("", `ref_insert_back(L, ${lit(y)})`)) }; },
+      insert_front: (x, st) => { st.A.unshift(x); return { ir: [say(`${nm("insert_front")}(L, ${x}): `), S("", `insert_front(L, ${lit(x)})`), S("", "show(L)")], out: `${nm("insert_front")}(L, ${x}): ${show(st.A)}` }; },
+      insert_back: (x, st) => { st.A.push(x); return { ir: [say(`${nm("insert_back")}(L, ${x}): `), S("", `insert_back(L, ${lit(x)})`), S("", "show(L)")], out: `${nm("insert_back")}(L, ${x}): ${show(st.A)}` }; },
+      delete_head: (x, st) => {
+        const y = st.A.shift();
+        return { ir: [say(`${nm("delete_head")}(L) = `), S("", "print delete_head(L)"), say(": "), S("", "show(L)")], out: `${nm("delete_head")}(L) = ${y}: ${show(st.A)}` };
+      },
+      delete_node: (x, st) => {
+        const i = st.A.indexOf(x);
+        if (i >= 0) st.A.splice(i, 1);
+        return { ir: [say(`${nm("delete_node")}(L, ${x}) = `), S("", `printb delete_node(L, ${lit(x)})`), say(": "), S("", "show(L)")], out: `${nm("delete_node")}(L, ${x}) = ${i >= 0}: ${show(st.A)}` };
+      },
+      lookup: (x, st) => C.ops.bool(o, `lookup(L, ${lit(x)})`, `${nm("lookup")}(L, ${x})`, st.A.includes(x)),
+      is_empty: (x, st) => C.ops.bool(o, "is_empty(L)", `${nm("is_empty")}(L)`, st.A.length === 0),
+      is_list: (x, st) => C.ops.bool(o, "is_list(L)", `${nm("is_list")}(L)`, true),
+      print_list: (x, st) => ({ ir: [say(`${nm("print_list")}(L) prints: `), S("", "print_list(L)")], out: `${nm("print_list")}(L) prints: [${st.A.join(", ")}]` }),
+      break: (k) => {
+        const [stm, desc] = bs[k];
+        return { ir: [S("", stm), say(`after ${desc}: ${nm("is_list")}(L) = `), S("", "printb is_list(L)"), S("", "println")], out: `after ${desc}: ${nm("is_list")}(L) = false` };
+      },
+      segment: (x) => {
+        // "ring": once more around the circle, which comes back to `end` (wrong: it passes `end` on the way)
+        const nExpr = x === "ring" ? (v.dummy ? "L.size + L.size + 1" : "L.size - 1 + L.size")
+          : `L.size${segOff + x === 0 ? "" : segOff + x > 0 ? ` + ${segOff + x}` : ` - ${-(segOff + x)}`}`;
+        return C.ops.bool(o, `is_segment(${segFirst}, ${segEnd}, ${nExpr})`, `${nm("is_segment")}(${segFirst}, ${segEnd}, ${nExpr})`, x === 0);
+      },
+    };
   }
 
-  // The test program for steps [0, upto) (or the final challenge): returns the pieces DSARun.assemble puts around the
-  // user's code, and the expected output.
-  function harness(o, upto, opts = {}) {
-    const st = steps(o);
-    const names = opts.final ? st[st.length - 1].tests : st[upto - 1].tests;
-    const groups = testGroups(names, o, opts.final ? (opts.seed || 1) : 0);
-    const { ir, expected } = compile(groups, o);
+  // the checker's own helpers, built on the user's Node and LinkedList types (once the list exists)
+  function refFns(o, names) {
     const v = variant(o);
-    const L = o.lang;
-    const mainT = o.type === "int" ? { py: "int", cpp: "int", java: "int", rs: "i32" }[L] : { py: "str", cpp: "std::string", java: "String", rs: "String" }[L];
-    const refCtx = context(o, { ref: true, qual: true });
-    const pieces = [];
-    if (names.includes("list")) {
-      // the harness's own helpers, built on the user's Node and LinkedList types
-      const ref = [{ name: "is_segment", steps: isSegment(v) }, { name: "insert_back", steps: insertBack(v) }, { name: "show", steps: showFn(v) }];
-      for (const f of ref) pieces.push(DL.renderFunction(f, refCtx).code);
-    }
-    const mctx = context(o, { main: true, qual: true, T: mainT, vars: {} });
-    const mainLines = DL.renderLines(ir, mctx);
-    return { helpers: pieces.join("\n\n"), main: mainLines.join("\n"), expected };
+    if (!names.includes("list")) return [];
+    return [{ name: "is_segment", steps: isSegment(v) }, { name: "insert_back", steps: insertBack(v) }, { name: "show", steps: showFn(v) }];
   }
 
   // the final challenge's problem statement (markdown)
   function problem(o) {
     const v = variant(o);
-    const c = context(o);
     const fs = fields(v);
     const L = o.lang;
-    // the exact headers the tutorial uses (Rust's generic bounds included)
-    const heads = {};
-    steps(o).forEach((st) => (st.fns || []).forEach((f) => { heads[f.name] = DL.renderFunction(f, c).header; }));
-    const sig = (n) => heads[n].filter((l) => !l.startsWith("template")).join(" ").replace(/\s*[{:]$/, "");
+    const sig = C.headers(DEF, o);
     const lines = [];
     lines.push(`Build a **${describe(o)}** from a blank file, with no hints: everything the tutorial walked you through.`);
     lines.push("");
@@ -961,11 +773,11 @@
     return lines.join("\n");
   }
 
-  const tutorial = {
-    id: "linked-lists", num: "13.01", title: "Linked lists", heading: "Build a linked list, step by step", OPTIONS, DEFAULTS, describe, complexity, diagram, render, program, harness, problem,
-    stepCount: 8, variant, fields, breaks, steps, context, FNS, _internals: { isSegment, isList, insertFront, insertBack, deleteHead, deleteNode, lookup, printList, showFn, testGroups, compile },
+  const DEF = {
+    id: "linked-lists", num: "13.01", title: "Linked lists", heading: "Build a linked list, step by step", diagramLabel: "Your list",
+    OPTIONS, DEFAULTS, FNS, STRUCTS, describe, complexity, diagram, steps, handlers, testGroups, refFns, problem,
+    variant, fields, breaks, _internals: { isSegment, isList, insertFront, insertBack, deleteHead, deleteNode, lookup, printList, showFn },
   };
-  root.DSATutorials = root.DSATutorials || {};
-  root.DSATutorials["linked-lists"] = tutorial;
+  const tutorial = C.make(DEF);
   if (typeof module !== "undefined" && module.exports) module.exports = tutorial;
 })(typeof window !== "undefined" ? window : globalThis);

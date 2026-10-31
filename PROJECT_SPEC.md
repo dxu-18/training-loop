@@ -391,6 +391,55 @@ Tested in `scripts/dsa_e2e.py`:
 - for every layout × language × step (512), the reference code satisfies all of its bubbles, and typing it line by line
   never moves the bubbles backwards.
 
+### Session 13 (2026-10-30): stacks and queues
+Request: "now go ahead and implement stacks and queues." Built:
+
+- **13.02 Stacks** (`docs/dsa/stack.js`): a stack on a linked list, the requested option. Options: language and
+  int/generic. Steps:
+  1. node;
+  2. stack and contracts (`is_segment`, `is_stack`, `stack_empty`);
+  3. `push`;
+  4. `pop`;
+  5. `peek` and `stack_size`.
+- **13.03 Queues** (`docs/dsa/queue.js`), in two versions.
+  - On a linked list with a dummy node (15-122: [front, back)). Steps:
+    1. node;
+    2. queue and contracts;
+    3. `enq`;
+    4. `deq`;
+    5. `queue_peek` and `queue_size`.
+  - On two stacks (`inbox` and `outbox`, reusing 13.02's steps; amortized O(1) `deq`). Steps:
+    1. node;
+    2. stack;
+    3. `push`, `pop`, `peek`;
+    4. queue and contracts;
+    5. `enq`;
+    6. `refill` and `deq`;
+    7. `queue_peek` and `queue_size`.
+
+  The options change the steps, the complexity boxes ("Dequeue (amortized)", "one dequeue, worst case" O(1) vs
+  O(n)) and the diagram (two rows for two stacks).
+
+**Groundwork for more tutorials.**
+
+| Piece | What changed |
+|---|---|
+| `docs/dsa/common.js` | Holds what every tutorial shares: step text, the node step, rendering, the reference program (Java functions placed inside their class), test compilation and the harness. A tutorial is a definition passed to `DSACommon.make()`, and linked lists moved onto it. |
+| Structures in `lang.js` | Named structures (`R:Stack` reference parameters, `V:Stack` values), so a queue can hold two stacks. Rust borrows a value field as `&mut Q.inbox`. |
+| Java calls | A function in another class is called as `Stack.push(...)`. |
+| C++ templates | Calls passing `nullptr` name the template argument (`is_segment<T>(S.top, nullptr, S.size)`). |
+| `peek` | Rust's generic `peek` returns `&T`. |
+| Options | Function specs, structures and the step count may depend on the options. |
+
+**Testing.**
+- `dsa_selftest.mjs`: 736 runs (all three tutorials × options × languages × steps, plus the final); 718 mutants, all
+  caught.
+- `dsa_e2e.py`:
+  - stacks in Python (with a wrong step) and C++ generic;
+  - queues on two stacks in Python generic and Java, and on a list in Rust generic;
+  - the queue's options changing steps, boxes and diagram;
+  - the hint-bubble consistency check across every tutorial.
+
 ### Open problem: Hugging Face in the browser
 Pyodide has no `transformers`. Options: extend the shim idea (a tiny tokenizer/pipeline layer over torch-lite),
 AST and pattern checks, or an optional "run locally" mode. **Not decided yet.**
@@ -424,9 +473,10 @@ ci/pages.yml          optional GitHub Actions deploy (inactive, see its header)
 tests/                pytest: every template passes its own grader; every challenge matches a brute force
 docs/                 the static website (GitHub Pages root): app.js (pages), terminal.js (the Bash terminal, nano,
                       Files panel), worker.js (Pyodide), style.css
-  dsa/                Part III tutorials: lang.js (the statement language -> Python/C++/Java/Rust), run.js (Compiler
-                      Explorer + Pyodide runner, assembling the tests around the user's file, output diff),
-                      page.js (setup, steps, final, status, reset), linked-list.js (13.01's content and tests)
+  dsa/                Part III tutorials: lang.js (the statement language -> Python/C++/Java/Rust), common.js (what
+                      every tutorial shares: rendering, reference programs, tests), run.js (Compiler Explorer + Pyodide
+                      runner, the tests around the user's file, output diff), page.js (setup, steps with the typing
+                      coach, final, status, reset); one file per tutorial: linked-list.js, stack.js, queue.js
 scripts/dsa_selftest.mjs  every tutorial reference x option x language, step by step (+ --mutants)
 scripts/dsa_e2e.py        browser click-through of Part III (Compiler Explorer answered by local compilers)
 ```
@@ -460,7 +510,7 @@ Legend: ✅ done · 🟡 partial · ⬜ not started
 | 10 | SQL | ⬜ | sqlite3 exec | |
 | 11 | LaTeX | ⬜ | normalized / KaTeX | |
 | 12 | Docker | ⬜ | command / Dockerfile | |
-| 13 | Data Structures & Algorithms (Part III) | 🟡 **13.01 Linked lists live** (8 layouts × int/generic × Python/C++/Java/Rust); 13.02–13.12 researched in COMP_GUIDE §13, "soon" | Pyodide (Python), Compiler Explorer (C++/Java/Rust); line-by-line output diff | session 11 |
+| 13 | Data Structures & Algorithms (Part III) | 🟡 **13.01 Linked lists, 13.02 Stacks, 13.03 Queues live** (all options × int/generic × Python/C++/Java/Rust); 13.04–13.12 researched in COMP_GUIDE §13, "soon" | Pyodide (Python), Compiler Explorer (C++/Java/Rust); line-by-line output diff | session 11 |
 
 ### What exists (as of session 5; the Bash topic and its terminal are described in §2, sessions 7–8)
 - `generator/`: core (tiers, registry, Instructions), grader (answer comparison, AST checks,
