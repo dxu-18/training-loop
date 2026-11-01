@@ -12,7 +12,8 @@ pandas, PyTorch (on torch-lite, a NumPy-backed `torch` that runs in the browser)
 a simulated Ubuntu machine with its own shell, files, processes, GPUs, ssh hosts and Python environments, used
 through a Terminal.app-style terminal with nano and a live view of your files) and Vim (bash-lite's own Vim, checked
 against real Vim 9.1: each exercise opens it on a file and checks the result, the commands you used and, in the
-golf rounds, how few keys you needed);
+golf rounds, how few keys you needed) and LaTeX (on latex-lite, LaTeX interpreted in the browser: Compile shows the
+page your source makes, with pdfTeX's errors and log, TikZ, pgfplots and Beamer slides included);
 the other topics are listed as "soon". Topics come from [COMP_GUIDE.md](COMP_GUIDE.md); the design and roadmap are in
 [PROJECT_SPEC.md](PROJECT_SPEC.md).
 

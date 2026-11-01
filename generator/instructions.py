@@ -254,6 +254,8 @@ def instructions(problem, with_keys: bool = False) -> list[dict]:
     p = problem if isinstance(problem, dict) else problem.to_dict()
     if p.get("vim"):
         return vim_instructions(p, with_keys)
+    if p.get("latex"):
+        return latex_instructions(p, with_keys)
     section, module = p.get("section", ""), p.get("module", "")
     tier = TIERS.index(p["tier"]) if p.get("tier") in TIERS else 0
     intro = data().get(section, {}).get("intro", {})
@@ -341,4 +343,23 @@ def vim_instructions(p: dict, with_keys: bool = False) -> list[dict]:
         if k not in chosen:
             chosen.append(k)
     out = [{"name": shown(k), "sig": "", "desc": CATALOG[k]["desc"], "key": k} for k in chosen[:VIM_MAX]]
+    return out if with_keys else [{"name": x["name"], "sig": "", "desc": x["desc"]} for x in out]
+
+
+# ---------------------------------------------------------------- LaTeX (COMP_GUIDE section 11)
+
+def latex_instructions(p: dict, with_keys: bool = False) -> list[dict]:
+    """The commands, environments and packages a LaTeX problem practises (latexlite/catalog.py): the required ones,
+    then those this module introduces that the reference uses, else at most two older ones."""
+    from .latexlite.catalog import CATALOG, MODULE_OF, TRIVIAL, shown
+    module = p.get("module", "")
+    uses = [u for u in (p.get("latex") or {}).get("uses", []) if u in CATALOG]
+    req = [a for r in p.get("require") or [] for a in r.split("|") if a in CATALOG]
+    here = [u for u in uses if MODULE_OF.get(u) == module and u not in TRIVIAL]
+    older = [u for u in uses if MODULE_OF.get(u, "") < module and u not in TRIVIAL]
+    chosen = []
+    for k in req + here + (older[::-1][:2] if len(req + here) < 2 else []):
+        if k not in chosen:
+            chosen.append(k)
+    out = [{"name": shown(k), "sig": "", "desc": CATALOG[k], "key": k} for k in chosen[:MAX_ITEMS]]
     return out if with_keys else [{"name": x["name"], "sig": "", "desc": x["desc"]} for x in out]

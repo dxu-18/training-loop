@@ -32,10 +32,21 @@ def test_wrong_answers_fail(tpl):
             assert not grade(p, wrong)["correct"], (seed, wrong)
 
 
+def _variety_key(p):
+    key = p.prompt + p.setup
+    if p.latex:   # a LaTeX problem is also the code it starts from and the code and files it's given
+        lx = p.latex
+        key += p.solution + lx.get("starter", "") + lx.get("preamble", "") + lx.get("body", "") + \
+            repr(sorted((lx.get("files") or {}).items()))
+    return key
+
+
 @pytest.mark.parametrize("tpl", ALL, ids=IDS)
 def test_variety(tpl):
-    """Different seeds should give different problems."""
-    seen = {build(tpl, s).prompt + build(tpl, s).setup for s in range(12)}
+    """Different seeds should give different problems (except a guide block written from memory: @fixed)."""
+    if getattr(tpl.fn, "fixed", False):
+        return
+    seen = {_variety_key(build(tpl, s)) for s in range(12)}
     assert len(seen) >= 4
 
 
@@ -106,7 +117,8 @@ def test_instructions_are_short_and_described(section):
     assert empty <= 0.03 * total, f"{empty}/{total} {section} problems have no Instructions"
 
 
-@pytest.mark.parametrize("section", sorted(s for s in REGISTRY if s != "vim"))   # Vim: the command catalog
+# Vim and LaTeX describe their own command catalogs (tests/test_vim_section.py, tests/test_latex_section.py)
+@pytest.mark.parametrize("section", sorted(s for s in REGISTRY if s not in ("vim", "latex")))
 def test_instructions_list_what_is_new(section):
     """When a problem uses names that are new at its module (introduced there or later), only those are listed;
     names from earlier modules appear only when nothing new is used."""

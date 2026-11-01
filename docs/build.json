@@ -1,5 +1,5 @@
 {
- "hash": "1fb69f4f0f5a",
+ "hash": "d0feea8f0635",
  "topics": {
   "numpy": {
    "title": "NumPy",
@@ -2013,217 +2013,217 @@
     {
      "id": "11.01",
      "title": "Document skeleton & compiling",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 2,
+      "hard": 2,
+      "challenge": 2
      }
     },
     {
      "id": "11.02",
      "title": "Structure",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 2,
+      "hard": 2,
+      "challenge": 2
      }
     },
     {
      "id": "11.03",
      "title": "Text formatting, special characters & spacing",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 2,
+      "hard": 2,
+      "challenge": 2
      }
     },
     {
      "id": "11.04",
      "title": "Lists",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 2,
+      "hard": 2,
+      "challenge": 2
      }
     },
     {
      "id": "11.05",
      "title": "Math mode basics",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 2,
+      "hard": 2,
+      "challenge": 2
      }
     },
     {
      "id": "11.06",
      "title": "Symbols reference",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 2,
+      "hard": 2,
+      "challenge": 2
      }
     },
     {
      "id": "11.07",
      "title": "Multi-line equations & numbering",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 2,
+      "hard": 2,
+      "challenge": 2
      }
     },
     {
      "id": "11.08",
      "title": "Matrices, cases, brackets & custom operators",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 2,
+      "hard": 2,
+      "challenge": 2
      }
     },
     {
      "id": "11.09",
      "title": "ML equations gallery",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 2,
+      "hard": 2,
+      "challenge": 2
      }
     },
     {
      "id": "11.10",
      "title": "Figures",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 2,
+      "hard": 2,
+      "challenge": 2
      }
     },
     {
      "id": "11.11",
      "title": "Tables",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 2,
+      "hard": 2,
+      "challenge": 2
      }
     },
     {
      "id": "11.12",
      "title": "Cross-references, links & citations",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 2,
+      "hard": 2,
+      "challenge": 2
      }
     },
     {
      "id": "11.13",
      "title": "Algorithms & code listings",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 2,
+      "hard": 2,
+      "challenge": 2
      }
     },
     {
      "id": "11.14",
      "title": "Theorems & custom macros",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 2,
+      "hard": 2,
+      "challenge": 2
      }
     },
     {
      "id": "11.15",
      "title": "Page layout, colors & boxes",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 2,
+      "hard": 2,
+      "challenge": 2
      }
     },
     {
      "id": "11.16",
      "title": "TikZ & pgfplots: diagrams and plots",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 2,
+      "hard": 2,
+      "challenge": 2
      }
     },
     {
      "id": "11.17",
      "title": "Beamer slides",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 2,
+      "hard": 2,
+      "challenge": 2
      }
     },
     {
      "id": "11.18",
      "title": "Troubleshooting",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 2,
+      "hard": 2,
+      "challenge": 2
      }
     }
    ]

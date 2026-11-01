@@ -43,7 +43,8 @@ def test_catalog_items_differ():
     for tpl, i in ITEMS:
         core._FORCE_ITEM[0] = i
         try:
-            by_tpl.setdefault(tpl.name, []).append(build(tpl, 1).solution)
+            p = build(tpl, 1)    # a fix-it problem (LaTeX) is its broken starter as much as its answer
+            by_tpl.setdefault(tpl.name, []).append(p.solution + (p.latex.get("starter", "") if p.latex else ""))
         finally:
             core._FORCE_ITEM[0] = None
     for name, sols in by_tpl.items():
