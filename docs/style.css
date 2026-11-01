@@ -139,7 +139,7 @@ details .inner { margin-top: 10px; padding: 14px; border-left: 2px solid var(--l
 .verdict { font: 500 1.4rem var(--serif); min-height: 1.6em; }
 .verdict.good { color: var(--good); }
 .verdict.bad { color: var(--bad); }
-.verdict-msg { color: var(--muted); font-size: 0.92rem; margin: 4px 0 12px; }
+.verdict-msg { color: var(--muted); font-size: 0.92rem; margin: 4px 0 12px; white-space: pre-line; }
 .out { font-size: 0.85rem; color: var(--ink); }
 .out .err { color: var(--bad); }
 .out .dim { color: var(--muted); }
@@ -197,6 +197,13 @@ details.setup { margin-top: 14px; }
 /* tmux's status line, under the screen */
 .mt-tmux { background: #00a600; color: #000; font: 12px/1.6 "SF Mono", SFMono-Regular, ui-monospace, Menlo, monospace;
            padding: 0 8px; white-space: pre; overflow: hidden; }
+/* Vim's bar (keys pressed, par, target) */
+.mt-vim { display: flex; gap: 14px; align-items: baseline; padding: 3px 8px; border-top: 1px solid var(--line);
+          font: 12px/1.5 "SF Mono", SFMono-Regular, ui-monospace, Menlo, monospace; color: var(--muted); background: var(--surface); }
+.mt-vim[hidden] { display: none; }
+.mt-vim .over { color: #c0392b; font-weight: 600; }
+.mt-vim .mv-match.ok { color: #2e8b57; font-weight: 600; }
+.mt-vim .mv-hint { margin-left: auto; }
 
 /* the Files panel: the start directory, live */
 .console.side { max-height: calc(100vh - 32px); overflow: auto; }

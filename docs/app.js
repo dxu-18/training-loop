@@ -17,7 +17,7 @@ const TOPICS = [
   { id: "huggingface", part: 1, mode: "python", packages: ["numpy"] },
   { id: "bash", part: 2, mode: "shell", packages: [], terminal: true },
   { id: "git", part: 2, mode: "shell", packages: [] },
-  { id: "vim", part: 2, mode: null, packages: [] },
+  { id: "vim", part: 2, mode: null, packages: [], terminal: true },
   { id: "sql", part: 2, mode: "text/x-sql", packages: [] },
   { id: "latex", part: 2, mode: null, packages: [] },
   { id: "docker", part: 2, mode: "shell", packages: [] },
@@ -310,7 +310,7 @@ async function renderTerminalPractice(topic, mod, topicTitle) {
         <div class="actions">
           <button class="btn primary submit" disabled>Submit</button>
           <button class="btn reset" disabled title="Throw this session away and start again from the problem's machine">Reset</button>
-          <span class="hint">Your whole session is checked: explore freely · ⌘Enter submits · ⌘K clears · ⌘+/− font size</span>
+          <span class="hint">${topic.id === "vim" ? "Vim's state when you submit is checked, and the keys you pressed · ⌘Enter submits · Reset starts over" : "Your whole session is checked: explore freely · ⌘Enter submits · ⌘K clears · ⌘+/− font size"}</span>
           <button class="btn primary next" hidden>Next →</button>
         </div>
       </section>
@@ -376,7 +376,7 @@ function drawProblem(p, n) {
   if (view.editor) view.editor.setOption("mode", mode);
   const el = $(".problem");
   el.innerHTML = `<div class="prompt">${md(p.prompt)}</div>`;
-  const given = shownSetup(p.setup);
+  const given = view.topic.id === "vim" ? "" : shownSetup(p.setup);   // Vim: the files are open in the terminal
   if (given && view.topic.terminal) {   // already run on the machine: the terminal and Files panel show the result
     const d = document.createElement("details");
     d.className = "setup";
@@ -400,7 +400,7 @@ function drawProblem(p, n) {
     const d = document.createElement("details");
     d.className = "answer";
     d.innerHTML = `<summary>Show answer</summary><div class="inner"></div>`;
-    d.querySelector(".inner").appendChild(codeBlock(p.solution, mode));
+    d.querySelector(".inner").appendChild(codeBlock(p.solution, p.vim && p.vim.check ? null : mode));
     el.appendChild(d);
   }
 }
@@ -505,7 +505,7 @@ function showSolution(p) {
   box.hidden = !p;
   if (!p) return;
   const keys = /^\s*#: keys/m.test(p.setup || "");
-  box.appendChild(codeBlock(p.solution, keys ? null : view.topic.terminal ? "shell" : modeOf(p, view.topic)));
+  box.appendChild(codeBlock(p.solution, keys || (p.vim && p.vim.check) ? null : view.topic.terminal ? "shell" : modeOf(p, view.topic)));
 }
 
 function showMedal(topic, mod) {

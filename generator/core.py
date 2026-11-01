@@ -54,6 +54,7 @@ class Problem:
     kind: str = "python"                  # python | bash | sql | text
     lang: str = "python"                  # editor mode
     timeout: float = 8.0                  # seconds the whole grading run may take
+    vim: dict = field(default_factory=dict)   # Vim problems (bashlite/vimcheck.py): what to compare, max_keys
     # filled in by generate()
     section: str = ""
     tier: str = ""

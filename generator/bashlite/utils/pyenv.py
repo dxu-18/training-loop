@@ -1732,7 +1732,9 @@ def _run_module(ctx, mod, args, env, root, kind):
         ctx.fs.write_file(base + name + "/kernel.json", spec, "/", 0o644, ctx.uid, ctx.proc.gid)
         ctx.w(f"Installed kernelspec {name} in {base}{name}\n")
         return 0
-    if mod in ("json.tool", "timeit", "this", "calendar", "base64", "zipfile", "tarfile", "platform", "site", "uuid"):
+    if mod == "json.tool":
+        return (yield from _json_tool(ctx, list(args)))
+    if mod in ("timeit", "this", "calendar", "base64", "zipfile", "tarfile", "platform", "site", "uuid"):
         import runpy
         code = f"import runpy, sys; sys.argv = {[mod] + list(args)!r}; runpy.run_module({mod!r}, run_name='__main__', alter_sys=False)"
         return (yield from _exec_code(ctx, code, f"<{mod}>", [mod] + list(args), env, root, kind))
@@ -1743,6 +1745,54 @@ def _run_module(ctx, mod, args, env, root, kind):
         return (yield from _exec_code(ctx, code, cand, [cand] + list(args), env, root, kind))
     ctx.e(f"{ctx.argv[0].rsplit('/', 1)[-1]}: No module named {mod}\n")
     return 1
+
+
+def _json_tool(ctx, args):
+    """python -m json.tool [--sort-keys] [--indent N | --tab | --compact] [--no-ensure-ascii] [infile [outfile]]:
+    validate and pretty-print JSON (stdin when there's no file: a pipe, or Vim's :%!python -m json.tool)."""
+    import json
+    sort, indent, ascii_, files = False, 4, True, []
+    i = 0
+    while i < len(args):
+        a = args[i]
+        if a == "--sort-keys":
+            sort = True
+        elif a == "--indent" and i + 1 < len(args):
+            i += 1
+            indent = int(args[i])
+        elif a == "--tab":
+            indent = "\t"
+        elif a == "--compact":
+            indent = None
+        elif a == "--no-ensure-ascii":
+            ascii_ = False
+        elif a.startswith("-") and a != "-":
+            ctx.e(f"usage: python -m json.tool [-h] [--sort-keys] [--indent INDENT | --tab | --no-indent | --compact] "
+                  f"[infile] [outfile]\npython -m json.tool: error: unrecognized arguments: {a}\n")
+            return 2
+        else:
+            files.append(a)
+        i += 1
+    if files and files[0] != "-":
+        try:
+            data = yield from ctx.read_path(files[0])
+        except FSError:
+            ctx.e(f"[Errno 2] No such file or directory: '{files[0]}'\n")
+            return 1
+    else:
+        data = yield from ctx.read_fd(0)
+    try:
+        obj = json.loads(data.decode("utf-8", "replace"))
+    except ValueError as e:
+        ctx.e(f"{e}\n")
+        return 1
+    out = json.dumps(obj, indent=indent, sort_keys=sort, ensure_ascii=ascii_,
+                     separators=(",", ":") if indent is None else None) + "\n"
+    if len(files) > 1:
+        ctx.fs.write_file(ctx.abspath(files[1]), out, "/", 0o644, ctx.uid, ctx.proc.gid)
+    else:
+        ctx.w(out)
+    return 0
 
 
 def serve(ctx, port, banner, kind, directory=None, handler=None, stderr_banner=False, shutdown="\nKeyboard interrupt received, exiting.\n"):

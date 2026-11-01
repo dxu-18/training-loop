@@ -23,13 +23,13 @@ def grade(problem_json: str, code: str) -> str:
     return json.dumps(grader.grade(json.loads(problem_json), code))
 
 
-def term_start(problem_json: str, log_json: str, real_ms: float) -> str:
+def term_start(problem_json: str, log_json: str, real_ms: float, dark: bool = False) -> str:
     """Open the live terminal for a bash problem (log: an earlier session from the browser's storage)."""
     from .bashlite import live
     from .bashlite.check import SetupError
     from .bashlite.directives import DirectiveError
     try:
-        return json.dumps(live.start(json.loads(problem_json), json.loads(log_json or "[]"), real_ms))
+        return json.dumps(live.start(json.loads(problem_json), json.loads(log_json or "[]"), real_ms, bool(dark)))
     except (SetupError, DirectiveError) as e:
         return json.dumps({"error": f"The problem's setup failed: {e}"})
 

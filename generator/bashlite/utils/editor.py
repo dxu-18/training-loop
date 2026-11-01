@@ -72,7 +72,7 @@ def save(world, req, content, name=None):
     return None
 
 
-@util("vim", "vi", "emacs")
+@util("emacs")
 def u_no_editor(ctx):
     ctx.e(f"{ctx.name}: this terminal doesn't have {ctx.name} yet; edit files with nano instead, e.g. nano notes.txt\n")
     return 127

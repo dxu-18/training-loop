@@ -3,7 +3,8 @@
 //
 // The page sends keys; Python does the line editing (readline's emacs/vi modes) and runs the machine on the real
 // clock. Each update brings the output since the last one and the "input area" (prompt, line, cursor), which this
-// file redraws after the output. nano runs here, on xterm's alternate screen; saves go to Python.
+// file redraws after the output. nano runs here, on xterm's alternate screen; saves go to Python. Vim runs in Python
+// (generator/bashlite/vim): while it is open every key goes to it and it draws its own screen (also the alternate one).
 // Every key is logged; the log is kept in localStorage (per module) so a reload rebuilds the session, and the grader
 // replays it.
 "use strict";
@@ -35,6 +36,10 @@
       brightWhite: "#ededed",
     },
   };
+  // Windows / Linux browsers keep Ctrl-W, Ctrl-N and Ctrl-T (close tab, new window, new tab): in Vim, Alt + the key
+  // sends them instead
+  const IS_MAC = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || "");
+  const VIM_ALIASES = IS_MAC ? {} : { "M-w": "C-w", "M-n": "C-n", "M-t": "C-t" };
   const isDark = () => {
     const forced = document.documentElement.dataset.theme;
     if (forced) return forced === "dark";
@@ -133,10 +138,12 @@
           <div class="mt-title"></div>
         </div>
         <div class="mt-body"><div class="mt-screen"></div></div>
-        <div class="mt-tmux" hidden></div>`;
+        <div class="mt-tmux" hidden></div>
+        <div class="mt-vim" hidden><span class="mv-keys"></span><span class="mv-match"></span><span class="mv-hint"></span></div>`;
       host.appendChild(this.el);
       this.titleEl = this.el.querySelector(".mt-title");
       this.tmuxEl = this.el.querySelector(".mt-tmux");
+      this.vimEl = this.el.querySelector(".mt-vim");
       let size = 13;
       try { size = Number(localStorage.getItem(FONT_KEY)) || 13; } catch { /* storage blocked */ }
       this.term = new window.Terminal({
@@ -155,8 +162,9 @@
       this.chain = Promise.resolve();
       this.sink = null;               // nano takes the keys while it is open
       this.term.onData((d) => {
-        const ev = parseInput(d);
+        let ev = parseInput(d);
         if (!ev.length) return;
+        if (this.view && this.view.mode === "vim") ev = ev.map(([k, v]) => (k === "key" && VIM_ALIASES[v] ? [k, VIM_ALIASES[v]] : [k, v]));
         if (this.sink) this.sink(ev); else this.onInput(ev);
       });
       this.term.attachCustomKeyEventHandler((e) => this.shortcut(e));
@@ -256,6 +264,7 @@
       if (title) this.setTitle(title);
       if (view && view.tmux) { this.tmuxEl.hidden = false; this.tmuxEl.textContent = view.tmux + (view.tmux_prompt ? "    " + view.tmux_prompt : ""); }
       else this.tmuxEl.hidden = true;
+      this.vimBar(view);
       return this.run((done) => {
         this.erase(() => {
           const finish = () => {
@@ -269,9 +278,24 @@
       });
     }
 
+    // under the window while Vim is open: keys pressed (and the par), whether the text already matches the target
+    vimBar(view) {
+      const info = view && view.mode === "vim" ? view.vim : null;
+      this.vimEl.hidden = !info;
+      if (!info) return;
+      const over = info.par && info.keys > info.par;
+      const k = this.vimEl.querySelector(".mv-keys");
+      k.textContent = `${info.keys} key${info.keys === 1 ? "" : "s"}` + (info.par ? ` · par ${info.par}` : "");
+      k.classList.toggle("over", !!over);
+      const m = this.vimEl.querySelector(".mv-match");
+      m.textContent = info.match == null ? "" : info.match ? "✓ matches the target" : "not there yet";
+      m.className = "mv-match" + (info.match ? " ok" : "");
+      this.vimEl.querySelector(".mv-hint").textContent = IS_MAC ? "" : "Alt-W / Alt-N / Alt-T send Ctrl-W / Ctrl-N / Ctrl-T";
+    }
+
     drawInput(view, done) {
       const t = this.term;
-      if (!view || view.mode === "ended" || view.mode === "editor") { done(); return; }
+      if (!view || view.mode === "ended" || view.mode === "editor" || view.mode === "vim") { done(); return; }
       const prompt = view.prompt || "";
       const buf = view.hidden ? "" : (view.buf || "");
       t.write(prompt + buf, () => {
@@ -717,7 +741,7 @@
       await this.mt.reset();
       if (log.length) this.mt.write("\x1b[2m[restoring your session…]\x1b[0m\r\n");
       let res;
-      try { res = await this.py.call("termStart", { problem: this.problem, log, real: this.now() }, 120000); }
+      try { res = await this.py.call("termStart", { problem: this.problem, log, real: this.now(), dark: isDark() }, 120000); }
       catch (e) {
         if (log.length) { clearLog(this.key); return this.start(true); }   // a stored session that no longer replays
         await this.mt.write(`\r\n\x1b[31mThe terminal couldn't start: ${e.message}\x1b[0m\r\n`);

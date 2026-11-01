@@ -796,6 +796,77 @@ Request:
   order check first. It was deleted.
 * Dictionaries: added 13.08's "capacity on an empty table" test and 13.09's "only child with a child" deletes.
 
+### Session 22 (2026-10-31): Vim (9.01–9.12) on bash-lite
+Request:
+* Build Part II's Vim section on bash-lite.
+* The user must not be able to leave Vim for the shell, except in problems that practise quitting.
+* Each exercise detects the Vim keys the user typed, with problems designed for each section.
+* Cover every section thoroughly: by the end, people should handle Vim like a competitive programming pro.
+
+**Design.**
+* **Vim is a bash-lite program** (`generator/bashlite/vim/`, run as `vim`/`vi`/`view`), written in Python like the
+  rest of the machine. The live terminal (live.py) sends it every key while it is open, and it draws its screen
+  into xterm.js with escape sequences on the alternate screen.
+* The same engine runs live, on reload (log replay) and in the grader, so the reference keys and the user's keys see
+  identical behaviour.
+* **Behaviour target:** Ubuntu's vim 9.1 without a vimrc: defaults.vim (scrolloff=5, incsearch, nrformats=bin,hex,
+  backspace=indent,eol,start, showcmd, ruler), plus the Python and text filetype settings.
+* **Tests:** a differential corpus against real Vim 9.1 (`vim -u DEFAULTS -s keys`), in the same way bash-lite was
+  checked against bash: `scripts/diff_vim.py`, `tests/vim_corpus/`.
+* **Pages:**
+  * Vim problems start inside Vim on the problem's files (`#: vim file …`). `:q` and friends are refused there.
+  * 9.01's quitting problems start at the bash prompt, so `vim +42 f`, `vim -O a b` and `view f` are typed, and
+    quitting returns to the shell.
+* **Grading** replays the key log and compares the end state with the reference keys' end state: the buffers'
+  text, the files on disk, the cursor (for motion drills, where the target cell is highlighted on screen),
+  windows/tabs, folds, marks, options, and whether Vim quit and what it saved.
+* **Key checks:**
+  * `require` and `forbid` use canonical Vim commands the engine records as they run (`ciw`, `dd`, `.`, `:%s`,
+    `q`, `@`, `<C-v>`, `i_<C-w>` …).
+  * `max_keys` is a VimGolf-style keystroke par.
+  * The terminal shows a live keystroke count and whether the buffer already matches the target.
+* **Templates:** `generator/sections/s09_vim/` m01–m12, at least 2 per tier per module. Every key and command in
+  COMP_GUIDE §9 is practised (guide coverage).
+
+**Built.**
+* **Engine** (`generator/bashlite/vim/`, ~10k lines):
+  * normal / insert / visual / replace / command-line modes, counts, registers, marks, the jump list;
+  * undo trees with `:earlier`/`:later`/`g-`/`g+` and `undofile`; the dot command; macros; mappings with timeouts;
+  * `:s` with every flag, `:g`/`:v`/`:normal`, ranges, filters through bash-lite (`:%!python -m json.tool`, `:r !cmd`,
+    `:w !sudo tee %`);
+  * windows, tabs, buffers, folds, netrw, quickfix (`:vimgrep`/`:cdo`), `:terminal`, spell checking, `:help` built
+    from the command catalog (`vim/catalog.py`: every §9 command with a one-line description, the Instructions'
+    source);
+  * Python, YAML and brace-language indentation ported from Vim's runtime (autoload/python.vim, indent/yaml.vim,
+    a cindent sketch) with `indentkeys`.
+* **Differential tests:** 631 cases against real Vim 9.1 (`scripts/diff_vim.py`, recorded in `tests/vim_corpus/`).
+  `scripts/diff_vim_templates.py` also runs every exercise's reference keys in real Vim, and all 732 comparable runs
+  (two seeds) match. Skipped are those that:
+  * start at the shell, quit, or call shell commands;
+  * travel undo by time;
+  * use netrw (not loaded with `-u DEFAULTS`), the system clipboard, or spelling suggestions picked by number.
+* Things measured against real Vim along the way:
+  * Python's ftplugin uses `tabstop=4` in 9.1, and `autoindent` comes before indentexpr.
+  * When a jump scrolls the window: the cursor is centred once it is `height/2 + 2` lines past the last line shown,
+    or `height/2 - 1` above topline + 'scrolloff'.
+  * `v$` then `o` keeps the line break selected.
+  * 'undofile' history comes back after `:bd` and `:e`.
+* **Live terminal** (live.py):
+  * `#: vim args` opens Vim before the session starts; `#: vimquit` allows quitting.
+  * `#: vimtarget L C` highlights a cursor target; `#: vimprep SECONDS keys` types earlier edits, so there is undo
+    history to travel through (Vim's clock runs ahead by that much).
+  * The page sends keys, and Vim's frames go to xterm's alternate screen.
+  * A bar under the window shows the keys pressed, the par, and whether Vim already matches the target.
+  * On Windows/Linux, Alt-W/N/T send Ctrl-W/N/T, which the browser keeps for itself.
+* **Grader** (`bashlite/vimcheck.py`):
+  * replays the log, types the reference into a fresh machine, and compares what `vim["check"]` names: text, files,
+    quit, cursor, line, topline, layout, sizes, buffers, regs, marks, folds, options, maps, mode, bash_vi;
+  * a missing required command, a forbidden one, or keys over par is "Not yet" (Reset and retry); a wrong result is
+    ✗ with a message naming the first difference.
+* **121 templates** (25 lite, 24 per other tier), each a catalog of drills. `scripts/vim_templates.py` checks every
+  item: the reference passes and an idle session fails. `tests/test_vim_section.py` covers the same, plus guide
+  coverage, blocked quitting, and replay. `scripts/vim_e2e.py` types each module's reference keys into the real page.
+
 ### Open problem: Hugging Face in the browser
 Pyodide has no `transformers`. Options: extend the shim idea (a tiny tokenizer/pipeline layer over torch-lite),
 AST and pattern checks, or an optional "run locally" mode. **Not decided yet.**
@@ -814,9 +885,12 @@ generator/            Python package: question generation + grading (runs locall
     s02_pandas/       _common.py (themed DataFrame builder `frame()`, challenge()) + m01_core.py … m19_performance.py
     s03_pytorch/      _common.py (HEADER imports torch/nn/F, tensor literals, challenge()) + m01_tensors.py … m19_dpo.py
     s07_bash/         _common.py (P/K problem helpers, files() heredocs, catalog(), challenge()) + m01_basics.py … m17_keys_history.py
+    s09_vim/          _common.py (V() problem helper: runs the reference once for the target text, cursor target and
+                      Instructions; drill(); ML-themed texts) + m01_modes.py … m12_vimrc.py
   bashlite/           bash-lite: a simulated Ubuntu machine in pure Python (vfs, parser, kernel, shell, builtins, utils/ commands,
                       world/basefs, directives, check = the bash grader, keys = readline/tmux simulator, features,
-                      live = the live terminal: key-by-key sessions on the real clock, logs, replays)
+                      live = the live terminal: key-by-key sessions on the real clock, logs, replays;
+                      vim/ = the Vim engine, utils/vim.py = the `vim` command, vimcheck = the Vim grader)
   shims/torch/        torch-lite: NumPy-backed torch (core in __init__.py, more ops in _extra.py; nn, optim, utils, func,
                       autograd, amp, profiler, distributed (+ fsdp, checkpoint), library, _compile, ...)
   shims/triton/       triton-lite: @triton.jit kernels interpreted on the CPU
@@ -839,6 +913,10 @@ docs/                 the static website (GitHub Pages root): app.js (pages), te
 scripts/dsa_selftest.mjs  every tutorial reference x option x language, step by step (+ --mutants)
 scripts/dsa_e2e.py        browser click-through of Part III (Compiler Explorer answered by local compilers)
 scripts/progress_e2e.py   browser check of the progress file: Download, Upload, Merge / Replace, rejected files
+scripts/diff_vim.py       bash-lite's Vim vs real Vim 9.1 on tests/vim_corpus (--record saves real Vim's states)
+scripts/diff_vim_templates.py  every Vim exercise's reference keys in real Vim vs bash-lite's Vim
+scripts/vim_templates.py  every Vim template item: the reference passes, an idle session fails (-v prints prompts)
+scripts/vim_e2e.py        browser check of the Vim pages
 ```
 
 Local dev:
@@ -866,7 +944,7 @@ Legend: ✅ done · 🟡 partial · ⬜ not started
 | 6 | Hugging Face | ⬜ | **open problem** | |
 | 7 | Bash | ✅ **all 17 modules live**: 176 templates in `generator/sections/s07_bash/` (every module ≥ 2 templates per tier, 2 challenges each), answered in a live terminal | bash-lite: simulated Ubuntu machine (`generator/bashlite/`); the terminal session is replayed and its output / files compared; keystrokes for 7.17 | sessions 7, 8 |
 | 8 | Git & GitHub | ⬜ | command | |
-| 9 | Vim | ⬜ | keystrokes | |
+| 9 | Vim | ✅ **all 12 modules live**: 121 templates in `generator/sections/s09_vim/` (every module ≥ 2 templates per tier), answered in Vim in the live terminal | bash-lite's Vim (`generator/bashlite/vim/`, checked against real Vim 9.1); Vim's end state compared with the reference keys', plus required / forbidden commands and a keystroke par | session 22 |
 | 10 | SQL | ⬜ | sqlite3 exec | |
 | 11 | LaTeX | ⬜ | normalized / KaTeX | |
 | 12 | Docker | ⬜ | command / Dockerfile | |

@@ -252,6 +252,8 @@ def describe(section: str, key: str) -> dict | None:
 
 def instructions(problem, with_keys: bool = False) -> list[dict]:
     p = problem if isinstance(problem, dict) else problem.to_dict()
+    if p.get("vim"):
+        return vim_instructions(p, with_keys)
     section, module = p.get("section", ""), p.get("module", "")
     tier = TIERS.index(p["tier"]) if p.get("tier") in TIERS else 0
     intro = data().get(section, {}).get("intro", {})
@@ -308,3 +310,35 @@ def _merge_commands(items: list[dict]) -> list[dict]:
             x = dict(x, desc=f"{base['desc'].rstrip('.')}; {x['desc'][0].lower() + x['desc'][1:]}")
         out.append(x)
     return out
+
+
+# ---------------------------------------------------------------- Vim (COMP_GUIDE section 9)
+
+VIM_OPERATORS = ("g~", "gu", "gU", "gq", "gw", "zf", "d", "c", "y", ">", "<", "=", "!")
+VIM_TRIVIAL = {"<Esc>", "i", ":", "h", "j", "k", "l", "count", "a", "o"}
+VIM_UNLESS_REQUIRED = {":", "<Esc>", "count"}     # in nearly every solution: listed only when a problem asks for it
+VIM_MAX = MAX_ITEMS
+
+
+def vim_instructions(p: dict, with_keys: bool = False) -> list[dict]:
+    """The commands a Vim problem practises, from the guide's catalog (bashlite/vim/catalog.py): the required ones,
+    then those this module introduces that the reference keys use (ciw rather than c and iw), else at most two
+    older ones."""
+    from .bashlite.vim.catalog import CATALOG, MODULE_OF, shown
+    module = p.get("module", "")
+    uses = [u for u in (p.get("vim") or {}).get("uses", []) if u in CATALOG]
+    covered = set()
+    for u in uses:
+        for op in VIM_OPERATORS:
+            if u.startswith(op) and len(u) > len(op) and u[len(op):] in CATALOG:
+                covered |= {op, u[len(op):]}
+                break
+    req = [a for r in p.get("require") or [] for a in r.split("|") if a in CATALOG]
+    here = [u for u in uses if MODULE_OF.get(u) == module and u not in covered and u not in VIM_UNLESS_REQUIRED]
+    older = [u for u in uses if MODULE_OF.get(u, "") < module and u not in covered and u not in VIM_TRIVIAL]
+    chosen = []
+    for k in req + here + (older[::-1][:2] if len(req + here) < 2 else []):
+        if k not in chosen:
+            chosen.append(k)
+    out = [{"name": shown(k), "sig": "", "desc": CATALOG[k]["desc"], "key": k} for k in chosen[:VIM_MAX]]
+    return out if with_keys else [{"name": x["name"], "sig": "", "desc": x["desc"]} for x in out]
