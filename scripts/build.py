@@ -29,7 +29,8 @@ TOPIC_IDS = {1: "numpy", 2: "pandas", 3: "pytorch", 4: "sklearn", 5: "matplotlib
 def sources() -> list[Path]:
     """The package's code and its data files (generator/data/*.json: Instructions)."""
     gen = ROOT / "generator"
-    return sorted([p for p in gen.rglob("*.py")] + [p for p in (gen / "data").glob("*.json")])
+    return sorted([p for p in gen.rglob("*.py")] + [p for p in (gen / "data").glob("*.json")] +
+                  [gen / "bashlite" / "vim" / "words.txt"])
 
 
 def source_hash() -> str:

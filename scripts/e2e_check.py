@@ -8,7 +8,8 @@ Without base-url it serves docs/ on 127.0.0.1:8765. Covers: topic list -> topic 
 practice, problem render, syntax error, Run, infinite-loop time limit, correct -> next, wrong ->
 reroll, a challenge with hidden tests, the medal at 100, answer reveal at 101, counters on the
 topic and home pages, the phone layout, the Bash pages (the live terminal: typed answers, keystrokes,
-nano scripts, Ctrl-C, stderr, the Files panel, reload and Reset), and (unless --selftest-seeds 0) grading every template's own solution inside Pyodide.
+nano scripts, Ctrl-C, stderr, the Files panel, reload and Reset), and (unless --selftest-seeds 0) grading every template's own solution inside Pyodide
+(Vim's too; its pages are checked by scripts/vim_e2e.py).
 """
 
 import argparse
@@ -320,6 +321,10 @@ try:
         time.sleep(0.5)
         check("ls /nonexistent" not in pg.evaluate(SCREEN), "bash: Reset starts a fresh session")
         selftest("bash")
+        # Vim (its pages are checked in depth by scripts/vim_e2e.py): every template's reference keys, in Pyodide
+        pg.goto(BASE + "/#/vim/9.01")
+        pg.wait_for_function("view && view.term && view.term.alive", timeout=120000)
+        selftest("vim")
 
         errors =[l for l in logs if "error" in l.lower()]
         check(not errors, f"no console errors {errors[:5]}")

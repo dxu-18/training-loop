@@ -121,6 +121,15 @@ def checker(problem: dict, code: str, grade: bool) -> dict:
     session = parse_answer(code)
     if session is not None:
         return term_checker(problem, session)
+    if problem.get("vim"):
+        # a typed answer to a Vim problem: Vim keys (`ciwfit<Esc>`), as if pressed in the terminal
+        from .live import vim_session
+        try:
+            t = vim_session(problem, code)
+        except (SetupError, DirectiveError) as e:
+            return _result(error=f"The problem's setup failed: {e}")
+        end = t.stamp("end")
+        return term_checker(problem, (t.log, {"m": end["m"], "d": end.get("d", 0)}))
     if "#: keys" in problem.get("setup", ""):
         from .keys import checker as keys_checker
         return keys_checker(problem, code, grade)
@@ -316,6 +325,9 @@ def term_checker(problem: dict, session) -> dict:
     Every command counts for require/forbid, in any order; the output asked for must come from some commands in a
     row (exploring with ls or cat first is fine); a `post` check sees the files (and shell) the session left."""
     log, end = session
+    if problem.get("vim"):
+        from .vimcheck import checker as vim_checker
+        return vim_checker(problem, log, end)
     if "#: keys" in problem.get("setup", ""):
         return _keys_checker(problem, log, end)
     try:

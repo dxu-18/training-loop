@@ -48,6 +48,16 @@ def split_setup(setup: str):
             extra["cursor"] = int(arg)
         elif name == "tmux":
             extra["tmux"] = arg or "main"
+        elif name == "vim":
+            extra["vim"] = arg                       # start in Vim on these files (quitting is turned off)
+        elif name == "vimquit":
+            extra["vimquit"] = True                  # ... unless the problem practises quitting
+        elif name == "vimtarget":
+            l, c = arg.split()
+            extra["vimtarget"] = (int(l) - 1, int(c) - 1)   # a cell the problem asks to reach (shown highlighted)
+        elif name == "vimprep":
+            sec, _, keys = arg.partition(" ")
+            extra.setdefault("vimprep", []).append((int(sec), keys))   # keys typed earlier (undo history)
         else:
             keep.append(d)
     return keep, code, extra
@@ -84,6 +94,11 @@ class LiveTerm:
         self.k.budget = 1 << 62         # no step budget: Ctrl-C stops a loop (a replay caps its waits instead)
         world.editor_ok = True
         world.editor = None
+        world.vim = None
+        self.vim_offset = 0                          # ms Vim's clock is ahead of the session's (#: vimprep)
+        world.vim_term = {"noquit": "vim" in extra and not extra.get("vimquit"), "target": extra.get("vimtarget"),
+                          "dark": bool(problem.get("_dark")), "now": self.now_ms}
+        self.vim_shown = None
         self.ctrl_c_typed = world.ctrl_c_after      # `#: ctrlc`: when typed run-until-Ctrl-C commands stop
         if not typed:
             world.ctrl_c_after = float("inf")
@@ -129,6 +144,8 @@ class LiveTerm:
         self.screen.clear()
         self.screen_size = 0
         self._sync_mode()
+        if "vim" in extra:
+            self._open_vim(extra["vim"], extra.get("vimprep", []))
 
     # ------------------------------------------------------------ running the machine
 
@@ -227,6 +244,8 @@ class LiveTerm:
         """Where a key goes now: "p" prompt, "r" a running program, "e" nano, "x" nothing (the shell exited)."""
         if self.ended:
             return "x"
+        if self.vim() is not None:
+            return "v"
         if self.editor() is not None:
             return "e"
         if self.tmux is not None or self.at_prompt():
@@ -270,7 +289,9 @@ class LiveTerm:
             leader = self.world.local.procs.get(fg)
             if leader is not None and leader.argv:
                 proc = leader.argv[0].rsplit("/", 1)[-1]
-        if self.editor() is not None:
+        if self.vim() is not None:
+            proc = "vim"
+        elif self.editor() is not None:
             proc = "nano"
         elif self.tmux is not None:
             proc = "tmux"
@@ -281,6 +302,9 @@ class LiveTerm:
         tm = self.tmux_status()
         if w == "x":
             return {"prompt": "", "buf": "", "pos": 0, "hidden": False, "mode": "ended", "tmux": None}
+        if w == "v":
+            return {"prompt": "", "buf": "", "pos": 0, "hidden": False, "mode": "vim", "tmux": None,
+                    "vim": self.vim_info()}
         if self.tmux_prompt is not None and self.tmux_prompt[2]:
             what, text, label = self.tmux_prompt
             return {"prompt": "", "buf": "", "pos": 0, "hidden": False, "mode": "tmux", "tmux": tm,
@@ -340,8 +364,27 @@ class LiveTerm:
         cwd = "" if self.ended else (self.sh.get("PWD", self.sess.proc.cwd) or self.sess.proc.cwd)
         return {"root": root, "cwd": cwd, "base": self.start_cwd}
 
+    def vim_frame(self) -> tuple[str, str]:
+        """(before, after): escape sequences to show around the main output: entering Vim (the alternate screen and a
+        whole frame), Vim's changed rows, or leaving it."""
+        v = self.vim()
+        if v is not None:
+            if self.vim_shown is not v:
+                self.vim_shown = v
+                v.width = self.tty.width
+                return "", "\x1b[?1049h\x1b[H\x1b[2J" + v.frame(full=True)
+            if v.width != self.tty.width:
+                v.width = self.tty.width
+                return "", "\x1b[H\x1b[2J" + v.frame(full=True)
+            return "", v.frame()
+        if self.vim_shown is not None:
+            self.vim_shown = None
+            return "\x1b[?1049l", ""
+        return "", ""
+
     def state(self) -> dict:
-        out = "".join(self.pending)
+        before, after = self.vim_frame()
+        out = before + "".join(self.pending) + after
         self.pending.clear()
         res = {"out": out, "view": self.view(), "title": self.title(), "ended": self.ended, "editor": self.editor(),
                "log": self.log[self.sent:], "full": self.full}
@@ -363,7 +406,7 @@ class LiveTerm:
             return False
         last = self.log[-1] if len(self.log) > self.sent else None
         if (ev["k"] == "text" and last is not None and last["k"] == "text" and last["m"] == ev["m"]
-                and ev["m"] != "r"):
+                and ev["m"] not in ("r", "v")):
             last["v"] += ev["v"]          # one entry per run of typed text at the prompt
             return True
         self.log.append(ev)
@@ -378,12 +421,14 @@ class LiveTerm:
             ev["d"] = (self.k.now - self.marks[-1]["t"]) // 1_000_000
         return ev
 
-    def feed(self, kind, val, record=True):
-        """One key ("key", "C-a") or typed text ("text", "ls -la")."""
+    def feed(self, kind, val, record=True, t=None):
+        """One key ("key", "C-a") or typed text ("text", "ls -la"). t: when it was pressed (ms; a replay's)."""
         self.sync()
         if record and not self.record(self.stamp(kind, val)):
             return
         w = self.where()
+        if w == "v":
+            return self._vim_input(kind, val, self.now_ms() if t is None else t)
         if w in ("x", "e"):
             return
         if self.tmux is not None:
@@ -596,6 +641,71 @@ class LiveTerm:
     def complete(self, ed, listing=False, only_list=False):
         KeySim.complete(self, ed, listing, only_list)
 
+    # ------------------------------------------------------------ Vim
+
+    def vim(self):
+        v = getattr(self.world, "vim", None)
+        return v if v is not None and v.quit is None else None
+
+    def vim_info(self):
+        """The bar under the window: keys pressed, the par, whether Vim already matches the problem's target."""
+        v = self.vim()
+        spec = self.problem.get("vim") or {}
+        info = {"keys": v.nkeys_total, "par": spec.get("max_keys")}
+        exp = getattr(self, "vim_expect", None)
+        if exp is not None:
+            from .vimcheck import matches, session_state
+            info["match"] = matches(spec, exp, session_state(self))
+        return info
+
+    def _vim_input(self, kind, val, t):
+        from .vim import keys as VK
+        v = self.vim()
+        for tok in VK.from_page(kind, val):
+            v.feed(tok, t + self.vim_offset)
+            if v.quit is not None:
+                break
+        self._vim_after()
+
+    def _vim_after(self):
+        """Vim quit: wake its process (the shell comes back)."""
+        v = getattr(self.world, "vim", None)
+        if v is not None and v.quit is not None:
+            p = self.world.local.procs.get(getattr(v, "pid", -1))
+            if p is not None:
+                self.k.poke(p)
+            self.advance(self.k.now, cond=lambda: self.where() != "r", max_steps=SLICE)
+
+    def _open_vim(self, args, prep=()):
+        """`#: vim files`: the session starts in Vim (its command line isn't part of the user's session)."""
+        self.tty.lines.append(f"vim {args}".strip())
+        self.k.wake(self.tty)
+        self.advance(self.k.now + PROMPT_WAIT, cond=lambda: self.vim() is not None or self.at_prompt() or self.ended)
+        v = self.vim()
+        if v is not None and prep:
+            # keys typed before the session began (`#: vimprep 900 keys`: 15 minutes before): an undo history to
+            # travel through. Vim's clock runs that far ahead of the session's from now on.
+            from .vim import keys as VK
+            base = max(sec for sec, _ in prep) * 1000
+            msg = (v.msg, v.msg_kind)
+            for sec, keys in prep:
+                for tok in VK.parse(keys):
+                    v.feed(tok, base - sec * 1000)
+                v.commit_undo()
+            self.vim_offset = base + 1000 - self.now_ms()
+            v.used.clear()
+            v.nkeys_total = 0
+            v.errors = 0
+            v.msg, v.msg_kind = msg
+        self.pending.clear()
+        self.screen.clear()
+        self.screen_size = 0
+        self.stdout_all.clear()
+        self.stderr_all.clear()
+        self.n_out = self.n_err = 0
+        self.marks.clear()
+        self.synced = 0
+
     # ------------------------------------------------------------ nano
 
     def edit(self, action, content=None, record=True, name=None):
@@ -633,7 +743,15 @@ class LiveTerm:
         state, when = self.k.run_slice(self.live_until(real_ms), SLICE)
         self.drain()
         self.sync()
+        v = self.vim()
+        if v is not None:
+            v.tick(self.now_ms() + self.vim_offset)
+            self._vim_after()
         res = self.state()
+        if v is not None and v.map_wait:
+            due = v.map_wait[-1][1] + v.opt("timeoutlen") + 1 - self.vim_offset
+            nxt = self.t0 + due * 1_000_000
+            when = nxt if when is None else min(when, nxt)
         res["busy"] = state == "busy"
         res["wake_ms"] = None if when is None else real_ms + (when - self.k.now) / 1_000_000
         return res
@@ -643,7 +761,7 @@ class LiveTerm:
     def apply(self, ev):
         k = ev["k"]
         if k in ("key", "text"):
-            self.feed(k, ev.get("v", ""), record=False)
+            self.feed(k, ev.get("v", ""), record=False, t=ev.get("t"))
         elif k in ("save", "close"):
             self.edit(k, ev.get("v"), record=False, name=ev.get("n"))
 
@@ -657,6 +775,8 @@ class LiveTerm:
             self.advance(self.k.now + PROMPT_WAIT, cond=lambda: self.where() != "r")
         elif m == "e":
             self.advance(self.k.now + PROMPT_WAIT, cond=lambda: self.where() in ("e", "x"))
+        elif m == "v":
+            self.advance(self.k.now + PROMPT_WAIT, cond=lambda: self.where() != "r")
         elif m == "r":
             due = self._cmd_start() + int(ev.get("d", 0)) * 1_000_000
             if self.where() == "r":
@@ -795,7 +915,9 @@ def reference_session(problem: dict) -> str:
     """The reference solution as a terminal session (the answer the page would send): typed line by line, a
     script written with nano, keys pressed. Used by tests and the in-browser self-test."""
     setup = problem.get("setup", "")
-    if "#: keys" in setup:
+    if problem.get("vim"):
+        log = vim_log(problem)
+    elif "#: keys" in setup:
         log = keys_log(problem["solution"])
     else:
         keep, _, _ = split_setup(setup)
@@ -837,6 +959,38 @@ def _typed_like_a_person(problem, spec):
                 t.feed("key", "C-c")
         t.advance(t.k.now + PROMPT_WAIT, cond=lambda: t.where() != "r")
     return t.log
+
+
+def vim_session(problem: dict, solution: str | None = None, setup: str | None = None):
+    """A Vim problem's reference keys (Vim notation; a shell command line before Vim opens is typed at the prompt),
+    typed into a fresh terminal the way the page sends them. -> the LiveTerm afterwards."""
+    from .vim import keys as VK
+    t = LiveTerm(problem, problem.get("setup", "") if setup is None else setup)
+    toks = VK.parse(solution if solution is not None else problem["solution"])
+    line = []
+    for tok in toks:
+        if t.where() == "p":
+            if tok == "<CR>":
+                if line:
+                    t.feed("text", "".join(line))
+                t.feed("key", "Enter")
+                line = []
+                t.advance(t.k.now + PROMPT_WAIT, cond=lambda: t.where() != "r")
+            elif len(tok) == 1:
+                line.append(tok)
+            else:
+                for kind, val in VK.to_page([tok]):
+                    t.feed(kind, val)
+            continue
+        for kind, val in VK.to_page([tok]):
+            t.feed(kind, val)
+    if line:
+        t.feed("text", "".join(line))
+    return t
+
+
+def vim_log(problem: dict, solution: str | None = None):
+    return vim_session(problem, solution).log
 
 
 def keys_log(keys_text: str):
@@ -883,8 +1037,10 @@ def key_features(log) -> set[str]:
 _TERM: list = [None]
 
 
-def start(problem: dict, log: list, real_ms: float) -> dict:
+def start(problem: dict, log: list, real_ms: float, dark: bool = False) -> dict:
     """Open the terminal for a problem; `log` (from the browser's storage) rebuilds an earlier session."""
+    if dark:
+        problem = {**problem, "_dark": True}
     t = LiveTerm(problem, problem.get("setup", ""))
     _TERM[0] = t
     start_tree = t.tree()
@@ -895,8 +1051,12 @@ def start(problem: dict, log: list, real_ms: float) -> dict:
     t.sent = len(t.log)
     t.offset = t.k.now - int(real_ms * 1_000_000)
     t.pending.clear()
+    t.vim_shown = None
+    if problem.get("vim"):
+        from .vimcheck import reference_state
+        t.vim_expect = reference_state(problem)
     res = t.state()
-    res["out"] = "".join(t.screen)
+    res["out"] = "".join(t.screen) + res["out"]   # the shell's screen, then Vim's (on the alternate screen)
     res["busy"], res["wake_ms"] = False, real_ms
     res["start_tree"] = start_tree
     res["tree"] = t.tree()
@@ -936,6 +1096,9 @@ def edit(action: str, content, real_ms: float, name=None) -> dict:
 def resize(cols: int, real_ms: float) -> dict:
     t = _term()
     t.tty.width = max(20, min(int(cols), 300))
+    if t.vim() is not None:
+        t.vim().width = t.tty.width
+        t.vim().screen_cache = None
     t.sh.set_var("COLUMNS", str(t.tty.width))
     return t.pump(real_ms)
 
