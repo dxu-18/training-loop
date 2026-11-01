@@ -135,8 +135,8 @@ NumPy/pandas standard, running in the browser.
   compares program, subcommand, flags (aliases, `-la` = `-l -a`, order-insensitive)
   and positional args. A simulated shell may come later.
 - **Vim**: compare keystroke strings against a list of accepted alternatives.
-- **LaTeX**: normalized token comparison with accepted alternatives. KaTeX could
-  render the user's math later.
+- **LaTeX**: built as latex-lite (session 23): the answer is compiled and its document compared with the
+  reference's.
 - **Dockerfile / compose.yaml**: line-wise normalized comparison or a parsed-structure check.
 
 ### torch-lite (session 5): what it covers and where it differs from PyTorch
@@ -867,6 +867,53 @@ Request:
   item: the reference passes and an idle session fails. `tests/test_vim_section.py` covers the same, plus guide
   coverage, blocked quitting, and replay. `scripts/vim_e2e.py` types each module's reference keys into the real page.
 
+### Session 23 (2026-10-31): LaTeX (11.01–11.18) on latex-lite
+Request: build the LaTeX section from the guide. It needs an embedded display of what the source compiles to, and a
+**Compile** button (instead of Run) next to Submit.
+
+**Decision: latex-lite, not a TeX engine in WebAssembly.** pdfTeX in WebAssembly (SwiftLaTeX, BusyTeX) needs
+100+ MB of TeX Live per visitor and seconds per compile, worse with TikZ, pgfplots and Beamer. It also can't run in
+the Python grader or tests. So, as with bash-lite and the Vim engine, `generator/latexlite/` interprets LaTeX in
+Python (it runs in Pyodide):
+* **Pipeline:** tokens (category codes, comments, verbatim) → macro expansion (\newcommand, \renewcommand,
+  \DeclareMathOperator, \newenvironment, \newtheorem, \def) → a document model (headings, paragraphs of styled
+  runs, lists, display math, floats, tabulars, theorems, algorithms, listings, boxes, TikZ, pgfplots, Beamer
+  frames, bibliography) → HTML/SVG.
+* **The page looks like the PDF:** sizes in pt from the article class (10/11/12pt), Computer Modern (KaTeX's
+  fonts), the paper and geometry margins. Section, equation, figure, table and theorem numbering, footnotes at the
+  page bottom, the title block, abstract, table of contents. Math is typeset by KaTeX in the page; equation
+  numbers and labels are resolved by latex-lite (all references resolved, as latexmk does). Beamer frames become
+  slides, one per overlay step. TikZ and pgfplots become SVG.
+* **Packages matter:** a command works only if its class or package is loaded (\mathbb needs amssymb, \toprule
+  booktabs, align amsmath, \cref cleveref …), as in real LaTeX.
+* **Errors use TeX's wording and line numbers:** `! Undefined control sequence. l.12 \textbff`, `! Missing $
+  inserted.`, `! LaTeX Error: Environment … undefined`, `File `x.sty' not found`, mismatched \begin/\end, extra
+  `}`, a misplaced `&`, citation/reference warnings. Like TeX, it recovers and keeps going, so the page still shows.
+* **Grading** (`latexlite/check.py`) compares the user's compiled document model with the reference's, not the
+  source. Equivalent markup passes (`\textbf{x}` / `{\bfseries x}`, `x^2` / `x^{2}`): text runs with their
+  styles, canonical math, numbering, lists, tables, floats, figures. `require`/`forbid` name commands or
+  environments used. A compile error is "Doesn't compile" (the problem is kept).
+* **Problems** edit the body (the preamble is given and shown), a whole document, or just the preamble. Some
+  start from given code (Troubleshooting: fix this). Given files: references.bib, CSV data, images. Many show the
+  target as a compiled preview.
+* **Page:** CodeMirror's stex mode; Compile shows the compiled page (and the log) beside the editor; Submit grades.
+  Errors list Overleaf-style above the page (file:line, the message, the source context, a hint); the log is
+  pdfTeX's. Pages and slides zoom to fit the panel (phones too).
+* **180 templates** in `generator/sections/s11_latex/` (10 per module, 2 per tier), each a catalog of drills. Answer
+  modes: the body, a whole document, the preamble, or references.bib. Templates that recreate a block of the guide
+  from memory (its SGD algorithm, its talk, the equation gallery) are one fixed text on purpose (`@fixed`); every
+  other template varies by seed. Every command in latexlite/catalog.py (the Instructions) is practised.
+* **Checks:** `scripts/latex_templates.py` (every item: the reference passes, an empty or starter answer fails;
+  `--katex` typesets every target formula with KaTeX in Node); `tests/test_latex_section.py` (the same, catalog
+  coverage, pdflatex's error wording, page rendering, grading messages); `scripts/latex_e2e.py` (every module in
+  the browser: Compile, the PDF, Submit; errors and the log; reload; phone); `scripts/e2e_check.py` self-tests
+  every template in Pyodide.
+* **Faithful details** checked along the way: \label before \caption takes the section's number; \textbf is
+  \long (an unclosed brace reads to the end of the file); a math-only command in text gives "Missing $ inserted.";
+  \include clears the page before and after; \newpage on an empty page does nothing; a twocolumn article is
+  410pt wide and fills the left column first; parboxes (minipage, p{} cells) have no paragraph indent;
+  algpseudocode puts \Require/\Ensure in the label column.
+
 ### Open problem: Hugging Face in the browser
 Pyodide has no `transformers`. Options: extend the shim idea (a tiny tokenizer/pipeline layer over torch-lite),
 AST and pattern checks, or an optional "run locally" mode. **Not decided yet.**
@@ -887,10 +934,15 @@ generator/            Python package: question generation + grading (runs locall
     s07_bash/         _common.py (P/K problem helpers, files() heredocs, catalog(), challenge()) + m01_basics.py … m17_keys_history.py
     s09_vim/          _common.py (V() problem helper: runs the reference once for the target text, cursor target and
                       Instructions; drill(); ML-themed texts) + m01_modes.py … m12_vimrc.py
+    s11_latex/        _common.py (L() problem helper: compiles the reference once for the target preview and the
+                      Instructions; drill(); @fixed) + m01_skeleton.py … m18_troubleshooting.py
   bashlite/           bash-lite: a simulated Ubuntu machine in pure Python (vfs, parser, kernel, shell, builtins, utils/ commands,
                       world/basefs, directives, check = the bash grader, keys = readline/tmux simulator, features,
                       live = the live terminal: key-by-key sessions on the real clock, logs, replays;
                       vim/ = the Vim engine, utils/vim.py = the `vim` command, vimcheck = the Vim grader)
+  latexlite/          latex-lite: LaTeX in Python (tokens, engine + commands/features/floats/tables/bib/algo, mathmode,
+                      tikz, pgfplots, beamer, packages = what each package provides, render + render_table = HTML,
+                      compile = compile_doc(), check = the LaTeX grader, catalog = the Instructions' descriptions)
   shims/torch/        torch-lite: NumPy-backed torch (core in __init__.py, more ops in _extra.py; nn, optim, utils, func,
                       autograd, amp, profiler, distributed (+ fsdp, checkpoint), library, _compile, ...)
   shims/triton/       triton-lite: @triton.jit kernels interpreted on the CPU
@@ -899,11 +951,12 @@ scripts/
   build.py            zip generator/ into docs/generator.zip + write docs/build.json catalog (rerun after every change)
   preview.py          print sample questions from the CLI
   e2e_check.py        Playwright click-through of the site + Pyodide self-test of every template
+  latex_templates.py  check every LaTeX template item (+ --katex: typeset every target formula); latex_e2e.py: the pages
 ci/pages.yml          optional GitHub Actions deploy (inactive, see its header)
 tests/                pytest: every template passes its own grader; every challenge matches a brute force
 docs/                 the static website (GitHub Pages root): app.js (pages), terminal.js (the Bash terminal, nano,
                       Files panel), worker.js (Pyodide), progress.js (Download / Upload of a .tlsave progress file),
-                      style.css
+                      style.css, latex.css (latex-lite's page: the article class, Beamer slides; KaTeX from cdnjs)
   dsa/                Part III tutorials: lang.js (the statement language -> Python/C++/Java/Rust), common.js (what
                       every tutorial shares: rendering, reference programs, tests), run.js (Compiler Explorer + Pyodide
                       runner, the tests around the user's file, output diff), page.js (setup, steps with the typing
@@ -946,7 +999,7 @@ Legend: ✅ done · 🟡 partial · ⬜ not started
 | 8 | Git & GitHub | ⬜ | command | |
 | 9 | Vim | ✅ **all 12 modules live**: 121 templates in `generator/sections/s09_vim/` (every module ≥ 2 templates per tier), answered in Vim in the live terminal | bash-lite's Vim (`generator/bashlite/vim/`, checked against real Vim 9.1); Vim's end state compared with the reference keys', plus required / forbidden commands and a keystroke par | session 22 |
 | 10 | SQL | ⬜ | sqlite3 exec | |
-| 11 | LaTeX | ⬜ | normalized / KaTeX | |
+| 11 | LaTeX | ✅ **all 18 modules live**: 180 templates in `generator/sections/s11_latex/` (10 per module), answered in an editor with Compile (the PDF beside it) and Submit | latex-lite (`generator/latexlite/`): LaTeX interpreted in Python, math by KaTeX, TikZ/pgfplots as SVG, Beamer slides; the compiled documents compared, plus required / forbidden commands | session 23 |
 | 12 | Docker | ⬜ | command / Dockerfile | |
 | 13 | Data Structures & Algorithms (Part III) | ✅ **all 12 live** (binary search, mergesort, quicksort, linked lists, stacks, queues, unbounded arrays, hash tables, BSTs, dictionaries & sets, heaps, priority queues; all options × element types × Python/C++/Java/Rust, contracts optional) | Pyodide (Python), Compiler Explorer (C++/Java/Rust); line-by-line output diff | session 11 |
 

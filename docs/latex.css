@@ -1,0 +1,233 @@
+/* latex-lite's page (generator/latexlite/render.py): what pdflatex would print, in pt.
+   Body text in Computer Modern (KaTeX's fonts), the article class's sizes and spacing. */
+
+.tex-doc {
+  --tex-fs: 10pt; --tex-lh: 1.2; --tex-parindent: 1.5em; --tex-parskip: 0pt;
+  color: #000; font-family: KaTeX_Main, "Latin Modern Roman", "Computer Modern Serif", "Times New Roman", serif;
+  font-size: var(--tex-fs); line-height: var(--tex-lh);
+  font-kerning: normal; text-rendering: optimizeLegibility; hyphens: auto; -webkit-hyphens: auto;
+  display: flex; flex-direction: column; gap: 14px; align-items: center;
+}
+.tex-page {
+  background: #fff; box-shadow: 0 1px 4px rgba(0, 0, 0, .25); box-sizing: border-box; position: relative;
+  display: flex; flex-direction: column; flex-shrink: 0;
+}
+.tex-body { flex: 1; text-align: justify; }
+/* [twocolumn]: \columnsep 10pt; the title spans both columns (\maketitle uses \twocolumn[...]) */
+.tex-twocolumn .tex-body { flex: none; column-count: 2; column-gap: 10pt; column-fill: auto; }
+.tex-twocolumn .tex-titleblock { column-span: all; }
+.tex-doc .katex { font-size: 1em; }
+.tex-doc .katex-display { margin: 0; }
+
+/* paragraphs */
+.tex-p { text-indent: var(--tex-parindent); margin: var(--tex-parskip) 0 0; }
+.tex-p.tex-noindent, .tex-item-body > .tex-p:first-child, .tex-titleblock .tex-p { text-indent: 0; }
+/* parboxes (minipage, p{} cells, tcolorbox) set \parindent to 0 */
+.tex-minipage .tex-p, .tex-subfloat .tex-p, .tex-tabular .tex-p, .tex-tcolorbox .tex-p { text-indent: 0; }
+.tex-align-c { text-align: center; text-indent: 0; }
+.tex-align-l { text-align: left; text-indent: 0; }
+.tex-align-r { text-align: right; text-indent: 0; }
+.tex-flex { display: flex; align-items: flex-end; text-indent: 0; flex-wrap: wrap; }
+.tex-indent { flex: none; width: var(--tex-parindent); }
+.tex-flex.tex-align-c { justify-content: center; }
+.tex-hfill { flex: 1 1 0; display: inline-block; min-width: 0; }
+.tex-dotfill { border-bottom: 1pt dotted currentColor; margin: 0 .3em .3em; }
+.tex-rulefill { border-bottom: .4pt solid currentColor; margin: 0 .2em .3em; }
+.tex-space { display: inline-block; }
+.tex-vspace { flex-shrink: 0; }
+.tex-vfill { flex: 1; }
+
+/* fonts */
+.tex-b { font-weight: bold; }
+.tex-it { font-style: italic; }
+.tex-sl { font-style: oblique; }
+.tex-sc { font-variant: small-caps; }
+.tex-sf { font-family: KaTeX_SansSerif, "Latin Modern Sans", sans-serif; }
+.tex-tt { font-family: KaTeX_Typewriter, "Latin Modern Mono", monospace; }
+.tex-u { text-decoration: underline; text-underline-offset: 2pt; }
+.tex-sz-tiny { font-size: .5em; } .tex-sz-scriptsize { font-size: .7em; } .tex-sz-footnotesize { font-size: .8em; }
+.tex-sz-small { font-size: .9em; } .tex-sz-large { font-size: 1.2em; } .tex-sz-Large { font-size: 1.44em; }
+.tex-sz-LARGE { font-size: 1.728em; } .tex-sz-huge { font-size: 2.074em; } .tex-sz-Huge { font-size: 2.488em; }
+.tex-sz-tiny .tex-sz-tiny, .tex-h .tex-sz-Large { font-size: 1em; }
+.tex-logo { white-space: nowrap; }
+.tex-la { font-size: .75em; vertical-align: .22em; margin: 0 -.32em 0 -.36em; text-transform: uppercase; }
+.tex-e { text-transform: uppercase; vertical-align: -.22em; margin: 0 -.12em 0 -.16em; }
+
+/* title, headings, contents */
+.tex-titleblock { text-align: center; margin: 2em 0 1.5em; }
+.tex-title { font-size: 1.728em; line-height: 1.25; }
+.tex-authors { display: flex; justify-content: center; gap: 2em; flex-wrap: wrap; font-size: 1.2em; margin-top: 1.5em; }
+.tex-date { font-size: 1.2em; margin-top: 1em; }
+.tex-h { font-weight: bold; text-align: left; text-indent: 0; line-height: 1.2; break-after: avoid; }
+.tex-h1 { margin: 1.4em 0 .9em; }
+.tex-h2 { margin: 1.3em 0 .6em; }
+.tex-h3 { margin: 1.2em 0 .5em; }
+.tex-secnum { display: inline-block; margin-right: 1em; }
+.tex-chapter, .tex-part { margin: 2.5em 0 2em; }
+.tex-chapnum { font-size: 2.074em; margin-bottom: .8em; }
+.tex-chaptitle { font-size: 2.488em; }
+.tex-runin { margin-right: 1em; }
+.tex-abstract { margin: 1em 3em; font-size: .9em; }
+.tex-abstract-h { font-weight: bold; text-align: center; margin-bottom: .5em; }
+.tex-toc-row { display: flex; align-items: baseline; text-align: left; }
+.tex-toc1 { font-weight: bold; margin-top: 1em; }
+.tex-toc2 { padding-left: 1.5em; } .tex-toc3 { padding-left: 3.8em; }
+.tex-tocnum { min-width: 1.5em; padding-right: .5em; } .tex-toc2 .tex-tocnum { min-width: 2.3em; }
+.tex-toc3 .tex-tocnum { min-width: 3.2em; }
+.tex-dots { flex: 1; border-bottom: 1.2pt dotted #000; margin: 0 .5em .25em; }
+.tex-toc1 .tex-dots { border: none; }
+
+/* lists */
+.tex-list { margin: .5em 0; }
+.tex-list.tex-compact { margin: .2em 0; }
+.tex-item { position: relative; padding-left: 2.5em; margin-top: .4em; }
+.tex-compact > .tex-item { margin-top: 0; }
+.tex-list .tex-list .tex-item { padding-left: 2.2em; }
+.tex-flush > .tex-item { padding-left: 1.6em; }
+.tex-label { position: absolute; left: 0; width: 2.1em; text-align: right; }
+.tex-list .tex-list .tex-label { width: 1.8em; }
+.tex-flush > .tex-item > .tex-label { width: 1.2em; }
+.tex-desc { padding-left: 2.5em; text-indent: -2.5em; }
+.tex-desc .tex-p { text-indent: 0; }
+
+/* math */
+.tex-display { margin: .7em 0; text-indent: 0; }
+.tex-dm { overflow-x: auto; overflow-y: hidden; }
+.tex-multline .tex-mline-l .katex-display > .katex { text-align: left; padding-left: 1em; }
+.tex-multline .tex-mline-r .katex-display > .katex { text-align: right; }
+
+/* floats */
+.tex-float { margin: 1.1em 0; text-indent: 0; }
+.tex-caption { text-align: center; margin: .6em 0; text-indent: 0; }
+.tex-caption-long { text-align: justify; }
+.tex-subcaption { font-size: 1em; margin: .3em 0; }
+.tex-graphic { display: inline-block; vertical-align: bottom; max-width: 100%; }
+.tex-graphic svg { display: block; width: 100%; height: auto; }
+.tex-missing { aspect-ratio: 4 / 3; border: 1px dashed #b00; color: #b00; display: inline-flex; align-items: center;
+               justify-content: center; font-family: KaTeX_Typewriter, monospace; font-size: .8em; }
+.tex-minipage, .tex-subfloat { display: inline-block; vertical-align: middle; text-indent: 0; text-align: justify; }
+.tex-subfloat { text-align: center; vertical-align: bottom; }
+.tex-algorithm { border-top: .8pt solid #000; border-bottom: .8pt solid #000; padding-bottom: .2em; }
+.tex-algcaption { border-bottom: .4pt solid #000; padding: .2em 0; text-indent: 0; text-align: left; }
+
+/* tables */
+.tex-tabular { display: inline-table; border-collapse: collapse; text-indent: 0; line-height: 1.2; vertical-align: middle; }
+.tex-tabular td { padding: .15em .5em; vertical-align: top; }
+.tex-booktabs td { padding: .2em .5em; }
+.tex-al { text-align: left; } .tex-ac { text-align: center; } .tex-ar { text-align: right; } .tex-aj { text-align: justify; }
+
+/* code, algorithms */
+.tex-verbatim { font-family: KaTeX_Typewriter, monospace; font-size: 1em; white-space: pre; margin: .6em 0; text-align: left;
+                overflow-x: auto; line-height: 1.2; }
+.tex-verb { white-space: pre; }
+.tex-listing { font-family: KaTeX_Main, serif; margin: .6em 0; text-align: left; line-height: 1.25; text-indent: 0; }
+.tex-listing.tex-tt { font-family: KaTeX_Typewriter, monospace; }
+.tex-frame-single { border: .4pt solid #000; padding: .2em .4em; }
+.tex-lline { display: flex; white-space: pre; }
+/* numbers=left: tiny numbers numbersep (10pt) left of the code, outside the frame, hanging into the margin */
+.tex-lnum { flex: none; box-sizing: border-box; width: 3.4em; margin-left: -3.4em; padding-right: 1.45em; text-align: right;
+            font-size: .7em; align-self: center; font-family: KaTeX_Main, serif; }
+.tex-lst-kw { font-weight: bold; }
+.tex-lst-comment { font-style: italic; }
+.tex-algorithmic { margin: .3em 0; text-align: left; text-indent: 0; }
+.tex-alline { display: flex; }
+.tex-alnum { width: 1.6em; flex-shrink: 0; text-align: right; padding-right: .6em; font-size: .8em; align-self: baseline; }
+.tex-albody { flex: 1; display: flex; align-items: baseline; }
+.tex-algcomment { margin-left: auto; padding-left: 1em; }
+
+/* theorems, boxes */
+.tex-theorem, .tex-proof { margin: .7em 0; }
+.tex-thmhead.tex-thm-plain, .tex-thmhead.tex-thm-definition { font-weight: bold; font-style: normal; }
+.tex-thmhead.tex-thm-remark { font-style: italic; }
+.tex-thmnote { font-style: normal; font-weight: normal; }
+.tex-qed { float: right; }
+.tex-quote { margin: .6em 2.5em; }
+.tex-quote .tex-p { text-indent: 0; }
+.tex-quotation .tex-p { text-indent: var(--tex-parindent); }
+.tex-group { margin: .6em 0; }
+.tex-group .tex-p { text-indent: 0; }
+.tex-tcolorbox { border: .5mm solid; margin: .8em 0; overflow: hidden; }
+.tex-tcb-title { padding: .3em .7em; font-weight: normal; }
+.tex-tcb-body { padding: .45em .7em; }
+.tex-tcb-body .tex-p { text-indent: 0; }
+.tex-colorbox { padding: 0 3pt; }
+.tex-mbox { display: inline-block; text-indent: 0; }
+.tex-fbox { border: .4pt solid currentColor; padding: 0 3pt; }
+.tex-transform, .tex-resized { display: inline-block; }
+.tex-rule { display: inline-block; background: currentColor; vertical-align: baseline; }
+.tex-multicols { column-gap: 10pt; }
+.tex-colbreak { break-after: column; }
+
+/* links (hyperref draws boxes around them in PDF viewers) */
+.tex-link { color: inherit; text-decoration: none; }
+.tex-link-int { outline: 1px solid #f00; outline-offset: 0; }
+.tex-link-cite { outline: 1px solid #0f0; }
+.tex-link-url { outline: 1px solid #0ff; }
+.tex-fnmark { font-size: .7em; line-height: 0; }
+
+/* page furniture */
+.tex-head, .tex-foot { display: grid; grid-template-columns: 1fr auto 1fr; font-size: 1em; text-indent: 0; }
+.tex-head { margin: -2.5em 0 1.6em; padding-bottom: 2pt; min-height: 1.2em; }
+.tex-headrule { border-bottom: .4pt solid #000; }
+.tex-foot { margin-top: 2em; }
+.tex-footrule { border-top: .4pt solid #000; padding-top: 2pt; }
+.tex-head > :nth-child(3), .tex-foot > :nth-child(3) { text-align: right; }
+.tex-footnotes { font-size: .8em; margin-top: 1.5em; text-align: justify; }
+.tex-footnotes hr { width: 2in; margin: 0 0 .3em; border: none; border-top: .4pt solid #000; }
+.tex-fn { text-indent: 1em; }
+.tex-fn sup { font-size: .7em; margin-right: .2em; }
+.tex-bib { margin-top: 1.5em; }
+.tex-bibitem { display: flex; gap: .7em; margin-top: .4em; text-align: justify; text-indent: 0; }
+.tex-biblabel { flex-shrink: 0; min-width: 1.6em; }
+.tex-bib-ay { padding-left: 1.5em; text-indent: -1.5em; display: block; }
+.tex-tikz, .tex-plot { display: inline-block; vertical-align: middle; text-indent: 0; }
+.tex-tikz svg, .tex-plot svg { overflow: visible; display: block; }
+.tex-tikz-text { display: flex; align-items: center; justify-content: center; text-align: center; line-height: 1.1;
+                 font-size: 10px; font-family: KaTeX_Main, serif; white-space: nowrap; }
+.tex-tikz-text .katex { font-size: 1em; }
+
+/* beamer: 128mm x 96mm slides, one per overlay step */
+.tex-beamer { font-family: KaTeX_SansSerif, "Latin Modern Sans", sans-serif; }
+.tex-slide { background: #fff; box-shadow: 0 1px 4px rgba(0, 0, 0, .25); display: flex; flex-direction: column;
+             box-sizing: border-box; overflow: hidden; position: relative; flex-shrink: 0; text-align: left; }
+.tex-hidden { visibility: hidden; }
+.tex-ftitle { color: #333399; font-size: 1.44em; padding: .35em .6em .2em; line-height: 1.15; }
+.tex-fsub { font-size: .7em; }
+.tex-theme-madrid .tex-ftitle { background: #333399; color: #fff; margin: 0 0 .2em; border-radius: 0 0 4px 4px;
+                                 padding: .3em .7em; font-size: 1.2em; }
+.tex-theme-madrid .tex-ftitle { background: linear-gradient(#3333b2, #262680); }
+.tex-theme-metropolis { font-family: KaTeX_SansSerif, sans-serif; }
+.tex-theme-metropolis .tex-ftitle { background: #23373b; color: #fff; font-size: 1.1em; padding: .5em .8em; }
+.tex-fbody { flex: 1; padding: .3em 1.1em; display: flex; flex-direction: column; justify-content: center; }
+.tex-fbody.tex-ftop { justify-content: flex-start; }
+.tex-fbody .tex-p { text-indent: 0; text-align: left; }
+.tex-footline { display: grid; grid-template-columns: 1fr 1fr 1fr; font-size: .5em; color: #fff; }
+.tex-footline > span { padding: .25em .6em; white-space: nowrap; overflow: hidden; }
+.tex-footline > :nth-child(1) { background: #262680; text-align: center; }
+.tex-footline > :nth-child(2) { background: #3333b2; text-align: center; }
+.tex-footline > :nth-child(3) { background: #7a7ad1; text-align: right; display: flex; justify-content: space-between; }
+.tex-foot-num > span { background: none !important; color: #23373b; }
+.tex-beamer .tex-itemize > .tex-item > .tex-label { color: #333399; }
+.tex-beamer .tex-enumerate > .tex-item > .tex-label { color: #333399; }
+.tex-btitlepage { text-align: center; }
+.tex-btitle { color: #333399; font-size: 1.44em; padding: .4em .6em; margin: 0 1em 1em; }
+.tex-theme-madrid .tex-btitle { background: #3333b2; color: #fff; border-radius: 5px; box-shadow: 1px 2px 3px #999; }
+.tex-bsubtitle { font-size: .7em; margin-top: .3em; }
+.tex-bauthors { display: flex; justify-content: center; gap: 1.5em; }
+.tex-binst { font-size: .8em; margin-top: .4em; }
+.tex-bdate { font-size: .8em; margin-top: .6em; }
+.tex-btoc-row { margin: .3em 0 .3em 1em; color: #333399; display: flex; align-items: center; gap: .5em; }
+.tex-btoc-num { display: inline-flex; width: 1.3em; height: 1.3em; border-radius: 50%; background: #333399; color: #fff;
+                font-size: .75em; align-items: center; justify-content: center; }
+.tex-btoc-sub { margin-left: 3em; font-size: .9em; }
+.tex-bcolumns { display: flex; gap: .8em; align-items: center; }
+.tex-bcol { flex-shrink: 0; }
+.tex-bblock { margin: .5em 0; border-radius: 4px; overflow: hidden; box-shadow: 1px 2px 3px #bbb; }
+.tex-bblock-title { background: #3333b2; color: #fff; padding: .2em .5em; }
+.tex-bblock-body { background: #ebebf5; padding: .3em .5em; }
+.tex-alertblock .tex-bblock-title { background: #cc0000; }
+.tex-alertblock .tex-bblock-body { background: #f5ebeb; }
+.tex-exampleblock .tex-bblock-title { background: #008000; }
+.tex-exampleblock .tex-bblock-body { background: #ebf5eb; }
+.tex-beamer .tex-item { padding-left: 1.6em; }
+.tex-beamer .tex-label { width: 1.2em; }

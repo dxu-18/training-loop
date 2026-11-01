@@ -19,7 +19,7 @@ const TOPICS = [
   { id: "git", part: 2, mode: "shell", packages: [] },
   { id: "vim", part: 2, mode: null, packages: [], terminal: true },
   { id: "sql", part: 2, mode: "text/x-sql", packages: [] },
-  { id: "latex", part: 2, mode: null, packages: [] },
+  { id: "latex", part: 2, mode: "stex", packages: [], latex: true },
   { id: "docker", part: 2, mode: "shell", packages: [] },
 ];
 const TOPIC = Object.fromEntries(TOPICS.map((t) => [t.id, t]));
@@ -251,6 +251,7 @@ let view = null; // { topic, mod, ms, problem, editor, phase }
 
 async function renderPractice(topic, mod, topicTitle) {
   if (topic.terminal) return renderTerminalPractice(topic, mod, topicTitle);
+  if (topic.latex) return renderLatexPractice(topic, mod, topicTitle);
   const ms = moduleState(topic.id, mod.id);
   document.title = `${mod.id} ${mod.title} · training-loop`;
   app().innerHTML = `
@@ -293,6 +294,114 @@ async function renderPractice(topic, mod, topicTitle) {
   try { await py.init([...topic.packages, ...((topic.extra || {})[mod.id] || [])]); }
   catch (e) { $(".problem").innerHTML = `<div class="loading">Couldn't start Python: ${esc(e.message)}</div>`; return; }
   await loadProblem();
+}
+
+// The LaTeX topic: an editor with Compile (latex-lite, generator/latexlite) and Submit, the compiled PDF beside it.
+async function renderLatexPractice(topic, mod, topicTitle) {
+  const ms = moduleState(topic.id, mod.id);
+  document.title = `${mod.id} ${mod.title} · training-loop`;
+  app().innerHTML = `
+    <div class="bar"><a href="#/${topic.id}">← ${esc(topicTitle)}</a>
+      <span class="crumb"><span class="m-id">${esc(mod.id)}</span>${esc(mod.title)}</span>
+      <span class="qnum" title="Question number"></span></div>
+    <div class="practice latex-mode">
+      <section>
+        <article class="problem"><div class="loading">Starting LaTeX… (the first load takes a few seconds)</div></article>
+        <div class="editor"><textarea></textarea></div>
+        <div class="actions">
+          <button class="btn compile run" disabled>Compile</button>
+          <button class="btn primary submit" disabled>Submit</button>
+          <span class="hint">⌘/Ctrl+Enter compile · Shift+Enter submit</span>
+          <button class="btn primary next" hidden>Next →</button>
+        </div>
+      </section>
+      <aside class="console latex-out">
+        <div class="head"><div class="verdict"></div><span class="tier"></span></div>
+        <div class="verdict-msg"></div>
+        <div class="solution-box" hidden><div class="label">Solution:</div></div>
+        <div class="pdf-bar"><span class="pdf-name">main.pdf</span><span class="pdf-status"></span></div>
+        <div class="pdf-problems"></div>
+        <div class="pdf-view"><div class="pdf-empty">Compile to see what your LaTeX produces.</div></div>
+        <details class="pdf-log"><summary>Log</summary><pre></pre></details>
+      </aside>
+    </div>`;
+  const editor = CodeMirror.fromTextArea(app().querySelector("textarea"), {
+    mode: "stex", lineNumbers: true, indentUnit: 2, matchBrackets: true, autoCloseBrackets: "{}[]()$$",
+    viewportMargin: Infinity, lineWrapping: true,
+    extraKeys: {
+      "Cmd-Enter": () => doCompile(), "Ctrl-Enter": () => doCompile(), "Shift-Enter": () => doSubmit(),
+      Tab: (cm) => (cm.somethingSelected() ? cm.indentSelection("add") : cm.replaceSelection("  ")),
+    },
+  });
+  editor.on("change", () => { if (view && view.problem) { ms.draft = { seed: view.problem.seed, code: editor.getValue() }; save(); } });
+  view = { topic, mod, ms, problem: null, editor, phase: "loading", latex: true };
+  $(".run").onclick = doCompile;
+  $(".submit").onclick = doSubmit;
+  $(".next").onclick = () => loadProblem();
+  if (!py) py = new Py();
+  try { await py.init(topic.packages); }
+  catch (e) { $(".problem").innerHTML = `<div class="loading">Couldn't start Python: ${esc(e.message)}</div>`; return; }
+  await loadProblem();
+}
+
+// typeset the math latex-lite left for KaTeX, then scale the pages to the panel
+function typeset(root) {
+  const go = () => {
+    for (const el of root.querySelectorAll(".tex-m, .tex-dm")) {
+      if (el.dataset.done) continue;
+      el.dataset.done = "1";
+      try { katex.render(el.dataset.tex, el, { displayMode: !!el.dataset.display, throwOnError: false, strict: "ignore", output: "html" }); }
+      catch (e) { el.textContent = el.dataset.tex; }
+    }
+    fitPages(root);
+  };
+  if (window.katex) go(); else setTimeout(() => typeset(root), 100);   // KaTeX loads with defer
+}
+
+function fitPages(root) {
+  const doc = root.querySelector(".tex-doc");
+  if (!doc) return;
+  doc.style.zoom = 1;
+  const page = doc.querySelector(".tex-page, .tex-slide");
+  if (!page) return;
+  // a two-column page whose text overflows its height: balance the columns instead of overflowing sideways
+  for (const body of doc.querySelectorAll(".tex-twocolumn .tex-body"))
+    if (body.scrollWidth > body.clientWidth + 2) { body.style.height = "auto"; body.style.columnFill = "balance"; }
+  const avail = root.clientWidth - 4;
+  const w = page.getBoundingClientRect().width;
+  if (w > 0 && avail > 0) doc.style.zoom = Math.min(1.2, avail / w).toFixed(3);
+}
+
+function showPDF(res) {
+  const viewEl = $(".latex-out .pdf-view");   // (not the target preview in the prompt)
+  if (!viewEl) return;
+  const probs = res.problems || [];
+  const errs = probs.filter((p) => p.kind === "error"), warns = probs.filter((p) => p.kind === "warning");
+  $(".pdf-status").textContent = res.error ? "latex-lite failed" :
+    errs.length ? `${errs.length} error${errs.length === 1 ? "" : "s"}` + (warns.length ? `, ${warns.length} warning${warns.length === 1 ? "" : "s"}` : "")
+    : warns.length ? `${warns.length} warning${warns.length === 1 ? "" : "s"}` : "compiled";
+  $(".pdf-status").className = "pdf-status" + (errs.length || res.error ? " bad" : warns.length ? " warn" : " good");
+  $(".pdf-problems").innerHTML = probs.slice(0, 8).map((p) => `<div class="pdf-prob ${p.kind}">
+      <div class="pdf-prob-head">${p.line ? `<span class="pdf-line">${esc(p.file)}:${p.line}</span>` : ""}${esc(p.msg)}</div>
+      ${p.context ? `<code>${esc(p.context)}</code>` : ""}${p.help ? `<div class="pdf-help">${esc(p.help)}</div>` : ""}</div>`).join("");
+  if (res.error) { viewEl.innerHTML = `<div class="pdf-empty err">${esc(res.error)}</div>`; return; }
+  viewEl.innerHTML = res.html || "";
+  typeset(viewEl);
+  $(".pdf-log pre").textContent = res.log || "";
+}
+
+async function doCompile() {
+  if (!view.problem || $(".run").disabled) return;
+  setBusy(true);
+  $(".pdf-status").textContent = "compiling…";
+  $(".pdf-status").className = "pdf-status";
+  const v = view;
+  let res;
+  try { res = await py.call("run", { problem: v.problem, code: v.editor.getValue() }, (v.problem.timeout + 2) * 1000); }
+  catch (e) { res = { error: e instanceof TimeLimit ? "Time limit exceeded (a macro that calls itself?)" : e.message }; }
+  if (view !== v) return;
+  showPDF(res);
+  setBusy(false);
 }
 
 // The Bash topic: a terminal (docs/terminal.js) instead of an editor, and a Files panel beside it.
@@ -357,9 +466,16 @@ async function loadProblem() {
   view.phase = "answering";
   drawProblem(p, cur.n);
   if (view.editor) {
-    view.editor.setValue(ms.draft && ms.draft.seed === p.seed ? ms.draft.code : "");
+    const starter = (p.latex && p.latex.starter) || "";
+    view.editor.setValue(ms.draft && ms.draft.seed === p.seed ? ms.draft.code : starter);
+    if (view.latex) {
+      $(".latex-out .pdf-view").innerHTML = `<div class="pdf-empty">Compile to see what your LaTeX produces.</div>`;
+      $(".pdf-problems").innerHTML = "";
+      $(".pdf-status").textContent = "";
+      $(".pdf-log pre").textContent = "";
+    }
     view.editor.focus();
-    $(".out").innerHTML = `<span class="dim">Output appears here.</span>`;
+    if ($(".out")) $(".out").innerHTML = `<span class="dim">Output appears here.</span>`;   // (LaTeX: the PDF panel)
   } else startTerminal(p);
   $(".verdict").textContent = "";
   $(".verdict").className = "verdict";
@@ -376,7 +492,7 @@ function drawProblem(p, n) {
   if (view.editor) view.editor.setOption("mode", mode);
   const el = $(".problem");
   el.innerHTML = `<div class="prompt">${md(p.prompt)}</div>`;
-  const given = view.topic.id === "vim" ? "" : shownSetup(p.setup);   // Vim: the files are open in the terminal
+  const given = view.topic.id === "vim" || view.topic.latex ? "" : shownSetup(p.setup);   // Vim: the files are open in the terminal
   if (given && view.topic.terminal) {   // already run on the machine: the terminal and Files panel show the result
     const d = document.createElement("details");
     d.className = "setup";
@@ -387,6 +503,7 @@ function drawProblem(p, n) {
     el.insertAdjacentHTML("beforeend", `<div class="label">Given</div>`);
     el.appendChild(codeBlock(given, mode));
   }
+  if (p.latex) latexGiven(p, el);
   if (p.instructions && p.instructions.length) {   // the functions this problem practises (generator/instructions.py)
     const d = document.createElement("details");
     d.className = "instructions";
@@ -402,6 +519,31 @@ function drawProblem(p, n) {
     d.innerHTML = `<summary>Show answer</summary><div class="inner"></div>`;
     d.querySelector(".inner").appendChild(codeBlock(p.solution, p.vim && p.vim.check ? null : mode));
     el.appendChild(d);
+  }
+}
+
+// what a LaTeX problem gives: the target (compiled), the preamble or body around the answer, other files
+function latexGiven(p, el) {
+  const L = p.latex;
+  if (L.target) {
+    const d = document.createElement("div");
+    d.className = "latex-target";
+    d.innerHTML = `<div class="label">Target (compiled)</div><div class="pdf-view target-view">${L.target}</div>`;
+    el.appendChild(d);
+    requestAnimationFrame(() => typeset(d.querySelector(".target-view")));
+  }
+  const given = [];
+  if (L.mode === "body" && L.preamble) given.push(["Preamble (given; you write the body)", L.preamble]);
+  if (L.mode === "preamble" && L.body) given.push(["Body (given; you write the preamble)", L.body]);
+  if (L.mode === "bib") given.push(["main.tex (given; you write references.bib)", L.preamble + "\\begin{document}\n" + L.body + "\n\\end{document}\n"]);
+  for (const [name, text] of Object.entries(L.files || {})) if (!/^\s*<svg/.test(text)) given.push([name, text]);
+  for (const [label, text] of given) {
+    const det = document.createElement("details");
+    det.className = "setup";
+    det.open = label.startsWith("Preamble") ? false : true;
+    det.innerHTML = `<summary>${esc(label)}</summary><div class="inner"></div>`;
+    det.querySelector(".inner").appendChild(codeBlock(text, /\.(csv|txt)$/.test(label) ? null : "stex"));
+    el.appendChild(det);
   }
 }
 
@@ -463,12 +605,14 @@ async function doSubmit() {
     showOutput(res, timedOut);
   }
   if (!view || view.problem !== problem) return; // navigated away meanwhile
-  if (res.stdout !== undefined) showOutput(res);
+  if (view.latex) showPDF(res);
+  else if (res.stdout !== undefined) showOutput(res);
 
   if (!res.compiled) { // doesn't parse (or, in the terminal, nothing to check yet): keep the problem
     $(".verdict").textContent = view.term ? "Not yet" : "Doesn't compile";
     $(".verdict").className = "verdict bad";
-    $(".verdict-msg").textContent = view.term ? (res.message || "Keep going, then submit again.") : "Fix the syntax error and submit again.";
+    $(".verdict-msg").textContent = view.term ? (res.message || "Keep going, then submit again.") :
+      view.latex ? (res.message || res.error || "Fix the error and submit again.") : "Fix the syntax error and submit again.";
     setBusy(false);
     if (view.term) view.term.focus();
     return;
@@ -505,7 +649,7 @@ function showSolution(p) {
   box.hidden = !p;
   if (!p) return;
   const keys = /^\s*#: keys/m.test(p.setup || "");
-  box.appendChild(codeBlock(p.solution, keys || (p.vim && p.vim.check) ? null : view.topic.terminal ? "shell" : modeOf(p, view.topic)));
+  box.appendChild(codeBlock(p.solution, keys || (p.vim && p.vim.check) ? null : p.latex ? "stex" : view.topic.terminal ? "shell" : modeOf(p, view.topic)));
 }
 
 function showMedal(topic, mod) {
