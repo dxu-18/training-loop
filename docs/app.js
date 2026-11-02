@@ -319,10 +319,16 @@ async function renderLatexPractice(topic, mod, topicTitle) {
         <div class="head"><div class="verdict"></div><span class="tier"></span></div>
         <div class="verdict-msg"></div>
         <div class="solution-box" hidden><div class="label">Solution:</div></div>
-        <div class="pdf-bar"><span class="pdf-name">main.pdf</span><span class="pdf-status"></span></div>
-        <div class="pdf-problems"></div>
-        <div class="pdf-view"><div class="pdf-empty">Compile to see what your LaTeX produces.</div></div>
-        <details class="pdf-log"><summary>Log</summary><pre></pre></details>
+        <div class="pdf-tabs" role="tablist">
+          <button class="pdf-tab" role="tab" data-tab="target">Target <span class="dim">(compiled)</span></button>
+          <button class="pdf-tab" role="tab" data-tab="mine">Your PDF <span class="pdf-status"></span></button>
+        </div>
+        <div class="pdf-pane" data-pane="target"><div class="pdf-view target-view"></div></div>
+        <div class="pdf-pane" data-pane="mine">
+          <div class="pdf-problems"></div>
+          <div class="pdf-view mine-view"><div class="pdf-empty">Compile to see what your LaTeX produces.</div></div>
+          <details class="pdf-log"><summary>Log</summary><pre></pre></details>
+        </div>
       </aside>
     </div>`;
   const editor = CodeMirror.fromTextArea(app().querySelector("textarea"), {
@@ -338,10 +344,33 @@ async function renderLatexPractice(topic, mod, topicTitle) {
   $(".run").onclick = doCompile;
   $(".submit").onclick = doSubmit;
   $(".next").onclick = () => loadProblem();
+  for (const t of document.querySelectorAll(".pdf-tab")) t.onclick = () => showPdfTab(t.dataset.tab);
+  showPdfTab("mine");
   if (!py) py = new Py();
   try { await py.init(topic.packages); }
   catch (e) { $(".problem").innerHTML = `<div class="loading">Couldn't start Python: ${esc(e.message)}</div>`; return; }
   await loadProblem();
+}
+
+// the right panel switches between the target (what the reference compiles to) and the user's own PDF
+let refitTimer = 0;
+window.addEventListener("resize", () => {   // keep the shown page fitted to its panel
+  clearTimeout(refitTimer);
+  refitTimer = setTimeout(() => {
+    const v = view && view.latex && $(".pdf-pane:not([hidden]) .pdf-view");
+    if (v) fitPages(v);
+  }, 120);
+});
+
+function showPdfTab(name) {
+  for (const t of document.querySelectorAll(".pdf-tab")) {
+    const on = t.dataset.tab === name;
+    t.classList.toggle("on", on);
+    t.setAttribute("aria-selected", on);
+  }
+  for (const pane of document.querySelectorAll(".pdf-pane")) pane.hidden = pane.dataset.pane !== name;
+  const v = $(`.pdf-pane[data-pane="${name}"] .pdf-view`);
+  if (v) requestAnimationFrame(() => fitPages(v));   // a hidden pane can't measure itself: fit it once it shows
 }
 
 // typeset the math latex-lite left for KaTeX, then scale the pages to the panel
@@ -373,7 +402,7 @@ function fitPages(root) {
 }
 
 function showPDF(res) {
-  const viewEl = $(".latex-out .pdf-view");   // (not the target preview in the prompt)
+  const viewEl = $(".mine-view");
   if (!viewEl) return;
   const probs = res.problems || [];
   const errs = probs.filter((p) => p.kind === "error"), warns = probs.filter((p) => p.kind === "warning");
@@ -384,8 +413,9 @@ function showPDF(res) {
   $(".pdf-problems").innerHTML = probs.slice(0, 8).map((p) => `<div class="pdf-prob ${p.kind}">
       <div class="pdf-prob-head">${p.line ? `<span class="pdf-line">${esc(p.file)}:${p.line}</span>` : ""}${esc(p.msg)}</div>
       ${p.context ? `<code>${esc(p.context)}</code>` : ""}${p.help ? `<div class="pdf-help">${esc(p.help)}</div>` : ""}</div>`).join("");
-  if (res.error) { viewEl.innerHTML = `<div class="pdf-empty err">${esc(res.error)}</div>`; return; }
+  if (res.error) { viewEl.innerHTML = `<div class="pdf-empty err">${esc(res.error)}</div>`; showPdfTab("mine"); return; }
   viewEl.innerHTML = res.html || "";
+  showPdfTab("mine");
   typeset(viewEl);
   $(".pdf-log pre").textContent = res.log || "";
 }
@@ -469,10 +499,16 @@ async function loadProblem() {
     const starter = (p.latex && p.latex.starter) || "";
     view.editor.setValue(ms.draft && ms.draft.seed === p.seed ? ms.draft.code : starter);
     if (view.latex) {
-      $(".latex-out .pdf-view").innerHTML = `<div class="pdf-empty">Compile to see what your LaTeX produces.</div>`;
+      $(".mine-view").innerHTML = `<div class="pdf-empty">Compile to see what your LaTeX produces.</div>`;
       $(".pdf-problems").innerHTML = "";
       $(".pdf-status").textContent = "";
+      $(".pdf-status").className = "pdf-status";
       $(".pdf-log pre").textContent = "";
+      const target = p.latex && p.latex.target;   // the target opens first; problems without one show only Your PDF
+      $(".target-view").innerHTML = target || "";
+      $('.pdf-tab[data-tab="target"]').hidden = !target;
+      showPdfTab(target ? "target" : "mine");
+      if (target) typeset($(".target-view"));
     }
     view.editor.focus();
     if ($(".out")) $(".out").innerHTML = `<span class="dim">Output appears here.</span>`;   // (LaTeX: the PDF panel)
@@ -522,16 +558,10 @@ function drawProblem(p, n) {
   }
 }
 
-// what a LaTeX problem gives: the target (compiled), the preamble or body around the answer, other files
+// what a LaTeX problem gives besides the target (shown in the right panel): the preamble or body around the
+// answer, other files
 function latexGiven(p, el) {
   const L = p.latex;
-  if (L.target) {
-    const d = document.createElement("div");
-    d.className = "latex-target";
-    d.innerHTML = `<div class="label">Target (compiled)</div><div class="pdf-view target-view">${L.target}</div>`;
-    el.appendChild(d);
-    requestAnimationFrame(() => typeset(d.querySelector(".target-view")));
-  }
   const given = [];
   if (L.mode === "body" && L.preamble) given.push(["Preamble (given; you write the body)", L.preamble]);
   if (L.mode === "preamble" && L.body) given.push(["Body (given; you write the preamble)", L.body]);
