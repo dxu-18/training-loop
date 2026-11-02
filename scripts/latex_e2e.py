@@ -25,7 +25,8 @@ problems = []
 SET_CODE = "s => view.editor.setValue(s)"
 READY = "view && view.problem && view.phase === 'answering'"
 DONE = "!['', 'compiling\u2026'].includes(document.querySelector('.pdf-status').textContent)"
-PDF = ".latex-out .pdf-view"
+PDF = ".mine-view"
+TAB = "document.querySelector('.pdf-tab.on').dataset.tab"
 
 
 def check(cond, what):
@@ -72,11 +73,13 @@ try:
             open_module(pg, mod)
             labels = pg.evaluate("[...document.querySelectorAll('.actions button:not([hidden])')].map(b => b.textContent)")
             check("Compile" in labels and "Submit" in labels and "Run" not in labels, f"{mod}: Compile and Submit {labels}")
-            tgt = pg.evaluate("(() => { const t = document.querySelector('.latex-target'); if (!t) return null; "
+            tgt = pg.evaluate("(() => { const t = document.querySelector('.target-view'); if (!t || !t.innerHTML) return null; "
                               "return {math: t.querySelectorAll('.tex-m, .tex-dm').length, "
                               "typeset: t.querySelectorAll('.katex').length, raw: [...t.querySelectorAll('.tex-m, .tex-dm')]"
                               ".filter(e => !e.querySelector('.katex')).length}; })()")
-            check(tgt is not None, f"{mod}: the prompt shows the compiled target")
+            check(tgt is not None and pg.evaluate(TAB) == "target", f"{mod}: the panel opens on the compiled target")
+            top = pg.evaluate("document.querySelector('.editor').getBoundingClientRect().top")
+            check(top < 900, f"{mod}: the editor starts on screen ({top:.0f}px down)")
             if tgt is not None:
                 check(tgt["raw"] == 0 and (tgt["math"] > 0 or not "11.05" <= mod <= "11.09"),
                       f"{mod}: the target's math is typeset ({tgt['math']} formulas)")
@@ -84,7 +87,8 @@ try:
             compile_(pg, sol)
             st = pg.evaluate("document.querySelector('.pdf-status').textContent")
             pages = pg.evaluate(f"document.querySelectorAll('{PDF} .tex-page, {PDF} .tex-slide').length")
-            check(st == "compiled" and pages >= 1, f"{mod}: the reference compiles ({st}, {pages} page(s))")
+            check(st == "compiled" and pages >= 1 and pg.evaluate(TAB) == "mine",
+                  f"{mod}: the reference compiles, shown under Your PDF ({st}, {pages} page(s))")
             pg.screenshot(path=str(OUT / f"{mod}.png"))
             v = submit(pg)
             check("Correct" in v, f"{mod}: Submit grades the reference correct ({v})")
@@ -112,7 +116,16 @@ try:
         pg.click(".next")
         pg.wait_for_function(READY, timeout=60000)
         check(pg.evaluate(f"!!document.querySelector('{PDF} .pdf-empty')"), "Next resets the PDF panel")
-        check(pg.evaluate("!!document.querySelector('.latex-target .tex-page')"), "... and the target preview stays")
+        check(pg.evaluate("!!document.querySelector('.target-view .tex-page')") and pg.evaluate(TAB) == "target",
+              "... and opens on the new target")
+        pg.click('.pdf-tab[data-tab="mine"]')
+        check(pg.evaluate(TAB) == "mine" and pg.evaluate("document.querySelector('.target-view').closest('.pdf-pane').hidden"),
+              "the switch shows Your PDF and hides the target")
+        pg.click('.pdf-tab[data-tab="target"]')
+        time.sleep(0.3)
+        fit = pg.evaluate("(() => { const v = document.querySelector('.target-view'); const pg = v.querySelector('.tex-page, .tex-slide');"
+                          " return pg ? pg.getBoundingClientRect().width <= v.clientWidth + 1 : false; })()")
+        check(fit, "switching back fits the target page to the panel")
 
         m = b.new_page(viewport={"width": 390, "height": 844})
         m.goto(f"{BASE}/#/latex/11.16")
