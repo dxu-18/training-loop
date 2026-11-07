@@ -1,0 +1,1207 @@
+op|!~|name|text|boolean|nameregexne
+op|!~|text|text|boolean|textregexne
+op|!~|character|text|boolean|bpcharregexne
+op|!~*|name|text|boolean|nameicregexne
+op|!~*|text|text|boolean|texticregexne
+op|!~*|character|text|boolean|bpcharicregexne
+op|!~~|name|text|boolean|namenlike
+op|!~~|text|text|boolean|textnlike
+op|!~~|character|text|boolean|bpcharnlike
+op|!~~*|name|text|boolean|nameicnlike
+op|!~~*|text|text|boolean|texticnlike
+op|!~~*|character|text|boolean|bpcharicnlike
+op|#|bigint|bigint|bigint|int8xor
+op|#|smallint|smallint|smallint|int2xor
+op|#|integer|integer|integer|int4xor
+op|#-|jsonb|text[]|jsonb|jsonb_delete_path
+op|#>|json|text[]|json|json_extract_path
+op|#>|jsonb|text[]|jsonb|jsonb_extract_path
+op|#>>|json|text[]|text|json_extract_path_text
+op|#>>|jsonb|text[]|text|jsonb_extract_path_text
+op|%|bigint|bigint|bigint|int8mod
+op|%|smallint|smallint|smallint|int2mod
+op|%|integer|integer|integer|int4mod
+op|%|numeric|numeric|numeric|numeric_mod
+op|&|bigint|bigint|bigint|int8and
+op|&|smallint|smallint|smallint|int2and
+op|&|integer|integer|integer|int4and
+op|&&|anyarray|anyarray|boolean|arrayoverlap
+op|*|bigint|bigint|bigint|int8mul
+op|*|bigint|smallint|bigint|int82mul
+op|*|bigint|integer|bigint|int84mul
+op|*|smallint|bigint|bigint|int28mul
+op|*|smallint|smallint|smallint|int2mul
+op|*|smallint|integer|integer|int24mul
+op|*|integer|bigint|bigint|int48mul
+op|*|integer|smallint|integer|int42mul
+op|*|integer|integer|integer|int4mul
+op|*|real|real|real|float4mul
+op|*|real|double precision|double precision|float48mul
+op|*|double precision|real|double precision|float84mul
+op|*|double precision|double precision|double precision|float8mul
+op|*|double precision|interval|interval|mul_d_interval
+op|*|interval|double precision|interval|interval_mul
+op|*|numeric|numeric|numeric|numeric_mul
+op|+|-|bigint|bigint|int8up
+op|+|-|smallint|smallint|int2up
+op|+|-|integer|integer|int4up
+op|+|-|real|real|float4up
+op|+|-|double precision|double precision|float8up
+op|+|-|numeric|numeric|numeric_uplus
+op|+|bigint|bigint|bigint|int8pl
+op|+|bigint|smallint|bigint|int82pl
+op|+|bigint|integer|bigint|int84pl
+op|+|smallint|bigint|bigint|int28pl
+op|+|smallint|smallint|smallint|int2pl
+op|+|smallint|integer|integer|int24pl
+op|+|integer|bigint|bigint|int48pl
+op|+|integer|smallint|integer|int42pl
+op|+|integer|integer|integer|int4pl
+op|+|integer|date|date|integer_pl_date
+op|+|real|real|real|float4pl
+op|+|real|double precision|double precision|float48pl
+op|+|double precision|real|double precision|float84pl
+op|+|double precision|double precision|double precision|float8pl
+op|+|date|integer|date|date_pli
+op|+|date|time without time zone|timestamp without time zone|datetime_pl
+op|+|date|interval|timestamp without time zone|date_pl_interval
+op|+|time without time zone|date|timestamp without time zone|timedate_pl
+op|+|time without time zone|interval|time without time zone|time_pl_interval
+op|+|timestamp without time zone|interval|timestamp without time zone|timestamp_pl_interval
+op|+|timestamp with time zone|interval|timestamp with time zone|timestamptz_pl_interval
+op|+|interval|date|timestamp without time zone|interval_pl_date
+op|+|interval|time without time zone|time without time zone|interval_pl_time
+op|+|interval|timestamp without time zone|timestamp without time zone|interval_pl_timestamp
+op|+|interval|timestamp with time zone|timestamp with time zone|interval_pl_timestamptz
+op|+|interval|interval|interval|interval_pl
+op|+|numeric|numeric|numeric|numeric_add
+op|-|-|bigint|bigint|int8um
+op|-|-|smallint|smallint|int2um
+op|-|-|integer|integer|int4um
+op|-|-|real|real|float4um
+op|-|-|double precision|double precision|float8um
+op|-|-|interval|interval|interval_um
+op|-|-|numeric|numeric|numeric_uminus
+op|-|bigint|bigint|bigint|int8mi
+op|-|bigint|smallint|bigint|int82mi
+op|-|bigint|integer|bigint|int84mi
+op|-|smallint|bigint|bigint|int28mi
+op|-|smallint|smallint|smallint|int2mi
+op|-|smallint|integer|integer|int24mi
+op|-|integer|bigint|bigint|int48mi
+op|-|integer|smallint|integer|int42mi
+op|-|integer|integer|integer|int4mi
+op|-|real|real|real|float4mi
+op|-|real|double precision|double precision|float48mi
+op|-|double precision|real|double precision|float84mi
+op|-|double precision|double precision|double precision|float8mi
+op|-|date|integer|date|date_mii
+op|-|date|date|integer|date_mi
+op|-|date|interval|timestamp without time zone|date_mi_interval
+op|-|time without time zone|time without time zone|interval|time_mi_time
+op|-|time without time zone|interval|time without time zone|time_mi_interval
+op|-|timestamp without time zone|timestamp without time zone|interval|timestamp_mi
+op|-|timestamp without time zone|interval|timestamp without time zone|timestamp_mi_interval
+op|-|timestamp with time zone|timestamp with time zone|interval|timestamptz_mi
+op|-|timestamp with time zone|interval|timestamp with time zone|timestamptz_mi_interval
+op|-|interval|interval|interval|interval_mi
+op|-|numeric|numeric|numeric|numeric_sub
+op|-|jsonb|integer|jsonb|pg_catalog.jsonb_delete
+op|-|jsonb|text|jsonb|pg_catalog.jsonb_delete
+op|-|jsonb|text[]|jsonb|pg_catalog.jsonb_delete
+op|->|json|integer|json|json_array_element
+op|->|json|text|json|json_object_field
+op|->|jsonb|integer|jsonb|jsonb_array_element
+op|->|jsonb|text|jsonb|jsonb_object_field
+op|->>|json|integer|text|json_array_element_text
+op|->>|json|text|text|json_object_field_text
+op|->>|jsonb|integer|text|jsonb_array_element_text
+op|->>|jsonb|text|text|jsonb_object_field_text
+op|/|bigint|bigint|bigint|int8div
+op|/|bigint|smallint|bigint|int82div
+op|/|bigint|integer|bigint|int84div
+op|/|smallint|bigint|bigint|int28div
+op|/|smallint|smallint|smallint|int2div
+op|/|smallint|integer|integer|int24div
+op|/|integer|bigint|bigint|int48div
+op|/|integer|smallint|integer|int42div
+op|/|integer|integer|integer|int4div
+op|/|real|real|real|float4div
+op|/|real|double precision|double precision|float48div
+op|/|double precision|real|double precision|float84div
+op|/|double precision|double precision|double precision|float8div
+op|/|interval|double precision|interval|interval_div
+op|/|numeric|numeric|numeric|numeric_div
+op|<|boolean|boolean|boolean|boollt
+op|<|name|name|boolean|namelt
+op|<|name|text|boolean|namelttext
+op|<|bigint|bigint|boolean|int8lt
+op|<|bigint|smallint|boolean|int82lt
+op|<|bigint|integer|boolean|int84lt
+op|<|smallint|bigint|boolean|int28lt
+op|<|smallint|smallint|boolean|int2lt
+op|<|smallint|integer|boolean|int24lt
+op|<|integer|bigint|boolean|int48lt
+op|<|integer|smallint|boolean|int42lt
+op|<|integer|integer|boolean|int4lt
+op|<|text|name|boolean|textltname
+op|<|text|text|boolean|text_lt
+op|<|real|real|boolean|float4lt
+op|<|real|double precision|boolean|float48lt
+op|<|double precision|real|boolean|float84lt
+op|<|double precision|double precision|boolean|float8lt
+op|<|character|character|boolean|bpcharlt
+op|<|date|date|boolean|date_lt
+op|<|date|timestamp without time zone|boolean|date_lt_timestamp
+op|<|date|timestamp with time zone|boolean|date_lt_timestamptz
+op|<|time without time zone|time without time zone|boolean|time_lt
+op|<|timestamp without time zone|date|boolean|timestamp_lt_date
+op|<|timestamp without time zone|timestamp without time zone|boolean|timestamp_lt
+op|<|timestamp without time zone|timestamp with time zone|boolean|timestamp_lt_timestamptz
+op|<|timestamp with time zone|date|boolean|timestamptz_lt_date
+op|<|timestamp with time zone|timestamp without time zone|boolean|timestamptz_lt_timestamp
+op|<|timestamp with time zone|timestamp with time zone|boolean|timestamptz_lt
+op|<|interval|interval|boolean|interval_lt
+op|<|numeric|numeric|boolean|numeric_lt
+op|<|anyarray|anyarray|boolean|array_lt
+op|<|uuid|uuid|boolean|uuid_lt
+op|<|jsonb|jsonb|boolean|jsonb_lt
+op|<<|bigint|integer|bigint|int8shl
+op|<<|smallint|integer|smallint|int2shl
+op|<<|integer|integer|integer|int4shl
+op|<=|boolean|boolean|boolean|boolle
+op|<=|name|name|boolean|namele
+op|<=|name|text|boolean|nameletext
+op|<=|bigint|bigint|boolean|int8le
+op|<=|bigint|smallint|boolean|int82le
+op|<=|bigint|integer|boolean|int84le
+op|<=|smallint|bigint|boolean|int28le
+op|<=|smallint|smallint|boolean|int2le
+op|<=|smallint|integer|boolean|int24le
+op|<=|integer|bigint|boolean|int48le
+op|<=|integer|smallint|boolean|int42le
+op|<=|integer|integer|boolean|int4le
+op|<=|text|name|boolean|textlename
+op|<=|text|text|boolean|text_le
+op|<=|real|real|boolean|float4le
+op|<=|real|double precision|boolean|float48le
+op|<=|double precision|real|boolean|float84le
+op|<=|double precision|double precision|boolean|float8le
+op|<=|character|character|boolean|bpcharle
+op|<=|date|date|boolean|date_le
+op|<=|date|timestamp without time zone|boolean|date_le_timestamp
+op|<=|date|timestamp with time zone|boolean|date_le_timestamptz
+op|<=|time without time zone|time without time zone|boolean|time_le
+op|<=|timestamp without time zone|date|boolean|timestamp_le_date
+op|<=|timestamp without time zone|timestamp without time zone|boolean|timestamp_le
+op|<=|timestamp without time zone|timestamp with time zone|boolean|timestamp_le_timestamptz
+op|<=|timestamp with time zone|date|boolean|timestamptz_le_date
+op|<=|timestamp with time zone|timestamp without time zone|boolean|timestamptz_le_timestamp
+op|<=|timestamp with time zone|timestamp with time zone|boolean|timestamptz_le
+op|<=|interval|interval|boolean|interval_le
+op|<=|numeric|numeric|boolean|numeric_le
+op|<=|anyarray|anyarray|boolean|array_le
+op|<=|uuid|uuid|boolean|uuid_le
+op|<=|jsonb|jsonb|boolean|jsonb_le
+op|<>|boolean|boolean|boolean|boolne
+op|<>|name|name|boolean|namene
+op|<>|name|text|boolean|namenetext
+op|<>|bigint|bigint|boolean|int8ne
+op|<>|bigint|smallint|boolean|int82ne
+op|<>|bigint|integer|boolean|int84ne
+op|<>|smallint|bigint|boolean|int28ne
+op|<>|smallint|smallint|boolean|int2ne
+op|<>|smallint|integer|boolean|int24ne
+op|<>|integer|bigint|boolean|int48ne
+op|<>|integer|smallint|boolean|int42ne
+op|<>|integer|integer|boolean|int4ne
+op|<>|text|name|boolean|textnename
+op|<>|text|text|boolean|textne
+op|<>|real|real|boolean|float4ne
+op|<>|real|double precision|boolean|float48ne
+op|<>|double precision|real|boolean|float84ne
+op|<>|double precision|double precision|boolean|float8ne
+op|<>|character|character|boolean|bpcharne
+op|<>|date|date|boolean|date_ne
+op|<>|date|timestamp without time zone|boolean|date_ne_timestamp
+op|<>|date|timestamp with time zone|boolean|date_ne_timestamptz
+op|<>|time without time zone|time without time zone|boolean|time_ne
+op|<>|timestamp without time zone|date|boolean|timestamp_ne_date
+op|<>|timestamp without time zone|timestamp without time zone|boolean|timestamp_ne
+op|<>|timestamp without time zone|timestamp with time zone|boolean|timestamp_ne_timestamptz
+op|<>|timestamp with time zone|date|boolean|timestamptz_ne_date
+op|<>|timestamp with time zone|timestamp without time zone|boolean|timestamptz_ne_timestamp
+op|<>|timestamp with time zone|timestamp with time zone|boolean|timestamptz_ne
+op|<>|interval|interval|boolean|interval_ne
+op|<>|numeric|numeric|boolean|numeric_ne
+op|<>|anyarray|anyarray|boolean|array_ne
+op|<>|uuid|uuid|boolean|uuid_ne
+op|<>|jsonb|jsonb|boolean|jsonb_ne
+op|<@|anyarray|anyarray|boolean|arraycontained
+op|<@|jsonb|jsonb|boolean|jsonb_contained
+op|=|boolean|boolean|boolean|booleq
+op|=|name|name|boolean|nameeq
+op|=|name|text|boolean|nameeqtext
+op|=|bigint|bigint|boolean|int8eq
+op|=|bigint|smallint|boolean|int82eq
+op|=|bigint|integer|boolean|int84eq
+op|=|smallint|bigint|boolean|int28eq
+op|=|smallint|smallint|boolean|int2eq
+op|=|smallint|integer|boolean|int24eq
+op|=|integer|bigint|boolean|int48eq
+op|=|integer|smallint|boolean|int42eq
+op|=|integer|integer|boolean|int4eq
+op|=|text|name|boolean|texteqname
+op|=|text|text|boolean|texteq
+op|=|real|real|boolean|float4eq
+op|=|real|double precision|boolean|float48eq
+op|=|double precision|real|boolean|float84eq
+op|=|double precision|double precision|boolean|float8eq
+op|=|character|character|boolean|bpchareq
+op|=|date|date|boolean|date_eq
+op|=|date|timestamp without time zone|boolean|date_eq_timestamp
+op|=|date|timestamp with time zone|boolean|date_eq_timestamptz
+op|=|time without time zone|time without time zone|boolean|time_eq
+op|=|timestamp without time zone|date|boolean|timestamp_eq_date
+op|=|timestamp without time zone|timestamp without time zone|boolean|timestamp_eq
+op|=|timestamp without time zone|timestamp with time zone|boolean|timestamp_eq_timestamptz
+op|=|timestamp with time zone|date|boolean|timestamptz_eq_date
+op|=|timestamp with time zone|timestamp without time zone|boolean|timestamptz_eq_timestamp
+op|=|timestamp with time zone|timestamp with time zone|boolean|timestamptz_eq
+op|=|interval|interval|boolean|interval_eq
+op|=|numeric|numeric|boolean|numeric_eq
+op|=|anyarray|anyarray|boolean|array_eq
+op|=|uuid|uuid|boolean|uuid_eq
+op|=|jsonb|jsonb|boolean|jsonb_eq
+op|>|boolean|boolean|boolean|boolgt
+op|>|name|name|boolean|namegt
+op|>|name|text|boolean|namegttext
+op|>|bigint|bigint|boolean|int8gt
+op|>|bigint|smallint|boolean|int82gt
+op|>|bigint|integer|boolean|int84gt
+op|>|smallint|bigint|boolean|int28gt
+op|>|smallint|smallint|boolean|int2gt
+op|>|smallint|integer|boolean|int24gt
+op|>|integer|bigint|boolean|int48gt
+op|>|integer|smallint|boolean|int42gt
+op|>|integer|integer|boolean|int4gt
+op|>|text|name|boolean|textgtname
+op|>|text|text|boolean|text_gt
+op|>|real|real|boolean|float4gt
+op|>|real|double precision|boolean|float48gt
+op|>|double precision|real|boolean|float84gt
+op|>|double precision|double precision|boolean|float8gt
+op|>|character|character|boolean|bpchargt
+op|>|date|date|boolean|date_gt
+op|>|date|timestamp without time zone|boolean|date_gt_timestamp
+op|>|date|timestamp with time zone|boolean|date_gt_timestamptz
+op|>|time without time zone|time without time zone|boolean|time_gt
+op|>|timestamp without time zone|date|boolean|timestamp_gt_date
+op|>|timestamp without time zone|timestamp without time zone|boolean|timestamp_gt
+op|>|timestamp without time zone|timestamp with time zone|boolean|timestamp_gt_timestamptz
+op|>|timestamp with time zone|date|boolean|timestamptz_gt_date
+op|>|timestamp with time zone|timestamp without time zone|boolean|timestamptz_gt_timestamp
+op|>|timestamp with time zone|timestamp with time zone|boolean|timestamptz_gt
+op|>|interval|interval|boolean|interval_gt
+op|>|numeric|numeric|boolean|numeric_gt
+op|>|anyarray|anyarray|boolean|array_gt
+op|>|uuid|uuid|boolean|uuid_gt
+op|>|jsonb|jsonb|boolean|jsonb_gt
+op|>=|boolean|boolean|boolean|boolge
+op|>=|name|name|boolean|namege
+op|>=|name|text|boolean|namegetext
+op|>=|bigint|bigint|boolean|int8ge
+op|>=|bigint|smallint|boolean|int82ge
+op|>=|bigint|integer|boolean|int84ge
+op|>=|smallint|bigint|boolean|int28ge
+op|>=|smallint|smallint|boolean|int2ge
+op|>=|smallint|integer|boolean|int24ge
+op|>=|integer|bigint|boolean|int48ge
+op|>=|integer|smallint|boolean|int42ge
+op|>=|integer|integer|boolean|int4ge
+op|>=|text|name|boolean|textgename
+op|>=|text|text|boolean|text_ge
+op|>=|real|real|boolean|float4ge
+op|>=|real|double precision|boolean|float48ge
+op|>=|double precision|real|boolean|float84ge
+op|>=|double precision|double precision|boolean|float8ge
+op|>=|character|character|boolean|bpcharge
+op|>=|date|date|boolean|date_ge
+op|>=|date|timestamp without time zone|boolean|date_ge_timestamp
+op|>=|date|timestamp with time zone|boolean|date_ge_timestamptz
+op|>=|time without time zone|time without time zone|boolean|time_ge
+op|>=|timestamp without time zone|date|boolean|timestamp_ge_date
+op|>=|timestamp without time zone|timestamp without time zone|boolean|timestamp_ge
+op|>=|timestamp without time zone|timestamp with time zone|boolean|timestamp_ge_timestamptz
+op|>=|timestamp with time zone|date|boolean|timestamptz_ge_date
+op|>=|timestamp with time zone|timestamp without time zone|boolean|timestamptz_ge_timestamp
+op|>=|timestamp with time zone|timestamp with time zone|boolean|timestamptz_ge
+op|>=|interval|interval|boolean|interval_ge
+op|>=|numeric|numeric|boolean|numeric_ge
+op|>=|anyarray|anyarray|boolean|array_ge
+op|>=|uuid|uuid|boolean|uuid_ge
+op|>=|jsonb|jsonb|boolean|jsonb_ge
+op|>>|bigint|integer|bigint|int8shr
+op|>>|smallint|integer|smallint|int2shr
+op|>>|integer|integer|integer|int4shr
+op|?|jsonb|text|boolean|jsonb_exists
+op|?&|jsonb|text[]|boolean|jsonb_exists_all
+op|?||jsonb|text[]|boolean|jsonb_exists_any
+op|@|-|bigint|bigint|int8abs
+op|@|-|smallint|smallint|int2abs
+op|@|-|integer|integer|int4abs
+op|@|-|real|real|float4abs
+op|@|-|double precision|double precision|float8abs
+op|@|-|numeric|numeric|numeric_abs
+op|@>|anyarray|anyarray|boolean|arraycontains
+op|@>|jsonb|jsonb|boolean|jsonb_contains
+op|@@|text|text|boolean|ts_match_tt
+op|^|double precision|double precision|double precision|dpow
+op|^|numeric|numeric|numeric|numeric_power
+op|^@|text|text|boolean|starts_with
+op|||bigint|bigint|bigint|int8or
+op|||smallint|smallint|smallint|int2or
+op|||integer|integer|integer|int4or
+op||/|-|double precision|double precision|dsqrt
+op||||text|text|text|textcat
+op||||text|anynonarray|text|textanycat
+op||||anynonarray|text|text|anytextcat
+op||||jsonb|jsonb|jsonb|jsonb_concat
+op||||anycompatible|anycompatiblearray|anycompatiblearray|array_prepend
+op||||anycompatiblearray|anycompatible|anycompatiblearray|array_append
+op||||anycompatiblearray|anycompatiblearray|anycompatiblearray|array_cat
+op|||/|-|double precision|double precision|dcbrt
+op|~|-|bigint|bigint|int8not
+op|~|-|smallint|smallint|int2not
+op|~|-|integer|integer|int4not
+op|~|name|text|boolean|nameregexeq
+op|~|text|text|boolean|textregexeq
+op|~|character|text|boolean|bpcharregexeq
+op|~*|name|text|boolean|nameicregexeq
+op|~*|text|text|boolean|texticregexeq
+op|~*|character|text|boolean|bpcharicregexeq
+op|~<=~|text|text|boolean|text_pattern_le
+op|~<=~|character|character|boolean|bpchar_pattern_le
+op|~<~|text|text|boolean|text_pattern_lt
+op|~<~|character|character|boolean|bpchar_pattern_lt
+op|~>=~|text|text|boolean|text_pattern_ge
+op|~>=~|character|character|boolean|bpchar_pattern_ge
+op|~>~|text|text|boolean|text_pattern_gt
+op|~>~|character|character|boolean|bpchar_pattern_gt
+op|~~|name|text|boolean|namelike
+op|~~|text|text|boolean|textlike
+op|~~|character|text|boolean|bpcharlike
+op|~~*|name|text|boolean|nameiclike
+op|~~*|text|text|boolean|texticlike
+op|~~*|character|text|boolean|bpchariclike
+cast|boolean|integer|e|f
+cast|boolean|text|a|f
+cast|boolean|character|a|f
+cast|boolean|character varying|a|f
+cast|"char"|integer|e|f
+cast|"char"|text|i|f
+cast|"char"|character|a|f
+cast|"char"|character varying|a|f
+cast|name|text|i|f
+cast|name|character|a|f
+cast|name|character varying|a|f
+cast|bigint|smallint|a|f
+cast|bigint|integer|a|f
+cast|bigint|regproc|i|f
+cast|bigint|oid|i|f
+cast|bigint|real|i|f
+cast|bigint|double precision|i|f
+cast|bigint|money|a|f
+cast|bigint|bit|e|f
+cast|bigint|numeric|i|f
+cast|bigint|regprocedure|i|f
+cast|bigint|regoper|i|f
+cast|bigint|regoperator|i|f
+cast|bigint|regclass|i|f
+cast|bigint|regtype|i|f
+cast|bigint|regconfig|i|f
+cast|bigint|regdictionary|i|f
+cast|bigint|regnamespace|i|f
+cast|bigint|regrole|i|f
+cast|bigint|regcollation|i|f
+cast|smallint|bigint|i|f
+cast|smallint|integer|i|f
+cast|smallint|regproc|i|f
+cast|smallint|oid|i|f
+cast|smallint|real|i|f
+cast|smallint|double precision|i|f
+cast|smallint|numeric|i|f
+cast|smallint|regprocedure|i|f
+cast|smallint|regoper|i|f
+cast|smallint|regoperator|i|f
+cast|smallint|regclass|i|f
+cast|smallint|regtype|i|f
+cast|smallint|regconfig|i|f
+cast|smallint|regdictionary|i|f
+cast|smallint|regnamespace|i|f
+cast|smallint|regrole|i|f
+cast|smallint|regcollation|i|f
+cast|integer|boolean|e|f
+cast|integer|"char"|e|f
+cast|integer|bigint|i|f
+cast|integer|smallint|a|f
+cast|integer|regproc|i|b
+cast|integer|oid|i|b
+cast|integer|real|i|f
+cast|integer|double precision|i|f
+cast|integer|money|a|f
+cast|integer|bit|e|f
+cast|integer|numeric|i|f
+cast|integer|regprocedure|i|b
+cast|integer|regoper|i|b
+cast|integer|regoperator|i|b
+cast|integer|regclass|i|b
+cast|integer|regtype|i|b
+cast|integer|regconfig|i|b
+cast|integer|regdictionary|i|b
+cast|integer|regnamespace|i|b
+cast|integer|regrole|i|b
+cast|integer|regcollation|i|b
+cast|regproc|bigint|a|f
+cast|regproc|integer|a|b
+cast|regproc|oid|i|b
+cast|regproc|regprocedure|i|b
+cast|text|"char"|a|f
+cast|text|name|i|f
+cast|text|xml|e|f
+cast|text|character|i|b
+cast|text|character varying|i|b
+cast|text|regclass|i|f
+cast|oid|bigint|a|f
+cast|oid|integer|a|b
+cast|oid|regproc|i|b
+cast|oid|regprocedure|i|b
+cast|oid|regoper|i|b
+cast|oid|regoperator|i|b
+cast|oid|regclass|i|b
+cast|oid|regtype|i|b
+cast|oid|regconfig|i|b
+cast|oid|regdictionary|i|b
+cast|oid|regnamespace|i|b
+cast|oid|regrole|i|b
+cast|oid|regcollation|i|b
+cast|json|jsonb|a|i
+cast|xml|text|a|b
+cast|xml|character|a|b
+cast|xml|character varying|a|b
+cast|pg_node_tree|text|i|b
+cast|point|box|a|f
+cast|lseg|point|e|f
+cast|path|polygon|a|f
+cast|box|point|e|f
+cast|box|lseg|e|f
+cast|box|polygon|a|f
+cast|box|circle|e|f
+cast|polygon|point|e|f
+cast|polygon|path|a|f
+cast|polygon|box|e|f
+cast|polygon|circle|e|f
+cast|cidr|text|a|f
+cast|cidr|inet|i|b
+cast|cidr|character|a|f
+cast|cidr|character varying|a|f
+cast|real|bigint|a|f
+cast|real|smallint|a|f
+cast|real|integer|a|f
+cast|real|double precision|i|f
+cast|real|numeric|a|f
+cast|double precision|bigint|a|f
+cast|double precision|smallint|a|f
+cast|double precision|integer|a|f
+cast|double precision|real|a|f
+cast|double precision|numeric|a|f
+cast|circle|point|e|f
+cast|circle|box|e|f
+cast|circle|polygon|e|f
+cast|macaddr8|macaddr|i|f
+cast|money|numeric|a|f
+cast|macaddr|macaddr8|i|f
+cast|inet|text|a|f
+cast|inet|cidr|a|f
+cast|inet|character|a|f
+cast|inet|character varying|a|f
+cast|character|"char"|a|f
+cast|character|name|i|f
+cast|character|text|i|f
+cast|character|xml|e|f
+cast|character|character|i|f
+cast|character|character varying|i|f
+cast|character varying|"char"|a|f
+cast|character varying|name|i|f
+cast|character varying|text|i|b
+cast|character varying|xml|e|f
+cast|character varying|character|i|b
+cast|character varying|character varying|i|f
+cast|character varying|regclass|i|f
+cast|date|timestamp without time zone|i|f
+cast|date|timestamp with time zone|i|f
+cast|time without time zone|time without time zone|i|f
+cast|time without time zone|interval|i|f
+cast|time without time zone|time with time zone|i|f
+cast|timestamp without time zone|date|a|f
+cast|timestamp without time zone|time without time zone|a|f
+cast|timestamp without time zone|timestamp without time zone|i|f
+cast|timestamp without time zone|timestamp with time zone|i|f
+cast|timestamp with time zone|date|a|f
+cast|timestamp with time zone|time without time zone|a|f
+cast|timestamp with time zone|timestamp without time zone|a|f
+cast|timestamp with time zone|timestamp with time zone|i|f
+cast|timestamp with time zone|time with time zone|a|f
+cast|interval|time without time zone|a|f
+cast|interval|interval|i|f
+cast|time with time zone|time without time zone|a|f
+cast|time with time zone|time with time zone|i|f
+cast|bit|bigint|e|f
+cast|bit|integer|e|f
+cast|bit|bit|i|f
+cast|bit|bit varying|i|b
+cast|bit varying|bit|i|b
+cast|bit varying|bit varying|i|f
+cast|numeric|bigint|a|f
+cast|numeric|smallint|a|f
+cast|numeric|integer|a|f
+cast|numeric|real|i|f
+cast|numeric|double precision|i|f
+cast|numeric|money|a|f
+cast|numeric|numeric|i|f
+cast|regprocedure|bigint|a|f
+cast|regprocedure|integer|a|b
+cast|regprocedure|regproc|i|b
+cast|regprocedure|oid|i|b
+cast|regoper|bigint|a|f
+cast|regoper|integer|a|b
+cast|regoper|oid|i|b
+cast|regoper|regoperator|i|b
+cast|regoperator|bigint|a|f
+cast|regoperator|integer|a|b
+cast|regoperator|oid|i|b
+cast|regoperator|regoper|i|b
+cast|regclass|bigint|a|f
+cast|regclass|integer|a|b
+cast|regclass|oid|i|b
+cast|regtype|bigint|a|f
+cast|regtype|integer|a|b
+cast|regtype|oid|i|b
+cast|pg_ndistinct|bytea|i|b
+cast|pg_ndistinct|text|i|i
+cast|pg_dependencies|bytea|i|b
+cast|pg_dependencies|text|i|i
+cast|regconfig|bigint|a|f
+cast|regconfig|integer|a|b
+cast|regconfig|oid|i|b
+cast|regdictionary|bigint|a|f
+cast|regdictionary|integer|a|b
+cast|regdictionary|oid|i|b
+cast|jsonb|boolean|e|f
+cast|jsonb|bigint|e|f
+cast|jsonb|smallint|e|f
+cast|jsonb|integer|e|f
+cast|jsonb|json|a|i
+cast|jsonb|real|e|f
+cast|jsonb|double precision|e|f
+cast|jsonb|numeric|e|f
+cast|int4range|int4multirange|e|f
+cast|numrange|nummultirange|e|f
+cast|tsrange|tsmultirange|e|f
+cast|tstzrange|tstzmultirange|e|f
+cast|daterange|datemultirange|e|f
+cast|int8range|int8multirange|e|f
+cast|regnamespace|bigint|a|f
+cast|regnamespace|integer|a|b
+cast|regnamespace|oid|i|b
+cast|regrole|bigint|a|f
+cast|regrole|integer|a|b
+cast|regrole|oid|i|b
+cast|regcollation|bigint|a|f
+cast|regcollation|integer|a|b
+cast|regcollation|oid|i|b
+cast|pg_mcv_list|bytea|i|b
+cast|pg_mcv_list|text|i|i
+cast|xid8|xid|e|f
+type|16|bool|B|t|1|boolean|-|boolean[]
+type|17|bytea|U|f|-1|bytea|-|bytea[]
+type|18|char|Z|f|1|"char"|-|"char"[]
+type|19|name|S|f|64|name|"char"|name[]
+type|20|int8|N|f|8|bigint|-|bigint[]
+type|21|int2|N|f|2|smallint|-|smallint[]
+type|22|int2vector|A|f|-1|int2vector|smallint|int2vector[]
+type|23|int4|N|f|4|integer|-|integer[]
+type|24|regproc|N|f|4|regproc|-|regproc[]
+type|25|text|S|t|-1|text|-|text[]
+type|26|oid|N|t|4|oid|-|oid[]
+type|27|tid|U|f|6|tid|-|tid[]
+type|28|xid|U|f|4|xid|-|xid[]
+type|29|cid|U|f|4|cid|-|cid[]
+type|30|oidvector|A|f|-1|oidvector|oid|oidvector[]
+type|32|pg_ddl_command|P|f|8|pg_ddl_command|-|-
+type|114|json|U|f|-1|json|-|json[]
+type|142|xml|U|f|-1|xml|-|xml[]
+type|194|pg_node_tree|Z|f|-1|pg_node_tree|-|-
+type|269|table_am_handler|P|f|4|table_am_handler|-|-
+type|325|index_am_handler|P|f|4|index_am_handler|-|-
+type|600|point|G|f|16|point|double precision|point[]
+type|601|lseg|G|f|32|lseg|point|lseg[]
+type|602|path|G|f|-1|path|-|path[]
+type|603|box|G|f|32|box|point|box[]
+type|604|polygon|G|f|-1|polygon|-|polygon[]
+type|628|line|G|f|24|line|double precision|line[]
+type|650|cidr|I|f|-1|cidr|-|cidr[]
+type|700|float4|N|f|4|real|-|real[]
+type|701|float8|N|t|8|double precision|-|double precision[]
+type|705|unknown|X|f|-2|unknown|-|-
+type|718|circle|G|f|24|circle|-|circle[]
+type|774|macaddr8|U|f|8|macaddr8|-|macaddr8[]
+type|790|money|N|f|8|money|-|money[]
+type|829|macaddr|U|f|6|macaddr|-|macaddr[]
+type|869|inet|I|t|-1|inet|-|inet[]
+type|1033|aclitem|U|f|16|aclitem|-|aclitem[]
+type|1042|bpchar|S|f|-1|character|-|character[]
+type|1043|varchar|S|f|-1|character varying|-|character varying[]
+type|1082|date|D|f|4|date|-|date[]
+type|1083|time|D|f|8|time without time zone|-|time without time zone[]
+type|1114|timestamp|D|f|8|timestamp without time zone|-|timestamp without time zone[]
+type|1184|timestamptz|D|t|8|timestamp with time zone|-|timestamp with time zone[]
+type|1186|interval|T|t|16|interval|-|interval[]
+type|1266|timetz|D|f|12|time with time zone|-|time with time zone[]
+type|1560|bit|V|f|-1|bit|-|bit[]
+type|1562|varbit|V|t|-1|bit varying|-|bit varying[]
+type|1700|numeric|N|f|-1|numeric|-|numeric[]
+type|1790|refcursor|U|f|-1|refcursor|-|refcursor[]
+type|2202|regprocedure|N|f|4|regprocedure|-|regprocedure[]
+type|2203|regoper|N|f|4|regoper|-|regoper[]
+type|2204|regoperator|N|f|4|regoperator|-|regoperator[]
+type|2205|regclass|N|f|4|regclass|-|regclass[]
+type|2206|regtype|N|f|4|regtype|-|regtype[]
+type|2249|record|P|f|-1|record|-|record[]
+type|2275|cstring|P|f|-2|cstring|-|cstring[]
+type|2276|any|P|f|4|"any"|-|-
+type|2277|anyarray|P|f|-1|anyarray|-|-
+type|2278|void|P|f|4|void|-|-
+type|2279|trigger|P|f|4|trigger|-|-
+type|2280|language_handler|P|f|4|language_handler|-|-
+type|2281|internal|P|f|8|internal|-|-
+type|2283|anyelement|P|f|4|anyelement|-|-
+type|2776|anynonarray|P|f|4|anynonarray|-|-
+type|2950|uuid|U|f|16|uuid|-|uuid[]
+type|2970|txid_snapshot|U|f|-1|txid_snapshot|-|txid_snapshot[]
+type|3115|fdw_handler|P|f|4|fdw_handler|-|-
+type|3220|pg_lsn|U|f|8|pg_lsn|-|pg_lsn[]
+type|3310|tsm_handler|P|f|4|tsm_handler|-|-
+type|3361|pg_ndistinct|Z|f|-1|pg_ndistinct|-|-
+type|3402|pg_dependencies|Z|f|-1|pg_dependencies|-|-
+type|3500|anyenum|P|f|4|anyenum|-|-
+type|3614|tsvector|U|f|-1|tsvector|-|tsvector[]
+type|3615|tsquery|U|f|-1|tsquery|-|tsquery[]
+type|3642|gtsvector|U|f|-1|gtsvector|-|gtsvector[]
+type|3734|regconfig|N|f|4|regconfig|-|regconfig[]
+type|3769|regdictionary|N|f|4|regdictionary|-|regdictionary[]
+type|3802|jsonb|U|f|-1|jsonb|-|jsonb[]
+type|3831|anyrange|P|f|-1|anyrange|-|-
+type|3838|event_trigger|P|f|4|event_trigger|-|-
+type|4072|jsonpath|U|f|-1|jsonpath|-|jsonpath[]
+type|4089|regnamespace|N|f|4|regnamespace|-|regnamespace[]
+type|4096|regrole|N|f|4|regrole|-|regrole[]
+type|4191|regcollation|N|f|4|regcollation|-|regcollation[]
+type|4537|anymultirange|P|f|-1|anymultirange|-|-
+type|4538|anycompatiblemultirange|P|f|-1|anycompatiblemultirange|-|-
+type|4600|pg_brin_bloom_summary|Z|f|-1|pg_brin_bloom_summary|-|-
+type|4601|pg_brin_minmax_multi_summary|Z|f|-1|pg_brin_minmax_multi_summary|-|-
+type|5017|pg_mcv_list|Z|f|-1|pg_mcv_list|-|-
+type|5038|pg_snapshot|U|f|-1|pg_snapshot|-|pg_snapshot[]
+type|5069|xid8|U|f|8|xid8|-|xid8[]
+type|5077|anycompatible|P|f|4|anycompatible|-|-
+type|5078|anycompatiblearray|P|f|-1|anycompatiblearray|-|-
+type|5079|anycompatiblenonarray|P|f|4|anycompatiblenonarray|-|-
+type|5080|anycompatiblerange|P|f|-1|anycompatiblerange|-|-
+proc|abs|bigint|bigint|f|f|-
+proc|abs|double precision|double precision|f|f|-
+proc|abs|integer|integer|f|f|-
+proc|abs|numeric|numeric|f|f|-
+proc|abs|real|real|f|f|-
+proc|abs|smallint|smallint|f|f|-
+proc|age|timestamp with time zone|interval|f|f|-
+proc|age|timestamp with time zone, timestamp with time zone|interval|f|f|-
+proc|age|timestamp without time zone|interval|f|f|-
+proc|age|timestamp without time zone, timestamp without time zone|interval|f|f|-
+proc|age|xid|integer|f|f|-
+proc|array_agg|anyarray|anyarray|f|a|-
+proc|array_agg|anynonarray|anyarray|f|a|-
+proc|array_append|anycompatiblearray, anycompatible|anycompatiblearray|f|f|-
+proc|array_cat|anycompatiblearray, anycompatiblearray|anycompatiblearray|f|f|-
+proc|array_dims|anyarray|text|f|f|-
+proc|array_fill|anyelement, integer[]|anyarray|f|f|-
+proc|array_fill|anyelement, integer[], integer[]|anyarray|f|f|-
+proc|array_length|anyarray, integer|integer|f|f|-
+proc|array_lower|anyarray, integer|integer|f|f|-
+proc|array_position|anycompatiblearray, anycompatible|integer|f|f|-
+proc|array_position|anycompatiblearray, anycompatible, integer|integer|f|f|-
+proc|array_positions|anycompatiblearray, anycompatible|integer[]|f|f|-
+proc|array_prepend|anycompatible, anycompatiblearray|anycompatiblearray|f|f|-
+proc|array_remove|anycompatiblearray, anycompatible|anycompatiblearray|f|f|-
+proc|array_replace|anycompatiblearray, anycompatible, anycompatible|anycompatiblearray|f|f|-
+proc|array_to_string|anyarray, text|text|f|f|-
+proc|array_to_string|anyarray, text, text|text|f|f|-
+proc|array_upper|anyarray, integer|integer|f|f|-
+proc|ascii|text|integer|f|f|-
+proc|avg|bigint|numeric|f|a|-
+proc|avg|double precision|double precision|f|a|-
+proc|avg|integer|numeric|f|a|-
+proc|avg|interval|interval|f|a|-
+proc|avg|numeric|numeric|f|a|-
+proc|avg|real|double precision|f|a|-
+proc|avg|smallint|numeric|f|a|-
+proc|bit_length|bit|integer|f|f|-
+proc|bit_length|bytea|integer|f|f|-
+proc|bit_length|text|integer|f|f|-
+proc|bool_and|boolean|boolean|f|a|-
+proc|bool_or|boolean|boolean|f|a|-
+proc|btrim|bytea, bytea|bytea|f|f|-
+proc|btrim|text|text|f|f|-
+proc|btrim|text, text|text|f|f|-
+proc|cardinality|anyarray|integer|f|f|-
+proc|cbrt|double precision|double precision|f|f|-
+proc|ceil|double precision|double precision|f|f|-
+proc|ceil|numeric|numeric|f|f|-
+proc|ceiling|double precision|double precision|f|f|-
+proc|ceiling|numeric|numeric|f|f|-
+proc|char_length|character|integer|f|f|-
+proc|char_length|text|integer|f|f|-
+proc|character_length|character|integer|f|f|-
+proc|character_length|text|integer|f|f|-
+proc|chr|integer|text|f|f|-
+proc|clock_timestamp||timestamp with time zone|f|f|-
+proc|concat|VARIADIC "any"|text|f|f|"any"
+proc|concat_ws|text, VARIADIC "any"|text|f|f|"any"
+proc|corr|double precision, double precision|double precision|f|a|-
+proc|count||bigint|f|a|-
+proc|count|"any"|bigint|f|a|-
+proc|covar_pop|double precision, double precision|double precision|f|a|-
+proc|covar_samp|double precision, double precision|double precision|f|a|-
+proc|cume_dist||double precision|f|w|-
+proc|cume_dist|VARIADIC "any" ORDER BY VARIADIC "any"|double precision|f|a|"any"
+proc|current_database||name|f|f|-
+proc|current_user||name|f|f|-
+proc|date|timestamp with time zone|date|f|f|-
+proc|date|timestamp without time zone|date|f|f|-
+proc|date_bin|interval, timestamp with time zone, timestamp with time zone|timestamp with time zone|f|f|-
+proc|date_bin|interval, timestamp without time zone, timestamp without time zone|timestamp without time zone|f|f|-
+proc|date_part|text, date|double precision|f|f|-
+proc|date_part|text, interval|double precision|f|f|-
+proc|date_part|text, time with time zone|double precision|f|f|-
+proc|date_part|text, time without time zone|double precision|f|f|-
+proc|date_part|text, timestamp with time zone|double precision|f|f|-
+proc|date_part|text, timestamp without time zone|double precision|f|f|-
+proc|date_trunc|text, interval|interval|f|f|-
+proc|date_trunc|text, timestamp with time zone|timestamp with time zone|f|f|-
+proc|date_trunc|text, timestamp with time zone, text|timestamp with time zone|f|f|-
+proc|date_trunc|text, timestamp without time zone|timestamp without time zone|f|f|-
+proc|decode|text, text|bytea|f|f|-
+proc|degrees|double precision|double precision|f|f|-
+proc|dense_rank||bigint|f|w|-
+proc|dense_rank|VARIADIC "any" ORDER BY VARIADIC "any"|bigint|f|a|"any"
+proc|div|numeric, numeric|numeric|f|f|-
+proc|encode|bytea, text|text|f|f|-
+proc|every|boolean|boolean|f|a|-
+proc|exp|double precision|double precision|f|f|-
+proc|exp|numeric|numeric|f|f|-
+proc|extract|text, date|numeric|f|f|-
+proc|extract|text, interval|numeric|f|f|-
+proc|extract|text, time with time zone|numeric|f|f|-
+proc|extract|text, time without time zone|numeric|f|f|-
+proc|extract|text, timestamp with time zone|numeric|f|f|-
+proc|extract|text, timestamp without time zone|numeric|f|f|-
+proc|factorial|bigint|numeric|f|f|-
+proc|first_value|anyelement|anyelement|f|w|-
+proc|float8|bigint|double precision|f|f|-
+proc|float8|integer|double precision|f|f|-
+proc|float8|jsonb|double precision|f|f|-
+proc|float8|numeric|double precision|f|f|-
+proc|float8|real|double precision|f|f|-
+proc|float8|smallint|double precision|f|f|-
+proc|floor|double precision|double precision|f|f|-
+proc|floor|numeric|numeric|f|f|-
+proc|format|text|text|f|f|-
+proc|format|text, VARIADIC "any"|text|f|f|"any"
+proc|gcd|bigint, bigint|bigint|f|f|-
+proc|gcd|integer, integer|integer|f|f|-
+proc|gcd|numeric, numeric|numeric|f|f|-
+proc|gen_random_uuid||uuid|f|f|-
+proc|generate_series|bigint, bigint|bigint|t|f|-
+proc|generate_series|bigint, bigint, bigint|bigint|t|f|-
+proc|generate_series|integer, integer|integer|t|f|-
+proc|generate_series|integer, integer, integer|integer|t|f|-
+proc|generate_series|numeric, numeric|numeric|t|f|-
+proc|generate_series|numeric, numeric, numeric|numeric|t|f|-
+proc|generate_series|timestamp with time zone, timestamp with time zone, interval|timestamp with time zone|t|f|-
+proc|generate_series|timestamp with time zone, timestamp with time zone, interval, text|timestamp with time zone|t|f|-
+proc|generate_series|timestamp without time zone, timestamp without time zone, interval|timestamp without time zone|t|f|-
+proc|hashtext|text|integer|f|f|-
+proc|initcap|text|text|f|f|-
+proc|int4|"char"|integer|f|f|-
+proc|int4|bigint|integer|f|f|-
+proc|int4|bit|integer|f|f|-
+proc|int4|boolean|integer|f|f|-
+proc|int4|double precision|integer|f|f|-
+proc|int4|jsonb|integer|f|f|-
+proc|int4|numeric|integer|f|f|-
+proc|int4|real|integer|f|f|-
+proc|int4|smallint|integer|f|f|-
+proc|int8|bit|bigint|f|f|-
+proc|int8|double precision|bigint|f|f|-
+proc|int8|integer|bigint|f|f|-
+proc|int8|jsonb|bigint|f|f|-
+proc|int8|numeric|bigint|f|f|-
+proc|int8|oid|bigint|f|f|-
+proc|int8|real|bigint|f|f|-
+proc|int8|smallint|bigint|f|f|-
+proc|interval|interval, integer|interval|f|f|-
+proc|interval|time without time zone|interval|f|f|-
+proc|isfinite|date|boolean|f|f|-
+proc|isfinite|interval|boolean|f|f|-
+proc|isfinite|timestamp with time zone|boolean|f|f|-
+proc|isfinite|timestamp without time zone|boolean|f|f|-
+proc|json_agg|anyelement|json|f|a|-
+proc|json_array_elements|from_json json, OUT value json|json|t|f|-
+proc|json_array_elements_text|from_json json, OUT value text|text|t|f|-
+proc|json_build_array||json|f|f|-
+proc|json_build_array|VARIADIC "any"|json|f|f|"any"
+proc|json_build_object||json|f|f|-
+proc|json_build_object|VARIADIC "any"|json|f|f|"any"
+proc|json_object_agg|"any", "any"|json|f|a|-
+proc|jsonb_agg|anyelement|jsonb|f|a|-
+proc|jsonb_array_elements|from_json jsonb, OUT value jsonb|jsonb|t|f|-
+proc|jsonb_array_elements_text|from_json jsonb, OUT value text|text|t|f|-
+proc|jsonb_array_length|jsonb|integer|f|f|-
+proc|jsonb_build_array||jsonb|f|f|-
+proc|jsonb_build_array|VARIADIC "any"|jsonb|f|f|"any"
+proc|jsonb_build_object||jsonb|f|f|-
+proc|jsonb_build_object|VARIADIC "any"|jsonb|f|f|"any"
+proc|jsonb_each|from_json jsonb, OUT key text, OUT value jsonb|record|t|f|-
+proc|jsonb_each_text|from_json jsonb, OUT key text, OUT value text|record|t|f|-
+proc|jsonb_extract_path|from_json jsonb, VARIADIC path_elems text[]|jsonb|f|f|text
+proc|jsonb_extract_path_text|from_json jsonb, VARIADIC path_elems text[]|text|f|f|text
+proc|jsonb_insert|jsonb_in jsonb, path text[], replacement jsonb, insert_after boolean DEFAULT false|jsonb|f|f|-
+proc|jsonb_object_agg|"any", "any"|jsonb|f|a|-
+proc|jsonb_object_keys|jsonb|text|t|f|-
+proc|jsonb_path_query|target jsonb, path jsonpath, vars jsonb DEFAULT '{}'::jsonb, silent boolean DEFAULT false|jsonb|t|f|-
+proc|jsonb_pretty|jsonb|text|f|f|-
+proc|jsonb_set|jsonb_in jsonb, path text[], replacement jsonb, create_if_missing boolean DEFAULT true|jsonb|f|f|-
+proc|jsonb_strip_nulls|jsonb|jsonb|f|f|-
+proc|jsonb_typeof|jsonb|text|f|f|-
+proc|justify_days|interval|interval|f|f|-
+proc|justify_hours|interval|interval|f|f|-
+proc|justify_interval|interval|interval|f|f|-
+proc|lag|anycompatible, integer, anycompatible|anycompatible|f|w|-
+proc|lag|anyelement|anyelement|f|w|-
+proc|lag|anyelement, integer|anyelement|f|w|-
+proc|last_value|anyelement|anyelement|f|w|-
+proc|lcm|bigint, bigint|bigint|f|f|-
+proc|lcm|integer, integer|integer|f|f|-
+proc|lcm|numeric, numeric|numeric|f|f|-
+proc|lead|anycompatible, integer, anycompatible|anycompatible|f|w|-
+proc|lead|anyelement|anyelement|f|w|-
+proc|lead|anyelement, integer|anyelement|f|w|-
+proc|left|text, integer|text|f|f|-
+proc|length|bit|integer|f|f|-
+proc|length|bytea|integer|f|f|-
+proc|length|bytea, name|integer|f|f|-
+proc|length|character|integer|f|f|-
+proc|length|lseg|double precision|f|f|-
+proc|length|path|double precision|f|f|-
+proc|length|text|integer|f|f|-
+proc|length|tsvector|integer|f|f|-
+proc|ln|double precision|double precision|f|f|-
+proc|ln|numeric|numeric|f|f|-
+proc|log|double precision|double precision|f|f|-
+proc|log|numeric|numeric|f|f|-
+proc|log|numeric, numeric|numeric|f|f|-
+proc|log10|double precision|double precision|f|f|-
+proc|log10|numeric|numeric|f|f|-
+proc|lower|anymultirange|anyelement|f|f|-
+proc|lower|anyrange|anyelement|f|f|-
+proc|lower|text|text|f|f|-
+proc|lpad|text, integer|text|f|f|-
+proc|lpad|text, integer, text|text|f|f|-
+proc|ltrim|bytea, bytea|bytea|f|f|-
+proc|ltrim|text|text|f|f|-
+proc|ltrim|text, text|text|f|f|-
+proc|make_date|year integer, month integer, day integer|date|f|f|-
+proc|make_interval|years integer DEFAULT 0, months integer DEFAULT 0, weeks integer DEFAULT 0, days integer DEFAULT 0, hours integer DEFAULT 0, mins integer DEFAULT 0, secs double precision DEFAULT 0.0|interval|f|f|-
+proc|make_timestamp|year integer, month integer, mday integer, hour integer, min integer, sec double precision|timestamp without time zone|f|f|-
+proc|max|anyarray|anyarray|f|a|-
+proc|max|anyenum|anyenum|f|a|-
+proc|max|bigint|bigint|f|a|-
+proc|max|character|character|f|a|-
+proc|max|date|date|f|a|-
+proc|max|double precision|double precision|f|a|-
+proc|max|inet|inet|f|a|-
+proc|max|integer|integer|f|a|-
+proc|max|interval|interval|f|a|-
+proc|max|money|money|f|a|-
+proc|max|numeric|numeric|f|a|-
+proc|max|oid|oid|f|a|-
+proc|max|pg_lsn|pg_lsn|f|a|-
+proc|max|real|real|f|a|-
+proc|max|smallint|smallint|f|a|-
+proc|max|text|text|f|a|-
+proc|max|tid|tid|f|a|-
+proc|max|time with time zone|time with time zone|f|a|-
+proc|max|time without time zone|time without time zone|f|a|-
+proc|max|timestamp with time zone|timestamp with time zone|f|a|-
+proc|max|timestamp without time zone|timestamp without time zone|f|a|-
+proc|max|xid8|xid8|f|a|-
+proc|md5|bytea|text|f|f|-
+proc|md5|text|text|f|f|-
+proc|min|anyarray|anyarray|f|a|-
+proc|min|anyenum|anyenum|f|a|-
+proc|min|bigint|bigint|f|a|-
+proc|min|character|character|f|a|-
+proc|min|date|date|f|a|-
+proc|min|double precision|double precision|f|a|-
+proc|min|inet|inet|f|a|-
+proc|min|integer|integer|f|a|-
+proc|min|interval|interval|f|a|-
+proc|min|money|money|f|a|-
+proc|min|numeric|numeric|f|a|-
+proc|min|oid|oid|f|a|-
+proc|min|pg_lsn|pg_lsn|f|a|-
+proc|min|real|real|f|a|-
+proc|min|smallint|smallint|f|a|-
+proc|min|text|text|f|a|-
+proc|min|tid|tid|f|a|-
+proc|min|time with time zone|time with time zone|f|a|-
+proc|min|time without time zone|time without time zone|f|a|-
+proc|min|timestamp with time zone|timestamp with time zone|f|a|-
+proc|min|timestamp without time zone|timestamp without time zone|f|a|-
+proc|min|xid8|xid8|f|a|-
+proc|min_scale|numeric|integer|f|f|-
+proc|mod|bigint, bigint|bigint|f|f|-
+proc|mod|integer, integer|integer|f|f|-
+proc|mod|numeric, numeric|numeric|f|f|-
+proc|mod|smallint, smallint|smallint|f|f|-
+proc|mode|ORDER BY anyelement|anyelement|f|a|-
+proc|now||timestamp with time zone|f|f|-
+proc|nth_value|anyelement, integer|anyelement|f|w|-
+proc|ntile|integer|integer|f|w|-
+proc|num_nonnulls|VARIADIC "any"|integer|f|f|"any"
+proc|num_nulls|VARIADIC "any"|integer|f|f|"any"
+proc|numeric|bigint|numeric|f|f|-
+proc|numeric|double precision|numeric|f|f|-
+proc|numeric|integer|numeric|f|f|-
+proc|numeric|jsonb|numeric|f|f|-
+proc|numeric|money|numeric|f|f|-
+proc|numeric|numeric, integer|numeric|f|f|-
+proc|numeric|real|numeric|f|f|-
+proc|numeric|smallint|numeric|f|f|-
+proc|octet_length|bit|integer|f|f|-
+proc|octet_length|bytea|integer|f|f|-
+proc|octet_length|character|integer|f|f|-
+proc|octet_length|text|integer|f|f|-
+proc|overlay|bit, bit, integer|bit|f|f|-
+proc|overlay|bit, bit, integer, integer|bit|f|f|-
+proc|overlay|bytea, bytea, integer|bytea|f|f|-
+proc|overlay|bytea, bytea, integer, integer|bytea|f|f|-
+proc|overlay|text, text, integer|text|f|f|-
+proc|overlay|text, text, integer, integer|text|f|f|-
+proc|percent_rank||double precision|f|w|-
+proc|percent_rank|VARIADIC "any" ORDER BY VARIADIC "any"|double precision|f|a|"any"
+proc|percentile_cont|double precision ORDER BY double precision|double precision|f|a|-
+proc|percentile_cont|double precision ORDER BY interval|interval|f|a|-
+proc|percentile_cont|double precision[] ORDER BY double precision|double precision[]|f|a|-
+proc|percentile_cont|double precision[] ORDER BY interval|interval[]|f|a|-
+proc|percentile_disc|double precision ORDER BY anyelement|anyelement|f|a|-
+proc|percentile_disc|double precision[] ORDER BY anyelement|anyarray|f|a|-
+proc|pg_typeof|"any"|regtype|f|f|-
+proc|pi||double precision|f|f|-
+proc|position|bit, bit|integer|f|f|-
+proc|position|bytea, bytea|integer|f|f|-
+proc|position|text, text|integer|f|f|-
+proc|pow|double precision, double precision|double precision|f|f|-
+proc|pow|numeric, numeric|numeric|f|f|-
+proc|power|double precision, double precision|double precision|f|f|-
+proc|power|numeric, numeric|numeric|f|f|-
+proc|quote_ident|text|text|f|f|-
+proc|quote_literal|anyelement|text|f|f|-
+proc|quote_literal|text|text|f|f|-
+proc|quote_nullable|anyelement|text|f|f|-
+proc|quote_nullable|text|text|f|f|-
+proc|radians|double precision|double precision|f|f|-
+proc|random||double precision|f|f|-
+proc|range_agg|anymultirange|anymultirange|f|a|-
+proc|range_agg|anyrange|anymultirange|f|a|-
+proc|rank||bigint|f|w|-
+proc|rank|VARIADIC "any" ORDER BY VARIADIC "any"|bigint|f|a|"any"
+proc|regexp_count|text, text|integer|f|f|-
+proc|regexp_count|text, text, integer|integer|f|f|-
+proc|regexp_count|text, text, integer, text|integer|f|f|-
+proc|regexp_like|text, text|boolean|f|f|-
+proc|regexp_like|text, text, text|boolean|f|f|-
+proc|regexp_match|text, text|text[]|f|f|-
+proc|regexp_match|text, text, text|text[]|f|f|-
+proc|regexp_matches|text, text|text[]|t|f|-
+proc|regexp_matches|text, text, text|text[]|t|f|-
+proc|regexp_replace|text, text, text|text|f|f|-
+proc|regexp_replace|text, text, text, integer|text|f|f|-
+proc|regexp_replace|text, text, text, integer, integer|text|f|f|-
+proc|regexp_replace|text, text, text, integer, integer, text|text|f|f|-
+proc|regexp_replace|text, text, text, text|text|f|f|-
+proc|regexp_split_to_array|text, text|text[]|f|f|-
+proc|regexp_split_to_array|text, text, text|text[]|f|f|-
+proc|regexp_split_to_table|text, text|text|t|f|-
+proc|regexp_split_to_table|text, text, text|text|t|f|-
+proc|regexp_substr|text, text|text|f|f|-
+proc|regexp_substr|text, text, integer|text|f|f|-
+proc|regexp_substr|text, text, integer, integer|text|f|f|-
+proc|regexp_substr|text, text, integer, integer, text|text|f|f|-
+proc|regexp_substr|text, text, integer, integer, text, integer|text|f|f|-
+proc|regr_count|double precision, double precision|bigint|f|a|-
+proc|regr_intercept|double precision, double precision|double precision|f|a|-
+proc|regr_r2|double precision, double precision|double precision|f|a|-
+proc|regr_slope|double precision, double precision|double precision|f|a|-
+proc|repeat|text, integer|text|f|f|-
+proc|replace|text, text, text|text|f|f|-
+proc|reverse|text|text|f|f|-
+proc|right|text, integer|text|f|f|-
+proc|round|double precision|double precision|f|f|-
+proc|round|numeric|numeric|f|f|-
+proc|round|numeric, integer|numeric|f|f|-
+proc|row_number||bigint|f|w|-
+proc|row_to_json|record|json|f|f|-
+proc|row_to_json|record, boolean|json|f|f|-
+proc|rpad|text, integer|text|f|f|-
+proc|rpad|text, integer, text|text|f|f|-
+proc|rtrim|bytea, bytea|bytea|f|f|-
+proc|rtrim|text|text|f|f|-
+proc|rtrim|text, text|text|f|f|-
+proc|scale|numeric|integer|f|f|-
+proc|setseed|double precision|void|f|f|-
+proc|sha256|bytea|bytea|f|f|-
+proc|sign|double precision|double precision|f|f|-
+proc|sign|numeric|numeric|f|f|-
+proc|split_part|text, text, integer|text|f|f|-
+proc|sqrt|double precision|double precision|f|f|-
+proc|sqrt|numeric|numeric|f|f|-
+proc|starts_with|text, text|boolean|f|f|-
+proc|statement_timestamp||timestamp with time zone|f|f|-
+proc|stddev|bigint|numeric|f|a|-
+proc|stddev|double precision|double precision|f|a|-
+proc|stddev|integer|numeric|f|a|-
+proc|stddev|numeric|numeric|f|a|-
+proc|stddev|real|double precision|f|a|-
+proc|stddev|smallint|numeric|f|a|-
+proc|stddev_pop|bigint|numeric|f|a|-
+proc|stddev_pop|double precision|double precision|f|a|-
+proc|stddev_pop|integer|numeric|f|a|-
+proc|stddev_pop|numeric|numeric|f|a|-
+proc|stddev_pop|real|double precision|f|a|-
+proc|stddev_pop|smallint|numeric|f|a|-
+proc|stddev_samp|bigint|numeric|f|a|-
+proc|stddev_samp|double precision|double precision|f|a|-
+proc|stddev_samp|integer|numeric|f|a|-
+proc|stddev_samp|numeric|numeric|f|a|-
+proc|stddev_samp|real|double precision|f|a|-
+proc|stddev_samp|smallint|numeric|f|a|-
+proc|string_agg|bytea, bytea|bytea|f|a|-
+proc|string_agg|text, text|text|f|a|-
+proc|string_to_array|text, text|text[]|f|f|-
+proc|string_to_array|text, text, text|text[]|f|f|-
+proc|strpos|text, text|integer|f|f|-
+proc|substr|bytea, integer|bytea|f|f|-
+proc|substr|bytea, integer, integer|bytea|f|f|-
+proc|substr|text, integer|text|f|f|-
+proc|substr|text, integer, integer|text|f|f|-
+proc|substring|bit, integer|bit|f|f|-
+proc|substring|bit, integer, integer|bit|f|f|-
+proc|substring|bytea, integer|bytea|f|f|-
+proc|substring|bytea, integer, integer|bytea|f|f|-
+proc|substring|text, integer|text|f|f|-
+proc|substring|text, integer, integer|text|f|f|-
+proc|substring|text, text|text|f|f|-
+proc|substring|text, text, text|text|f|f|-
+proc|sum|bigint|numeric|f|a|-
+proc|sum|double precision|double precision|f|a|-
+proc|sum|integer|bigint|f|a|-
+proc|sum|interval|interval|f|a|-
+proc|sum|money|money|f|a|-
+proc|sum|numeric|numeric|f|a|-
+proc|sum|real|real|f|a|-
+proc|sum|smallint|bigint|f|a|-
+proc|text|"char"|text|f|f|-
+proc|text|boolean|text|f|f|-
+proc|text|character|text|f|f|-
+proc|text|inet|text|f|f|-
+proc|text|name|text|f|f|-
+proc|text|xml|text|f|f|-
+proc|timestamp|date|timestamp without time zone|f|f|-
+proc|timestamp|date, time without time zone|timestamp without time zone|f|f|-
+proc|timestamp|timestamp with time zone|timestamp without time zone|f|f|-
+proc|timestamp|timestamp without time zone, integer|timestamp without time zone|f|f|-
+proc|timestamptz|date|timestamp with time zone|f|f|-
+proc|timestamptz|date, time with time zone|timestamp with time zone|f|f|-
+proc|timestamptz|date, time without time zone|timestamp with time zone|f|f|-
+proc|timestamptz|timestamp with time zone, integer|timestamp with time zone|f|f|-
+proc|timestamptz|timestamp without time zone|timestamp with time zone|f|f|-
+proc|timezone|interval, time with time zone|time with time zone|f|f|-
+proc|timezone|interval, timestamp with time zone|timestamp without time zone|f|f|-
+proc|timezone|interval, timestamp without time zone|timestamp with time zone|f|f|-
+proc|timezone|text, time with time zone|time with time zone|f|f|-
+proc|timezone|text, timestamp with time zone|timestamp without time zone|f|f|-
+proc|timezone|text, timestamp without time zone|timestamp with time zone|f|f|-
+proc|to_char|bigint, text|text|f|f|-
+proc|to_char|double precision, text|text|f|f|-
+proc|to_char|integer, text|text|f|f|-
+proc|to_char|interval, text|text|f|f|-
+proc|to_char|numeric, text|text|f|f|-
+proc|to_char|real, text|text|f|f|-
+proc|to_char|timestamp with time zone, text|text|f|f|-
+proc|to_char|timestamp without time zone, text|text|f|f|-
+proc|to_date|text, text|date|f|f|-
+proc|to_hex|bigint|text|f|f|-
+proc|to_hex|integer|text|f|f|-
+proc|to_json|anyelement|json|f|f|-
+proc|to_jsonb|anyelement|jsonb|f|f|-
+proc|to_number|text, text|numeric|f|f|-
+proc|to_timestamp|double precision|timestamp with time zone|f|f|-
+proc|to_timestamp|text, text|timestamp with time zone|f|f|-
+proc|transaction_timestamp||timestamp with time zone|f|f|-
+proc|translate|text, text, text|text|f|f|-
+proc|trim_scale|numeric|numeric|f|f|-
+proc|trunc|double precision|double precision|f|f|-
+proc|trunc|macaddr|macaddr|f|f|-
+proc|trunc|macaddr8|macaddr8|f|f|-
+proc|trunc|numeric|numeric|f|f|-
+proc|trunc|numeric, integer|numeric|f|f|-
+proc|txid_current||bigint|f|f|-
+proc|unnest|anyarray|anyelement|t|f|-
+proc|unnest|anymultirange|anyrange|t|f|-
+proc|unnest|tsvector tsvector, OUT lexeme text, OUT positions smallint[], OUT weights text[]|record|t|f|-
+proc|upper|anymultirange|anyelement|f|f|-
+proc|upper|anyrange|anyelement|f|f|-
+proc|upper|text|text|f|f|-
+proc|var_pop|bigint|numeric|f|a|-
+proc|var_pop|double precision|double precision|f|a|-
+proc|var_pop|integer|numeric|f|a|-
+proc|var_pop|numeric|numeric|f|a|-
+proc|var_pop|real|double precision|f|a|-
+proc|var_pop|smallint|numeric|f|a|-
+proc|var_samp|bigint|numeric|f|a|-
+proc|var_samp|double precision|double precision|f|a|-
+proc|var_samp|integer|numeric|f|a|-
+proc|var_samp|numeric|numeric|f|a|-
+proc|var_samp|real|double precision|f|a|-
+proc|var_samp|smallint|numeric|f|a|-
+proc|variance|bigint|numeric|f|a|-
+proc|variance|double precision|double precision|f|a|-
+proc|variance|integer|numeric|f|a|-
+proc|variance|numeric|numeric|f|a|-
+proc|variance|real|double precision|f|a|-
+proc|variance|smallint|numeric|f|a|-
+proc|version||text|f|f|-
+proc|width_bucket|anycompatible, anycompatiblearray|integer|f|f|-
+proc|width_bucket|double precision, double precision, double precision, integer|integer|f|f|-
+proc|width_bucket|numeric, numeric, numeric, integer|integer|f|f|-

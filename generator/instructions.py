@@ -256,6 +256,8 @@ def instructions(problem, with_keys: bool = False) -> list[dict]:
         return vim_instructions(p, with_keys)
     if p.get("latex"):
         return latex_instructions(p, with_keys)
+    if p.get("sql"):
+        return sql_instructions(p, with_keys)
     section, module = p.get("section", ""), p.get("module", "")
     tier = TIERS.index(p["tier"]) if p.get("tier") in TIERS else 0
     intro = data().get(section, {}).get("intro", {})
@@ -357,6 +359,28 @@ def latex_instructions(p: dict, with_keys: bool = False) -> list[dict]:
     req = [a for r in p.get("require") or [] for a in r.split("|") if a in CATALOG]
     here = [u for u in uses if MODULE_OF.get(u) == module and u not in TRIVIAL]
     older = [u for u in uses if MODULE_OF.get(u, "") < module and u not in TRIVIAL]
+    chosen = []
+    for k in req + here + (older[::-1][:2] if len(req + here) < 2 else []):
+        if k not in chosen:
+            chosen.append(k)
+    out = [{"name": shown(k), "sig": "", "desc": CATALOG[k], "key": k} for k in chosen[:MAX_ITEMS]]
+    return out if with_keys else [{"name": x["name"], "sig": "", "desc": x["desc"]} for x in out]
+
+
+# ---------------------------------------------------------------- SQL (COMP_GUIDE section 10)
+
+SQL_TRIVIAL = {"SELECT", "AS", "WHERE", "JOIN", "::", "~", "?", "IN", "->"}
+
+
+def sql_instructions(p: dict, with_keys: bool = False) -> list[dict]:
+    """The SQL keywords, functions and psql commands a problem practises (postgreslite/glossary.py): the required
+    ones, then those this module introduces that the reference uses, else at most two older ones."""
+    from .postgreslite.glossary import CATALOG, MODULE_OF, shown, uses
+    module = p.get("module", "")
+    used = uses(p.get("solution", ""))
+    req = [a for r in p.get("require") or [] for a in r.split("|") if a in CATALOG]
+    here = [u for u in used if MODULE_OF.get(u) == module]
+    older = [u for u in used if MODULE_OF.get(u, "") < module and u not in SQL_TRIVIAL]
     chosen = []
     for k in req + here + (older[::-1][:2] if len(req + here) < 2 else []):
         if k not in chosen:

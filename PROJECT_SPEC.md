@@ -129,8 +129,8 @@ NumPy/pandas standard, running in the browser.
   pandas' default string storage mid-session.
 
 ### Non-Python sections: planned checkers
-- **SQL**: run for real with `sqlite3`, which is part of Pyodide's stdlib. Compare
-  result sets.
+- **SQL**: built as postgres-lite (session 24): PostgreSQL 16 + psql 16 in Python; results and end states are
+  compared on the shown database and hidden ones.
 - **Bash / Git / Docker CLI**: a `command` checker that tokenizes with `shlex` and
   compares program, subcommand, flags (aliases, `-la` = `-l -a`, order-insensitive)
   and positional args. A simulated shell may come later.
@@ -914,6 +914,53 @@ Python (it runs in Pyodide):
   410pt wide and fills the left column first; parboxes (minipage, p{} cells) have no paragraph indent;
   algpseudocode puts \Require/\Ensure in the label column.
 
+### Session 24 (2026-11-06 → 11-07): SQL (10.01–10.16) on postgres-lite
+Request: build the SQL section like the other developer-tools sections: a live psql, problems from COMP_GUIDE §10.
+
+**Decision: postgres-lite, not SQLite and not PGlite.** The guide teaches PostgreSQL (ILIKE, DISTINCT ON, FILTER,
+JSONB, generated columns, MERGE, EXPLAIN, `\d`). SQLite answers differently (types, NULL ordering, integer
+division, no EXPLAIN plans worth reading); PGlite (Postgres in WebAssembly) is ~3 MB per visitor plus a separate
+runtime, can't run in the Python grader or tests, and has no psql. So, as with bash-lite and latex-lite,
+`generator/postgreslite/` implements PostgreSQL 16 in Python:
+* **Engine:** lexer and parser after gram.y (precedence, every statement the guide uses), a type system and
+  overload resolution driven by PostgreSQL's own catalog (`pg_catalog.txt`: 487 functions, 396 operators, 229
+  casts, 95 types; func_select_candidate / select_common_type), numeric scale rules, float8 shortest output,
+  intervals, timestamps and time zones, arrays, JSON/JSONB (key order, `->`, `@>`, jsonb_set ...), regexes,
+  to_char/to_date, aggregates (Youngs–Cramer for float statistics), windows with frames, grouping sets, recursive
+  CTEs, LATERAL, set operations, DML with RETURNING, ON CONFLICT and MERGE (rows move to the heap's end as in
+  PostgreSQL), constraints and foreign-key actions, sequences, identity and generated columns, views and
+  materialized views, schemas, transactions with savepoints and the aborted state (25P02), COPY.
+* **psql 16:** prompts (`shop=>`, `shop-*>`, `shop!>`), the scanner (quotes, dollar quotes, `\` commands mid-line),
+  the printer (aligned, expanded, unaligned, csv, `\pset`), errors with LINE and caret, `\d` family, `\l`, `\dn`,
+  `\df`, `\x`, `\timing`, `\copy`, `\i`, `\o`, `\e` (opens nano), `\set`/variables, `\h`, `\?`, `-c/-f/-v/-A/-t`.
+* **EXPLAIN** after costsize.c / subselect.c / selfuncs.c: Seq / Index / Index Only (heap fetches until VACUUM) /
+  Bitmap scans with btree sizes including deduplication, hash joins with PostgreSQL's cost formula (inner-unique and
+  semi/anti factors, bucket statistics), nested loops over parameterized index scans, eqjoinsel with MCV lists,
+  EXISTS / NOT EXISTS / IN pulled up into semi / anti joins (or the subquery made unique, or a plain join when it is
+  unique anyway), InitPlans and (hashed) SubPlans numbered as PostgreSQL does, CTE inlining, quals pushed into
+  subqueries, aggregates, windows, sorts, limits; EXPLAIN ANALYZE runs the query (actual rows, simulated times).
+* **Checked against a real PostgreSQL 16.2:** `scripts/sql_corpus.py` replays `tests/sql_corpus/*.sql` (results,
+  errors, the guide's statements, plans) against the recorded server output; `scripts/sql_templates.py --oracle`
+  runs every template's database and reference on a real server (389 of 402 problems compared; byte-identical except
+  that ARM FMA can change a float's last digit, and plan costs within 2%).
+* **The terminal:** psql runs as a bash-lite program (`#: psql shop` in a setup opens it; `\q` is off except in
+  10.15, which starts at the bash prompt). The page shows a Database panel (tables, columns, row counts, indexes;
+  changed tables green) and a bar under the terminal with the last result's shape and whether it matches the target.
+* **Grading** (`bashlite/sqlcheck.py`): the session is replayed on the shown database and on hidden ones built by
+  the template with traps (NULLs, ties, duplicates, empty groups, boundary values); `query` problems need one
+  statement whose result equals the reference's on all of them (order only when asked; column names checked after
+  values, with specific messages), `state` problems compare the end state of named tables (rows, types, nullability,
+  constraints, defaults, indexes) and probes, `explain` problems check the plan's nodes, `psql` problems check
+  settings, files written (\copy) and SQLite files. A hard-coded result fails on the hidden databases.
+* **10.15** adds the command line: `psql -c / -f / -l`, `createdb`/`dropdb`/`pg_isready`, a `sqlite3` shell
+  (bashlite/utils/sqlitecli.py: modes, .import, .schema ...) and Python's sqlite3 on the simulated filesystem (a
+  connection's database is loaded from and written back to the machine's file); pandas `read_sql`/`to_sql` in a venv.
+* **182 templates** in `generator/sections/s10_sql/` (every module ≥ 2 per tier), mostly catalogs of drills; the
+  Instructions come from `postgreslite/glossary.py` (every entry practised). If random data leaves a task without an
+  answer on the shown database, the builder retries with a derived seed.
+* **Checks:** `tests/test_sql_section.py` (every item of every template: the reference passes, an idle session fails;
+  glossary coverage; the PostgreSQL corpus; psql's errors; grading messages; hidden databases; the command line).
+
 ### Open problem: Hugging Face in the browser
 Pyodide has no `transformers`. Options: extend the shim idea (a tiny tokenizer/pipeline layer over torch-lite),
 AST and pattern checks, or an optional "run locally" mode. **Not decided yet.**
@@ -934,12 +981,18 @@ generator/            Python package: question generation + grading (runs locall
     s07_bash/         _common.py (P/K problem helpers, files() heredocs, catalog(), challenge()) + m01_basics.py … m17_keys_history.py
     s09_vim/          _common.py (V() problem helper: runs the reference once for the target text, cursor target and
                       Instructions; drill(); ML-themed texts) + m01_modes.py … m12_vimrc.py
+    s10_sql/          _common.py (Q() problem helper: runs the reference for the target, drill(), retries), _data.py (the
+                      shop, ML-runs, events ... databases with hidden variants) + m01_select.py … m16_analytics.py
     s11_latex/        _common.py (L() problem helper: compiles the reference once for the target preview and the
                       Instructions; drill(); @fixed) + m01_skeleton.py … m18_troubleshooting.py
   bashlite/           bash-lite: a simulated Ubuntu machine in pure Python (vfs, parser, kernel, shell, builtins, utils/ commands,
                       world/basefs, directives, check = the bash grader, keys = readline/tmux simulator, features,
                       live = the live terminal: key-by-key sessions on the real clock, logs, replays;
                       vim/ = the Vim engine, utils/vim.py = the `vim` command, vimcheck = the Vim grader)
+  postgreslite/       postgres-lite: PostgreSQL 16 + psql 16 in Python (lexer, parser, types + pg_catalog.txt, coerce,
+                      analyze, executor, funcs, aggs, dml, ddl, server = cluster/sessions/transactions, psql, describe,
+                      explain = the planner, glossary = the Instructions); bashlite/utils/psqlprog.py runs it in the
+                      terminal, bashlite/sqlcheck.py grades, bashlite/sqlsetup.py builds a problem's databases
   latexlite/          latex-lite: LaTeX in Python (tokens, engine + commands/features/floats/tables/bib/algo, mathmode,
                       tikz, pgfplots, beamer, packages = what each package provides, render + render_table = HTML,
                       compile = compile_doc(), check = the LaTeX grader, catalog = the Instructions' descriptions)
@@ -970,6 +1023,8 @@ scripts/diff_vim.py       bash-lite's Vim vs real Vim 9.1 on tests/vim_corpus (-
 scripts/diff_vim_templates.py  every Vim exercise's reference keys in real Vim vs bash-lite's Vim
 scripts/vim_templates.py  every Vim template item: the reference passes, an idle session fails (-v prints prompts)
 scripts/vim_e2e.py        browser check of the Vim pages
+scripts/sql_templates.py  every SQL template item: the reference passes, an idle session fails (--oracle: real PostgreSQL)
+scripts/sql_corpus.py     postgres-lite vs PostgreSQL 16 on tests/sql_corpus (--record saves a real server's output)
 ```
 
 Local dev:
@@ -998,7 +1053,7 @@ Legend: ✅ done · 🟡 partial · ⬜ not started
 | 7 | Bash | ✅ **all 17 modules live**: 176 templates in `generator/sections/s07_bash/` (every module ≥ 2 templates per tier, 2 challenges each), answered in a live terminal | bash-lite: simulated Ubuntu machine (`generator/bashlite/`); the terminal session is replayed and its output / files compared; keystrokes for 7.17 | sessions 7, 8 |
 | 8 | Git & GitHub | ⬜ | command | |
 | 9 | Vim | ✅ **all 12 modules live**: 121 templates in `generator/sections/s09_vim/` (every module ≥ 2 templates per tier), answered in Vim in the live terminal | bash-lite's Vim (`generator/bashlite/vim/`, checked against real Vim 9.1); Vim's end state compared with the reference keys', plus required / forbidden commands and a keystroke par | session 22 |
-| 10 | SQL | ⬜ | sqlite3 exec | |
+| 10 | SQL | ✅ **all 16 modules live**: 182 templates in `generator/sections/s10_sql/` (every module ≥ 2 templates per tier), answered in a live psql beside a Database panel | postgres-lite (`generator/postgreslite/`, checked against a real PostgreSQL 16.2): results / end states compared on the shown and hidden databases, plans, psql settings, files | session 24 |
 | 11 | LaTeX | ✅ **all 18 modules live**: 180 templates in `generator/sections/s11_latex/` (10 per module), answered in an editor with Compile (the PDF beside it) and Submit | latex-lite (`generator/latexlite/`): LaTeX interpreted in Python, math by KaTeX, TikZ/pgfplots as SVG, Beamer slides; the compiled documents compared, plus required / forbidden commands | session 23 |
 | 12 | Docker | ⬜ | command / Dockerfile | |
 | 13 | Data Structures & Algorithms (Part III) | ✅ **all 12 live** (binary search, mergesort, quicksort, linked lists, stacks, queues, unbounded arrays, hash tables, BSTs, dictionaries & sets, heaps, priority queues; all options × element types × Python/C++/Java/Rust, contracts optional) | Pyodide (Python), Compiler Explorer (C++/Java/Rust); line-by-line output diff | session 11 |

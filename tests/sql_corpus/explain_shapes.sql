@@ -1,0 +1,16 @@
+DROP TABLE orders; DROP TABLE users;
+CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT NOT NULL, country TEXT, signup_date DATE NOT NULL);
+CREATE TABLE orders (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id), amount NUMERIC(10, 2) NOT NULL CHECK (amount >= 0), status TEXT NOT NULL DEFAULT 'paid', created_at TIMESTAMP NOT NULL);
+INSERT INTO users SELECT g, 'user' || g, (ARRAY['US','UK','DE','FR',NULL])[1 + g % 5], DATE '2023-01-01' + (g % 400) FROM generate_series(1, 1000) g;
+INSERT INTO orders SELECT g, 1 + (g * 7919) % 1000, round((g * 37 % 50000) / 100.0, 2), (ARRAY['paid','paid','paid','refunded','pending'])[1 + g % 5], TIMESTAMP '2024-01-01' + (g * 613 % 525600) * INTERVAL '1 minute' FROM generate_series(1, 20000) g;
+ANALYZE;
+EXPLAIN WITH big AS (SELECT * FROM orders WHERE amount > 400) SELECT user_id, count(*) FROM big GROUP BY user_id;
+EXPLAIN WITH t AS (SELECT user_id, sum(amount) AS s FROM orders GROUP BY user_id) SELECT * FROM t WHERE s > 5000;
+EXPLAIN SELECT status, count(*) FROM orders WHERE amount > 100 GROUP BY status;
+EXPLAIN SELECT u.name, count(o.id) FROM users u LEFT JOIN orders o ON o.user_id = u.id GROUP BY u.name;
+EXPLAIN SELECT id, amount, rank() OVER (PARTITION BY user_id ORDER BY amount DESC) FROM orders;
+EXPLAIN SELECT DISTINCT country FROM users;
+EXPLAIN SELECT id FROM users UNION SELECT user_id FROM orders;
+EXPLAIN SELECT u.name, o.amount FROM users u JOIN orders o ON o.user_id = u.id ORDER BY o.amount DESC LIMIT 5;
+EXPLAIN SELECT * FROM (SELECT user_id, max(amount) AS m FROM orders GROUP BY user_id) s WHERE m > 400;
+EXPLAIN SELECT country, avg(o.amount) FROM users u JOIN orders o ON o.user_id = u.id GROUP BY country HAVING avg(o.amount) > 200;

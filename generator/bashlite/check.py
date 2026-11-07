@@ -121,6 +121,12 @@ def checker(problem: dict, code: str, grade: bool) -> dict:
     session = parse_answer(code)
     if session is not None:
         return term_checker(problem, session)
+    if problem.get("sql"):
+        # a typed answer to a SQL problem: lines typed at psql's prompt
+        from .sqlcheck import _term, type_lines
+        t = type_lines(_term(problem), code)
+        end = t.stamp("end")
+        return term_checker(problem, (t.log, {"m": end["m"], "d": end.get("d", 0)}))
     if problem.get("vim"):
         # a typed answer to a Vim problem: Vim keys (`ciwfit<Esc>`), as if pressed in the terminal
         from .live import vim_session
@@ -328,6 +334,9 @@ def term_checker(problem: dict, session) -> dict:
     if problem.get("vim"):
         from .vimcheck import checker as vim_checker
         return vim_checker(problem, log, end)
+    if problem.get("sql"):
+        from .sqlcheck import checker as sql_checker
+        return sql_checker(problem, log, end)
     if "#: keys" in problem.get("setup", ""):
         return _keys_checker(problem, log, end)
     try:

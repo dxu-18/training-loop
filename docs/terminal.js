@@ -280,6 +280,7 @@
 
     // under the window while Vim is open: keys pressed (and the par), whether the text already matches the target
     vimBar(view) {
+      if (view && view.sql) { this.sqlBar(view.sql); return; }
       const info = view && view.mode === "vim" ? view.vim : null;
       this.vimEl.hidden = !info;
       if (!info) return;
@@ -291,6 +292,19 @@
       m.textContent = info.match == null ? "" : info.match ? "✓ matches the target" : "not there yet";
       m.className = "mv-match" + (info.match ? " ok" : "");
       this.vimEl.querySelector(".mv-hint").textContent = IS_MAC ? "" : "Alt-W / Alt-N / Alt-T send Ctrl-W / Ctrl-N / Ctrl-T";
+    }
+
+    // under the window on SQL pages: the last result's shape and whether it already matches the target
+    sqlBar(info) {
+      this.vimEl.hidden = !info.last;
+      if (!info.last) return;
+      const k = this.vimEl.querySelector(".mv-keys");
+      k.textContent = info.last === "error" ? "last statement: error" : `last result: ${info.last}`;
+      k.classList.toggle("over", info.last === "error");
+      const m = this.vimEl.querySelector(".mv-match");
+      m.textContent = info.match == null ? "" : info.match ? "✓ matches the target" : "not the target yet";
+      m.className = "mv-match" + (info.match ? " ok" : "");
+      this.vimEl.querySelector(".mv-hint").textContent = "";
     }
 
     drawInput(view, done) {
@@ -598,6 +612,52 @@
   };
   const escH = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
+  // ------------------------------------------------------------ the Database panel (SQL pages)
+  // The open database's tables and views: row counts, columns (click to unfold), indexes; tables the session
+  // changed or created are green, dropped ones struck through.
+  class DbPanel {
+    constructor(el) {
+      this.el = el;
+      el.innerHTML = `<div class="fp-head"><span class="fp-title">Database</span><span class="db-name"></span></div>
+        <div class="fp-tree db-tree"></div>`;
+      this.treeEl = el.querySelector(".db-tree");
+      this.open = new Set();
+      this.start = new Map();
+      this.data = null;
+      this.treeEl.addEventListener("click", (e) => {
+        const row = e.target.closest(".db-rel");
+        if (!row) return;
+        const n = row.dataset.name;
+        if (this.open.has(n)) this.open.delete(n); else this.open.add(n);
+        this.render();
+      });
+    }
+    setStart(db) { this.start = new Map((db?.rels || []).map((r) => [r.name, r.sig])); this.update(db); }
+    update(db) { if (db) { this.data = db; this.render(); } }
+    render() {
+      const db = this.data;
+      if (!db) return;
+      this.el.querySelector(".db-name").textContent = db.db || "";
+      const rows = [];
+      const now = new Set();
+      for (const r of db.rels) {
+        now.add(r.name);
+        const st = !this.start.has(r.name) ? " is-new" : this.start.get(r.name) !== r.sig ? " is-changed" : "";
+        const open = this.open.has(r.name);
+        const count = r.rows == null ? r.kind : `${r.rows} row${r.rows === 1 ? "" : "s"}`;
+        rows.push(`<div class="fp-row d db-rel${st}" data-name="${escH(r.name)}" style="--depth:0">
+          <span class="fp-twisty">${open ? "▾" : "▸"}</span><span class="fp-name">${escH(r.name)}</span>
+          <span class="fp-tag">${escH(count)}</span></div>`);
+        if (open) {
+          for (const [c, t] of r.cols) rows.push(`<div class="fp-row db-col" style="--depth:1"><span class="fp-name">${escH(c)}</span><span class="fp-to">${escH(t)}</span></div>`);
+          for (const i of r.idx || []) rows.push(`<div class="fp-row db-col" style="--depth:1"><span class="fp-to">index ${escH(i)}</span></div>`);
+        }
+      }
+      for (const name of this.start.keys()) if (!now.has(name)) rows.push(`<div class="fp-row is-gone" style="--depth:0"><span class="fp-twisty"></span><span class="fp-name">${escH(name)}</span></div>`);
+      this.treeEl.innerHTML = rows.join("") || `<div class="fp-row more">no tables</div>`;
+    }
+  }
+
   class FilesPanel {
     constructor(el) {
       this.el = el;
@@ -714,12 +774,13 @@
 
   class TermSession {
     // py: the page's worker client; key: "bash/7.02"; problem: the generated problem
-    constructor({ py, host, filesEl, key, problem, onState, onSubmit }) {
+    constructor({ py, host, filesEl, dbEl, key, problem, onState, onSubmit }) {
       this.py = py;
       this.key = key;
       this.problem = problem;
       this.onState = onState || (() => {});
       this.files = new FilesPanel(filesEl);
+      this.db = dbEl ? new DbPanel(dbEl) : null;
       this.mt = new MacTerminal(host, { onInput: (ev) => this.input(ev), onResize: (cols) => this.resized(cols), onSubmit });
       this.queue = [];
       this.inflight = false;
@@ -750,6 +811,7 @@
       if (res.error) { await this.mt.write(`\x1b[31m${res.error}\x1b[0m\r\n`); return; }
       await this.mt.reset();
       this.files.setStart(res.start_tree || res.tree);
+      if (this.db) this.db.setStart(res.start_db || res.db);
       this.alive = true;
       if (this.cols !== 80) this.resized(this.cols);
       this.apply(res, true);
@@ -803,6 +865,7 @@
       if (this.nano) this.held += res.out || "";
       else this.mt.update(res.out, res.view, res.title);
       if (res.tree) this.files.update(res.tree);
+      if (res.db && this.db) this.db.update(res.db);
       if (res.editor && !this.nano) this.openNano(res.editor);
       this.lastView = res.view;
       this.onState({ ended: res.ended, view: res.view, editor: !!res.editor });
