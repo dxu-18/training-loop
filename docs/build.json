@@ -1,5 +1,5 @@
 {
- "hash": "d0feea8f0635",
+ "hash": "93ff45e2ffd1",
  "topics": {
   "numpy": {
    "title": "NumPy",
@@ -1816,193 +1816,193 @@
     {
      "id": "10.01",
      "title": "SELECT: filtering, sorting & limiting",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 3,
+      "easy": 2,
+      "medium": 4,
+      "hard": 4,
+      "challenge": 2
      }
     },
     {
      "id": "10.02",
      "title": "Expressions: CASE, NULL handling & casting",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 2,
+      "hard": 3,
+      "challenge": 2
      }
     },
     {
      "id": "10.03",
      "title": "Aggregation: GROUP BY & HAVING",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 4,
+      "hard": 2,
+      "challenge": 2
      }
     },
     {
      "id": "10.04",
      "title": "Joins",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 3,
+      "hard": 3,
+      "challenge": 2
      }
     },
     {
      "id": "10.05",
      "title": "Subqueries, CTEs & set operations",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 3,
+      "medium": 3,
+      "hard": 3,
+      "challenge": 2
      }
     },
     {
      "id": "10.06",
      "title": "Window functions",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 3,
+      "hard": 2,
+      "challenge": 2
      }
     },
     {
      "id": "10.07",
      "title": "String functions",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 2,
+      "hard": 2,
+      "challenge": 2
      }
     },
     {
      "id": "10.08",
      "title": "Dates & times",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 3,
+      "hard": 2,
+      "challenge": 2
      }
     },
     {
      "id": "10.09",
      "title": "Math & numeric functions",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 2,
+      "hard": 2,
+      "challenge": 2
      }
     },
     {
      "id": "10.10",
      "title": "Creating & changing tables (DDL)",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 2,
+      "hard": 2,
+      "challenge": 2
      }
     },
     {
      "id": "10.11",
      "title": "Inserting, updating, deleting & upserting (DML)",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 3,
+      "hard": 3,
+      "challenge": 2
      }
     },
     {
      "id": "10.12",
      "title": "Transactions, views & indexes",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 3,
+      "hard": 2,
+      "challenge": 2
      }
     },
     {
      "id": "10.13",
      "title": "JSON & arrays",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 3,
+      "hard": 2,
+      "challenge": 2
      }
     },
     {
      "id": "10.14",
      "title": "Query performance",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 2,
+      "hard": 2,
+      "challenge": 2
      }
     },
     {
      "id": "10.15",
      "title": "SQL from Python & the command line",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 3,
+      "hard": 3,
+      "challenge": 2
      }
     },
     {
      "id": "10.16",
      "title": "Analytics & ML patterns",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 2,
+      "hard": 3,
+      "challenge": 2
      }
     }
    ]

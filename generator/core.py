@@ -56,6 +56,7 @@ class Problem:
     timeout: float = 8.0                  # seconds the whole grading run may take
     vim: dict = field(default_factory=dict)   # Vim problems (bashlite/vimcheck.py): what to compare, max_keys
     latex: dict = field(default_factory=dict)  # LaTeX problems (latexlite/check.py): mode, given parts, target
+    sql: dict = field(default_factory=dict)    # SQL problems (bashlite/sqlcheck.py): databases, hidden data, check
     # filled in by generate()
     section: str = ""
     tier: str = ""

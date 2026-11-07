@@ -17,8 +17,8 @@ NUMPY_MODULES = [f"1.{i:02d}" for i in range(1, 19)]
 @pytest.mark.parametrize("tpl", ALL, ids=IDS)
 def test_reference_passes(tpl):
     # challenges also run large hidden tests, and test_challenges.py checks them against brute force
-    # (Vim: a few seeds; tests/test_vim_section.py checks every item of every Vim template)
-    for seed in (range(6) if tpl.tier == "challenge" else range(4) if tpl.section == "vim" else SEEDS):
+    # (Vim, SQL: a few seeds; tests/test_vim_section.py and test_sql_section.py check every item of every template)
+    for seed in (range(6) if tpl.tier == "challenge" else range(4) if tpl.section in ("vim", "sql") else SEEDS):
         p = build(tpl, seed).to_dict()
         res = grade(p, p["solution"])
         assert res["correct"], f"seed {seed}: {res}\n{p['prompt']}\n{p['setup']}\n{p['solution']}"
@@ -38,6 +38,8 @@ def _variety_key(p):
         lx = p.latex
         key += p.solution + lx.get("starter", "") + lx.get("preamble", "") + lx.get("body", "") + \
             repr(sorted((lx.get("files") or {}).items()))
+    if p.sql:     # a SQL problem is also its databases (the same task on other data)
+        key += repr(p.sql.get("dbs"))
     return key
 
 
@@ -117,8 +119,8 @@ def test_instructions_are_short_and_described(section):
     assert empty <= 0.03 * total, f"{empty}/{total} {section} problems have no Instructions"
 
 
-# Vim and LaTeX describe their own command catalogs (tests/test_vim_section.py, tests/test_latex_section.py)
-@pytest.mark.parametrize("section", sorted(s for s in REGISTRY if s not in ("vim", "latex")))
+# Vim, LaTeX and SQL describe their own catalogs (tests/test_vim_section.py, test_latex_section.py, test_sql_section.py)
+@pytest.mark.parametrize("section", sorted(s for s in REGISTRY if s not in ("vim", "latex", "sql")))
 def test_instructions_list_what_is_new(section):
     """When a problem uses names that are new at its module (introduced there or later), only those are listed;
     names from earlier modules appear only when nothing new is used."""

@@ -18,7 +18,7 @@ const TOPICS = [
   { id: "bash", part: 2, mode: "shell", packages: [], terminal: true },
   { id: "git", part: 2, mode: "shell", packages: [] },
   { id: "vim", part: 2, mode: null, packages: [], terminal: true },
-  { id: "sql", part: 2, mode: "text/x-sql", packages: [] },
+  { id: "sql", part: 2, mode: "text/x-sql", packages: [], terminal: true, extra: { "10.15": ["numpy", "pandas"] } },
   { id: "latex", part: 2, mode: "stex", packages: [], latex: true },
   { id: "docker", part: 2, mode: "shell", packages: [] },
 ];
@@ -449,7 +449,7 @@ async function renderTerminalPractice(topic, mod, topicTitle) {
         <div class="actions">
           <button class="btn primary submit" disabled>Submit</button>
           <button class="btn reset" disabled title="Throw this session away and start again from the problem's machine">Reset</button>
-          <span class="hint">${topic.id === "vim" ? "Vim's state when you submit is checked, and the keys you pressed · ⌘Enter submits · Reset starts over" : "Your whole session is checked: explore freely · ⌘Enter submits · ⌘K clears · ⌘+/− font size"}</span>
+          <span class="hint">${topic.id === "vim" ? "Vim's state when you submit is checked, and the keys you pressed · ⌘Enter submits · Reset starts over" : topic.id === "sql" ? "psql is live: explore freely, your queries are checked (also on hidden data) · ⌘Enter submits · \\e opens the editor" : "Your whole session is checked: explore freely · ⌘Enter submits · ⌘K clears · ⌘+/− font size"}</span>
           <button class="btn primary next" hidden>Next →</button>
         </div>
       </section>
@@ -457,6 +457,7 @@ async function renderTerminalPractice(topic, mod, topicTitle) {
         <div class="head"><div class="verdict"></div><span class="tier"></span></div>
         <div class="verdict-msg"></div>
         <div class="solution-box" hidden><div class="label">Solution:</div></div>
+        ${topic.id === "sql" ? '<div class="files dbp"></div>' : ""}
         <div class="files"></div>
       </aside>
     </div>`;
@@ -465,7 +466,7 @@ async function renderTerminalPractice(topic, mod, topicTitle) {
   $(".reset").onclick = () => { if (view.term && view.phase === "answering") { view.term.reset(); view.term.focus(); } };
   $(".next").onclick = () => loadProblem();
   if (!py) py = new Py();
-  try { await py.init(topic.packages); }
+  try { await py.init([...topic.packages, ...((topic.extra || {})[mod.id] || [])]); }
   catch (e) { $(".problem").innerHTML = `<div class="loading">Couldn't start the terminal: ${esc(e.message)}</div>`; return; }
   await loadProblem();
 }
@@ -474,7 +475,7 @@ function startTerminal(p) {
   if (view.term) view.term.stop();
   $(".term-host").innerHTML = "";
   view.term = new TLTerminal.TermSession({
-    py, host: $(".term-host"), filesEl: $(".files"), key: `${view.topic.id}/${view.mod.id}`, problem: p,
+    py, host: $(".term-host"), filesEl: $(".files:not(.dbp)"), dbEl: $(".dbp"), key: `${view.topic.id}/${view.mod.id}`, problem: p,
     onSubmit: () => doSubmit(),
   });
   view.term.start(false);
@@ -540,6 +541,13 @@ function drawProblem(p, n) {
     el.appendChild(codeBlock(given, mode));
   }
   if (p.latex) latexGiven(p, el);
+  if (p.sql && p.sql.dbs && p.sql.dbs[p.sql.db]) {   // the database the problem starts from (already loaded)
+    const d = document.createElement("details");
+    d.className = "setup";
+    d.innerHTML = `<summary>Database <code>${esc(p.sql.db)}</code> (already loaded)</summary><div class="inner"></div>`;
+    d.querySelector(".inner").appendChild(codeBlock(p.sql.dbs[p.sql.db], "text/x-sql"));
+    el.appendChild(d);
+  }
   if (p.instructions && p.instructions.length) {   // the functions this problem practises (generator/instructions.py)
     const d = document.createElement("details");
     d.className = "instructions";
@@ -553,7 +561,7 @@ function drawProblem(p, n) {
     const d = document.createElement("details");
     d.className = "answer";
     d.innerHTML = `<summary>Show answer</summary><div class="inner"></div>`;
-    d.querySelector(".inner").appendChild(codeBlock(p.solution, p.vim && p.vim.check ? null : mode));
+    d.querySelector(".inner").appendChild(codeBlock(p.solution, p.vim && p.vim.check ? null : p.sql ? "text/x-sql" : mode));
     el.appendChild(d);
   }
 }
@@ -679,7 +687,7 @@ function showSolution(p) {
   box.hidden = !p;
   if (!p) return;
   const keys = /^\s*#: keys/m.test(p.setup || "");
-  box.appendChild(codeBlock(p.solution, keys || (p.vim && p.vim.check) ? null : p.latex ? "stex" : view.topic.terminal ? "shell" : modeOf(p, view.topic)));
+  box.appendChild(codeBlock(p.solution, keys || (p.vim && p.vim.check) ? null : p.latex ? "stex" : p.sql ? "text/x-sql" : view.topic.terminal ? "shell" : modeOf(p, view.topic)));
 }
 
 function showMedal(topic, mod) {

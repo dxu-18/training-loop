@@ -9,7 +9,7 @@ practice, problem render, syntax error, Run, infinite-loop time limit, correct -
 reroll, a challenge with hidden tests, the medal at 100, answer reveal at 101, counters on the
 topic and home pages, the phone layout, the Bash pages (the live terminal: typed answers, keystrokes,
 nano scripts, Ctrl-C, stderr, the Files panel, reload and Reset), and (unless --selftest-seeds 0) grading every template's own solution inside Pyodide
-(Vim's and LaTeX's too; their pages are checked by scripts/vim_e2e.py and scripts/latex_e2e.py).
+(Vim's, LaTeX's and SQL's too; their pages are checked by scripts/vim_e2e.py, latex_e2e.py and sql_e2e.py).
 """
 
 import argparse
@@ -329,6 +329,15 @@ try:
         pg.goto(BASE + "/#/latex/11.01")
         pg.wait_for_function("view && view.problem && view.phase === 'answering'", timeout=120000)
         selftest("latex")
+        # SQL (its pages are checked by scripts/sql_e2e.py): every template's reference session, in Pyodide; 10.15
+        # on its own page, which also loads numpy and pandas
+        pg.goto(BASE + "/#/sql/10.01")
+        pg.wait_for_function("view && view.term && view.term.alive", timeout=180000)
+        selftest("sql", skip="10.15")
+        pg.goto(BASE + "/#/sql/10.15")
+        pg.reload()
+        pg.wait_for_function("view && view.term && view.term.alive", timeout=240000)
+        selftest("sql", only="10.15")
 
         errors =[l for l in logs if "error" in l.lower()]
         check(not errors, f"no console errors {errors[:5]}")

@@ -58,6 +58,10 @@ def split_setup(setup: str):
         elif name == "vimprep":
             sec, _, keys = arg.partition(" ")
             extra.setdefault("vimprep", []).append((int(sec), keys))   # keys typed earlier (undo history)
+        elif name == "psql":
+            extra["psql"] = arg                      # start in psql (`#: psql shop`)
+        elif name == "psqlquit":
+            extra["psqlquit"] = True                 # \q allowed (else psql can't be left)
         else:
             keep.append(d)
     return keep, code, extra
@@ -95,6 +99,13 @@ class LiveTerm:
         world.editor_ok = True
         world.editor = None
         world.vim = None
+        world.psql = None
+        world.sql_log = []
+        self.qed = None                              # psql's readline (history, Ctrl-R, arrows)
+        self.psql_noquit = "psql" in extra and not extra.get("psqlquit")
+        if problem.get("sql"):
+            from .sqlsetup import build_cluster
+            build_cluster(world, problem["sql"], problem.get("_sql_setup"))
         self.vim_offset = 0                          # ms Vim's clock is ahead of the session's (#: vimprep)
         world.vim_term = {"noquit": "vim" in extra and not extra.get("vimquit"), "target": extra.get("vimtarget"),
                           "dark": bool(problem.get("_dark")), "now": self.now_ms}
@@ -146,6 +157,8 @@ class LiveTerm:
         self._sync_mode()
         if "vim" in extra:
             self._open_vim(extra["vim"], extra.get("vimprep", []))
+        if "psql" in extra:
+            self._open_psql(extra["psql"])
 
     # ------------------------------------------------------------ running the machine
 
@@ -248,6 +261,8 @@ class LiveTerm:
             return "v"
         if self.editor() is not None:
             return "e"
+        if self.psql() is not None:
+            return "q"
         if self.tmux is not None or self.at_prompt():
             return "p"
         return "r"
@@ -291,6 +306,8 @@ class LiveTerm:
                 proc = leader.argv[0].rsplit("/", 1)[-1]
         if self.vim() is not None:
             proc = "vim"
+        elif self.psql() is not None:
+            proc = "psql"
         elif self.editor() is not None:
             proc = "nano"
         elif self.tmux is not None:
@@ -305,6 +322,16 @@ class LiveTerm:
         if w == "v":
             return {"prompt": "", "buf": "", "pos": 0, "hidden": False, "mode": "vim", "tmux": None,
                     "vim": self.vim_info()}
+        if w == "q":
+            ed = self.psql_editor()
+            info = self.sql_info()
+            if ed.search is not None:
+                st = ed.search
+                pre = f"({'failed ' if st['failed'] else ''}reverse-i-search)`{st['q']}': "
+                return {"prompt": pre, "buf": ed.buf, "pos": ed.pos, "hidden": False, "mode": "search", "tmux": None,
+                        "sql": info}
+            return {"prompt": self.psql().psql.prompt(), "buf": ed.buf, "pos": ed.pos, "hidden": False,
+                    "mode": "prompt", "tmux": None, "sql": info}
         if self.tmux_prompt is not None and self.tmux_prompt[2]:
             what, text, label = self.tmux_prompt
             return {"prompt": "", "buf": "", "pos": 0, "hidden": False, "mode": "tmux", "tmux": tm,
@@ -394,6 +421,13 @@ class LiveTerm:
         if key != self.last_tree:
             self.last_tree = key
             res["tree"] = tree
+        if self.problem.get("sql"):
+            from .sqlsetup import db_tree
+            db = db_tree(self)
+            dkey = json.dumps(db, sort_keys=True)
+            if dkey != getattr(self, "last_db", None):
+                self.last_db = dkey
+                res["db"] = db
         return res
 
     # ------------------------------------------------------------ input
@@ -429,6 +463,8 @@ class LiveTerm:
         w = self.where()
         if w == "v":
             return self._vim_input(kind, val, self.now_ms() if t is None else t)
+        if w == "q":
+            return self._psql_input(kind, val)
         if w in ("x", "e"):
             return
         if self.tmux is not None:
@@ -706,6 +742,155 @@ class LiveTerm:
         self.marks.clear()
         self.synced = 0
 
+    # ------------------------------------------------------------ psql
+
+    def psql(self):
+        t = getattr(self.world, "psql", None)
+        return t if t is not None and t.quit is None else None
+
+    def psql_editor(self):
+        if self.qed is None:
+            self.qed = Editor(_PsqlHist(self))
+        return self.qed
+
+    def sql_info(self):
+        """The bar under the terminal on SQL pages: the last result and whether it matches the target."""
+        spec = self.problem.get("sql") or {}
+        if not spec:
+            return None
+        from .sqlsetup import bar_info
+        return bar_info(self, spec)
+
+    def _psql_input(self, kind, val):
+        term = self.psql()
+        p = term.psql
+        ed = self.psql_editor()
+        if kind == "text":
+            ed.text(val)
+            return
+        if val == "Tab" and ed.search is None:
+            from .sqlsetup import complete
+            complete(self, ed, p)
+            return
+        if val in ("C-c",) and ed.search is None:
+            self.show(p.prompt() + ed.buf + "^C\n")
+            p.scan.reset()
+            p.hist_buf = []
+            self.qed = None
+            return
+        r = ed.key(val)
+        if r == "accept":
+            line = ed.buf
+            self.show(p.prompt() + line + "\n")
+            self.qed = None
+            self._psql_line(term, line)
+        elif r == "eof":
+            if p.copy_pending is not None:
+                self.show(p.prompt() + "\n")
+                p.end_of_input()
+                self._psql_flush(term)
+                self.qed = None
+                return
+            self.show(p.prompt() + "\\q\n")
+            self.qed = None
+            self._psql_quit(term)
+        elif r == "abort":
+            self.show(p.prompt() + ed.buf + "^C\n")
+            self.qed = None
+        elif r == "clear":
+            self.show("\x1b[H\x1b[2J")
+
+    def _psql_line(self, term, line):
+        from ..postgreslite.psql import Quit
+        p = term.psql
+        try:
+            p.feed(line)
+        except Quit:
+            if self.psql_noquit:
+                self._psql_flush(term)
+                self.show("\x1b[33m[this problem keeps psql open: answer with SQL here, then Submit]\x1b[0m\n")
+                return
+            self._psql_flush(term)
+            self._psql_quit(term)
+            return
+        except RecursionError:
+            p.e("ERROR:  stack depth limit exceeded\n")
+        self._psql_flush(term)
+        if p.edit_request is not None:
+            self._psql_edit(term)
+
+    def _psql_flush(self, term):
+        for stream, text in term.psql.take_output():
+            self.show(text)
+            if stream == "out":
+                if self.n_out < TRANSCRIPT_LIMIT:
+                    self.stdout_all.append(text)
+                    self.n_out += len(text)
+            elif self.n_err < TRANSCRIPT_LIMIT:
+                self.stderr_all.append(text)
+                self.n_err += len(text)
+
+    def _psql_quit(self, term):
+        if self.psql_noquit:
+            self.show("\x1b[33m[this problem keeps psql open: answer with SQL here, then Submit]\x1b[0m\n")
+            return
+        term.quit = 0
+        proc = self.world.local.procs.get(term.pid)
+        if proc is not None:
+            self.k.poke(proc)
+        self.advance(self.k.now, cond=lambda: self.where() != "r", max_steps=SLICE)
+
+    def _psql_edit(self, term):
+        """\\e: psql opens the editor on its query buffer (EDITOR=nano); closing it runs what was written."""
+        p = term.psql
+        req = p.edit_request
+        p.edit_request = None
+        path = req["path"] or f"/tmp/psql.edit.{term.pid}.sql"
+        shown = req["path"] or path
+        text = req["text"] or ""
+        if text and not text.endswith("\n"):
+            text += "\n"
+        try:
+            self.fs.write_file(path, text.encode("utf-8"), "/", 0o600, 1000, 1000)
+        except Exception:  # noqa: BLE001
+            pass
+        self.world.editor = {"path": path, "shown": shown, "content": text, "exists": True, "done": False,
+                             "pid": term.pid, "psql": True}
+
+    def _psql_edit_done(self, req):
+        term = self.psql()
+        if term is None:
+            return
+        try:
+            node = self.fs.lookup(req["path"])
+            text = bytes(node.data).decode("utf-8", "replace")
+        except Exception:  # noqa: BLE001
+            text = ""
+        p = term.psql
+        p.scan.reset()
+        lines = text.split("\n")
+        if lines and lines[-1] == "":
+            lines.pop()
+        for line in lines:
+            self.show(line + "\n")
+            try:
+                p.feed(line)
+            except Exception:  # noqa: BLE001
+                break
+        self._psql_flush(term)
+
+    def _open_psql(self, args):
+        """`#: psql shop`: the session starts in psql (its command line isn't part of the user's session)."""
+        self.tty.lines.append(f"psql {args}".strip())
+        self.k.wake(self.tty)
+        self.advance(self.k.now + PROMPT_WAIT, cond=lambda: self.psql() is not None or self.at_prompt() or self.ended)
+        self.stdout_all.clear()
+        self.stderr_all.clear()
+        self.n_out = self.n_err = 0
+        self.marks.clear()
+        self.synced = 0
+        self.world.sql_log.clear()
+
     # ------------------------------------------------------------ nano
 
     def edit(self, action, content=None, record=True, name=None):
@@ -725,6 +910,10 @@ class LiveTerm:
             return save(self.world, req, content if content is not None else "", name)
         if action == "close":
             req["done"] = True
+            if req.get("psql"):
+                self.world.editor = None
+                self._psql_edit_done(req)
+                return None
             p = self.world.local.procs.get(req["pid"])
             if p is not None:
                 self.k.poke(p)
@@ -775,7 +964,7 @@ class LiveTerm:
             self.advance(self.k.now + PROMPT_WAIT, cond=lambda: self.where() != "r")
         elif m == "e":
             self.advance(self.k.now + PROMPT_WAIT, cond=lambda: self.where() in ("e", "x"))
-        elif m == "v":
+        elif m == "v" or m == "q":
             self.advance(self.k.now + PROMPT_WAIT, cond=lambda: self.where() != "r")
         elif m == "r":
             due = self._cmd_start() + int(ev.get("d", 0)) * 1_000_000
@@ -895,6 +1084,24 @@ class LiveTerm:
         return self.sh.status
 
 
+class _PsqlHist:
+    """The readline Editor's view of psql: its own history (~/.psql_history), no bash completion."""
+
+    def __init__(self, term):
+        self.term = term
+        self.last_search = ""
+
+    def history(self):
+        t = self.term.psql()
+        return t.psql.history if t is not None else []
+
+    def complete(self, ed, listing=False, only_list=False):
+        pass
+
+    def out(self, stream, text):
+        self.term.show(text)
+
+
 # ---------------------------------------------------------------- answers as logs
 
 def text_log(code: str, typed=()):
@@ -915,7 +1122,10 @@ def reference_session(problem: dict) -> str:
     """The reference solution as a terminal session (the answer the page would send): typed line by line, a
     script written with nano, keys pressed. Used by tests and the in-browser self-test."""
     setup = problem.get("setup", "")
-    if problem.get("vim"):
+    if problem.get("sql"):
+        from .sqlcheck import reference_run
+        log = reference_run(problem).log
+    elif problem.get("vim"):
         log = vim_log(problem)
     elif "#: keys" in setup:
         log = keys_log(problem["solution"])
@@ -1044,6 +1254,9 @@ def start(problem: dict, log: list, real_ms: float, dark: bool = False) -> dict:
     t = LiveTerm(problem, problem.get("setup", ""))
     _TERM[0] = t
     start_tree = t.tree()
+    if problem.get("sql"):
+        from .sqlsetup import db_tree
+        t.start_db = db_tree(t)
     if log:
         t.replay(log, faithful=True)
         t.advance(t.k.now, cond=lambda: t.where() != "r", max_steps=SLICE)
@@ -1055,11 +1268,18 @@ def start(problem: dict, log: list, real_ms: float, dark: bool = False) -> dict:
     if problem.get("vim"):
         from .vimcheck import reference_state
         t.vim_expect = reference_state(problem)
+    if problem.get("sql") and (problem["sql"].get("check", "query") == "query"):
+        from .sqlcheck import reference_run, target_of
+        t.sql_expect = target_of(reference_run(problem), problem["sql"])
     res = t.state()
     res["out"] = "".join(t.screen) + res["out"]   # the shell's screen, then Vim's (on the alternate screen)
     res["busy"], res["wake_ms"] = False, real_ms
     res["start_tree"] = start_tree
     res["tree"] = t.tree()
+    if problem.get("sql"):
+        from .sqlsetup import db_tree
+        res["start_db"] = getattr(t, "start_db", None)
+        res["db"] = db_tree(t)
     return res
 
 

@@ -1410,6 +1410,9 @@ class _Run:
                    (_time, "monotonic", fake_perf), (sys, "stdin", self.stdin), (sys, "stdout", self.out),
                    (sys, "stderr", self.err), (sys, "argv", list(self.argv)), (builtins, "__import__", self.importer),
                    (sys, "executable", self.sb.python_path)]
+        sq = _sqlite_patch(sb)
+        if sq is not None:
+            patches.append(sq)
         for obj, attr, val in patches:
             self.saved.append((obj, attr, getattr(obj, attr)))
             setattr(obj, attr, val)
@@ -1429,6 +1432,68 @@ class _Run:
             os.environ.update(self.saved_env)
             self.importer.undo()
         return False
+
+
+def _sqlite_patch(sb):
+    """sqlite3.connect(path) on the simulated filesystem: the file's bytes are loaded into an in-memory database
+    and written back on commit() and close() (an uncommitted transaction is rolled back, as sqlite does)."""
+    try:
+        import sqlite3
+    except ImportError:
+        return None
+    real = sqlite3.connect
+
+    class Connection(sqlite3.Connection):
+        _vpath = None
+
+        def _vsync(self):
+            if self._vpath is not None:
+                from .sqlitecli import serialize
+                data = serialize(self)
+                with sb.open(self._vpath, "wb") as f:
+                    f.write(data)
+
+        def commit(self):
+            super().commit()
+            self._vsync()
+
+        def close(self):
+            if self._vpath is not None:
+                try:
+                    if self.in_transaction:
+                        super().rollback()
+                    self._vsync()
+                except sqlite3.ProgrammingError:
+                    pass
+            super().close()
+
+        def __exit__(self, t, v, tb):
+            r = super().__exit__(t, v, tb)
+            if t is None:
+                self._vsync()
+            return r
+
+    def connect(database, *args, **kw):
+        name = database.decode() if isinstance(database, bytes) else os.fspath(database)
+        if name in (":memory:", "") or name.startswith("file:"):
+            return real(database, *args, **kw)
+        kw.pop("factory", None)
+        con = real(":memory:", *args, factory=Connection, **kw)
+        path = sb.abspath(name)
+        if sb.exists(path):
+            with sb.open(path, "rb") as f:
+                data = f.read()
+            if data:
+                try:
+                    con.deserialize(data)
+                except sqlite3.DatabaseError:
+                    raise sqlite3.DatabaseError("file is not a database") from None
+        else:
+            with sb.open(path, "wb"):
+                pass
+        con._vpath = path
+        return con
+    return (sqlite3, "connect", connect)
 
 
 def format_traceback(e, code, filename):

@@ -1,0 +1,11 @@
+DROP TABLE orders; DROP TABLE users;
+CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT NOT NULL, country TEXT, signup_date DATE NOT NULL);
+CREATE TABLE orders (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id), amount NUMERIC(10, 2) NOT NULL CHECK (amount >= 0), status TEXT NOT NULL DEFAULT 'paid', created_at TIMESTAMP NOT NULL);
+INSERT INTO users SELECT g, 'user' || g, (ARRAY['US','UK','DE','FR',NULL])[1 + g % 5], DATE '2023-01-01' + (g % 400) FROM generate_series(1, 1000) g;
+INSERT INTO orders SELECT g, 1 + (g * 7919) % 1000, round((g * 37 % 50000) / 100.0, 2), (ARRAY['paid','paid','paid','refunded','pending'])[1 + g % 5], TIMESTAMP '2024-01-01' + (g * 613 % 525600) * INTERVAL '1 minute' FROM generate_series(1, 20000) g;
+ANALYZE;
+EXPLAIN SELECT u.name, o.amount FROM users u JOIN orders o ON o.user_id = u.id;
+EXPLAIN SELECT u.name, o.amount FROM users u JOIN orders o ON o.user_id = u.id WHERE o.amount > 400;
+EXPLAIN SELECT u.name, o.amount FROM users u JOIN orders o ON o.user_id = u.id WHERE u.country = 'US';
+EXPLAIN SELECT a.id, b.id FROM orders a JOIN orders b ON a.user_id = b.user_id WHERE a.id < 50;
+EXPLAIN SELECT u.name FROM users u JOIN users v ON u.country = v.country;

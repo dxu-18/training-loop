@@ -13,7 +13,10 @@ a simulated Ubuntu machine with its own shell, files, processes, GPUs, ssh hosts
 through a Terminal.app-style terminal with nano and a live view of your files) and Vim (bash-lite's own Vim, checked
 against real Vim 9.1: each exercise opens it on a file and checks the result, the commands you used and, in the
 golf rounds, how few keys you needed) and LaTeX (on latex-lite, LaTeX interpreted in the browser: Compile shows the
-page your source makes, with pdfTeX's errors and log, TikZ, pgfplots and Beamer slides included);
+page your source makes, with pdfTeX's errors and log, TikZ, pgfplots and Beamer slides included) and SQL (on
+postgres-lite, PostgreSQL 16 and psql 16 simulated in the browser and checked against a real server: you work in a live
+psql beside a view of the database, EXPLAIN shows the planner's plans, and your queries are also run on hidden
+databases with other data; 10.15 adds the psql command line, sqlite3 and Python's sqlite3);
 the other topics are listed as "soon". Topics come from [COMP_GUIDE.md](COMP_GUIDE.md); the design and roadmap are in
 [PROJECT_SPEC.md](PROJECT_SPEC.md).
 
@@ -36,6 +39,8 @@ uv venv --python 3.14 .venv && uv pip install --python .venv/bin/python numpy pa
 .venv/bin/python scripts/preview.py numpy --module 1.05 --tier hard -n 3 --solution
 python3 scripts/build.py && python3 -m http.server -d docs 8000   # http://localhost:8000
 node scripts/dsa_selftest.mjs                          # Part III: every reference x option x language (+ --mutants)
+.venv/bin/python scripts/sql_templates.py [--oracle]   # SQL: every template item (+ compared with a real PostgreSQL 16)
+.venv/bin/python scripts/sql_corpus.py [--record]      # postgres-lite vs PostgreSQL 16's recorded output
 ```
 
 GitHub Pages serves `docs/` from `main`. Run `python3 scripts/build.py` before committing
