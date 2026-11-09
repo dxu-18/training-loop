@@ -28,6 +28,11 @@
     #:                                            script: ./FILE
     #: type LINE                                  a line typed after the answer (read by prompts)
     #: keys                                       the answer is keystrokes (see keys.py)
+    #: git [name=Ada_Lovelace] [email=ada@example.com] [branch=main]   ~/.gitconfig: identity, default branch
+    #: github [user=ada] [key] [login] [protocol=ssh|https]   GitHub-lite: the account (`key`: ~/.ssh/id_ed25519
+    #:                                            registered there and github.com in known_hosts; `login`: gh is
+    #:                                            signed in)
+    #: ghrepo OWNER/NAME [private] [protect=main] [from=CATALOG] [description=...]   a repository on GitHub-lite
 """
 
 from __future__ import annotations
@@ -66,6 +71,9 @@ class Spec:
     run: list = field(default_factory=list)
     typed: list = field(default_factory=list)
     keys: str | None = None
+    git: dict | None = None                         # #: git (identity / default branch in ~/.gitconfig)
+    github: dict | None = None                      # #: github
+    ghrepos: list = field(default_factory=list)     # #: ghrepo [(owner/name, opts)]
 
 
 class DirectiveError(ValueError):
@@ -98,7 +106,7 @@ def _opts(words):
         m = re.match(r"^([a-z_]+)=(.*)$", w)
         if m:
             opts[m.group(1)] = m.group(2)
-        elif re.match(r"^[a-z]+$", w) and not rest and w in ("key", "private", "noinit"):
+        elif re.match(r"^[a-z]+$", w) and not rest and w in ("key", "private", "noinit", "noident", "noconfig"):
             opts[w] = True
         else:
             rest = words[k:]
@@ -185,6 +193,23 @@ def parse(lines: list[str]) -> Spec:
             sp.run.append(arg)
         elif name == "type":
             sp.typed.append(arg)
+        elif name == "git":
+            opts, _ = _opts(shlex.split(arg))
+            sp.git = opts
+        elif name == "github":
+            words = shlex.split(arg)
+            opts = {}
+            for w in words:
+                k, eq, v = w.partition("=")
+                opts[k] = v if eq else True
+            sp.github = opts
+        elif name == "ghrepo":
+            words = shlex.split(arg)
+            opts = {}
+            for w in words[1:]:
+                k, eq, v = w.partition("=")
+                opts[k] = v if eq else True
+            sp.ghrepos.append((words[0], opts))
         elif name == "keys":
             sp.keys = arg or "readline"
         else:
@@ -374,7 +399,62 @@ def build(spec: Spec, seed: int = 0):
         sh.globals["TZ"].attrs.add("x")
     if spec.columns:
         sh.set_var("COLUMNS", str(spec.columns))
+    if spec.git is not None or spec.github is not None or spec.ghrepos:
+        _git_setup(world, spec, home)
     return world, sess
+
+
+def _git_setup(world, spec: Spec, home: str):
+    """#: git / #: github / #: ghrepo: identity, the GitHub-lite account (keys, gh login) and repositories."""
+    fs = world.local.fs
+    from .exec import stub_bytes
+    fs.mkdir("/usr/lib/bashlite", "/", 0o755, 0, 0, parents=True)
+    node = fs.write_file("/usr/lib/bashlite/gitstate", stub_bytes("bashlite-gitstate"), "/", 0o755, 0, 0)
+    node.mode = (node.mode & ~0o777) | 0o755       # the git problems' checker (git/gitstate.py)
+    if spec.git is not None:
+        o = spec.git
+        name = o.get("name", "Ada_Lovelace").replace("_", " ")
+        email = o.get("email", "ada@example.com")
+        branch = o.get("branch", "main")
+        ident = "" if o.get("noident") else f"[user]\n\tname = {name}\n\temail = {email}\n"
+        if not o.get("noconfig"):
+            fs.write_file(f"{home}/.gitconfig", f"{ident}[init]\n\tdefaultBranch = {branch}\n", "/", 0o644, 1000,
+                          1000)
+    if spec.github is not None or spec.ghrepos:
+        from .git.github import github_of, known_hosts_line
+        gh = github_of(world)
+        o = spec.github or {}
+        login = o.get("user", "ada")
+        acc = gh.account(login, name="Ada Lovelace" if login == "ada" else login,
+                         email="ada@example.com" if login == "ada" else "")
+        gh.login_as = login
+        if o.get("key"):
+            from .utils.net import parse_pub, write_keypair
+            line = write_keypair(fs, f"{home}/.ssh/id_ed25519", "ada@example.com", 1000, 1000, f"gh:{login}")
+            acc.keys.append(("laptop", parse_pub(line)[1]))
+            fs.write_file(f"{home}/.ssh/known_hosts", known_hosts_line(), "/", 0o644, 1000, 1000)
+        if o.get("login"):
+            gh.me = login
+            gh.new_token(login)
+            gh.git_protocol = o.get("protocol", "ssh")
+            fs.write_file(f"{home}/.config/gh/hosts.yml", f"github.com:\n    users:\n        {login}:\n"
+                                                          f"    git_protocol: {gh.git_protocol}\n    user: {login}\n",
+                          "/", 0o600, 1000, 1000)
+        for full, ro in spec.ghrepos:
+            owner, _, rname = full.partition("/")
+            src = ro.get("from")
+            if src:
+                from .git.catalog import materialize
+                r = materialize(gh, *src.split("/"), as_owner=owner, as_name=rname)
+            else:
+                # a catalog repository is built here (up front); any other name becomes a new, empty repository
+                r = gh.get(owner, rname) or gh.create(owner, rname, ro.get("description", ""),
+                                                      private=bool(ro.get("private")))
+            if r is not None:
+                r.private = bool(ro.get("private")) or r.private
+                if ro.get("protect"):
+                    for b in str(ro["protect"]).split(","):
+                        r.protected[b] = {"pr": True, "reviews": int(ro.get("reviews", 0))}
 
 
 def _cd_line(spec: Spec) -> str:

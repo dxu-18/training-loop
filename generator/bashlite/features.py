@@ -380,7 +380,10 @@ def _own_args(name, args):
 
 
 SUBCOMMAND_TOOLS = {"pip", "pip3", "uv", "conda", "tmux", "apt", "apt-get", "brew", "git", "docker", "jupyter", "systemctl",
-                    "crontab", "ssh-keygen", "kubectl", "npm", "cargo", "go"}
+                    "crontab", "ssh-keygen", "kubectl", "npm", "cargo", "go", "gh", "dvc", "pre-commit"}
+# tools whose subcommands have subcommands: `gh pr create`, `git stash pop`, `git remote add`, `dvc remote add`
+NESTED = {"gh": None, "dvc": {"remote"},
+          "git": {"stash", "remote", "bisect", "worktree", "submodule", "lfs", "sparse-checkout", "notes", "reflog"}}
 
 
 def _flags(name, args, out):
@@ -419,8 +422,13 @@ def _flags(name, args, out):
             continue
         if a.startswith("+") and name in ("tail", "set", "shopt"):
             out.add(f"{name} {a}")
+        if a == "-" and sub is not None and name == "git":
+            out.add(f"{name} {sub} -")            # git switch - / git checkout - (the previous branch)
         if prev_flag is not None:
             out.add(f"{name} {prev_flag} {a}")
+            if name == "git" and prev_flag in ("-C", "-c") and first_operand:
+                prev_flag = None
+                continue                 # git -C DIR / -c KEY=VAL come before the subcommand
             prev_flag = None
         if first_operand:
             out.add(f"{name} {a}")
@@ -430,6 +438,10 @@ def _flags(name, args, out):
         elif sub is not None and name in ("uv", "conda", "jupyter") and len(sub.split()) == 1 and not a.startswith(("/", ".", "~")) \
                 and sub in ("pip", "env", "python", "kernelspec"):
             sub = f"{sub} {a}"           # uv pip install, conda env create
+            out.add(f"{name} {sub}")
+        elif sub is not None and name in NESTED and len(sub.split()) == 1 and re.match(r"^[a-z][a-z-]*$", a) \
+                and (NESTED[name] is None or sub in NESTED[name]):
+            sub = f"{sub} {a}"           # gh pr create, git stash pop, git remote add
             out.add(f"{name} {sub}")
 
 

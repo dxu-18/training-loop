@@ -1,5 +1,5 @@
 {
- "hash": "93ff45e2ffd1",
+ "hash": "41e0ad700161",
  "topics": {
   "numpy": {
    "title": "NumPy",
@@ -1494,169 +1494,169 @@
     {
      "id": "8.01",
      "title": "Setup & configuration",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 2,
+      "hard": 2,
+      "challenge": 2
      }
     },
     {
      "id": "8.02",
      "title": "Creating repositories & .gitignore",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 2,
+      "hard": 2,
+      "challenge": 2
      }
     },
     {
      "id": "8.03",
      "title": "The daily loop: status, add, commit",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 2,
+      "hard": 2,
+      "challenge": 2
      }
     },
     {
      "id": "8.04",
      "title": "History & diffs",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 2,
+      "hard": 2,
+      "challenge": 2
      }
     },
     {
      "id": "8.05",
      "title": "Branches",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 2,
+      "hard": 2,
+      "challenge": 2
      }
     },
     {
      "id": "8.06",
      "title": "Merging & resolving conflicts",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 2,
+      "hard": 2,
+      "challenge": 2
      }
     },
     {
      "id": "8.07",
      "title": "Rebasing & rewriting history",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 2,
+      "hard": 2,
+      "challenge": 2
      }
     },
     {
      "id": "8.08",
      "title": "Remotes: fetch, pull, push & forks",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 2,
+      "hard": 2,
+      "challenge": 2
      }
     },
     {
      "id": "8.09",
      "title": "Stash, tags & cherry-pick",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 2,
+      "hard": 2,
+      "challenge": 2
      }
     },
     {
      "id": "8.10",
      "title": "Undoing things",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 2,
+      "hard": 2,
+      "challenge": 2
      }
     },
     {
      "id": "8.11",
      "title": "Debugging & search",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 2,
+      "hard": 2,
+      "challenge": 2
      }
     },
     {
      "id": "8.12",
      "title": "Advanced: worktrees, submodules, LFS, hooks & history surgery",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 2,
+      "hard": 2,
+      "challenge": 2
      }
     },
     {
      "id": "8.13",
      "title": "GitHub: gh CLI, pull requests, Actions & Pages",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 2,
+      "hard": 2,
+      "challenge": 2
      }
     },
     {
      "id": "8.14",
      "title": "Git for ML projects & commit conventions",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 2,
+      "hard": 2,
+      "challenge": 2
      }
     }
    ]

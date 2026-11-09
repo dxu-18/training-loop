@@ -36,6 +36,167 @@ class FSError(Exception):
 BLOCK = 4096
 
 
+class LazyData:
+    """File content that isn't a private bytearray (yet): bytes shared with something else (a git blob checked out
+    into the working tree, a file copied from one), or a large file of which only the size and a recipe exist (a
+    dataset or checkpoint in a cloned repository: its bytes are generated when read, block by block). Reads behave
+    like bytes; the first in-place change copies the content into a private bytearray (copy on write).
+
+    `oid` (optional) is the git object id the content hashes to, so a 50 MB file needn't be hashed again."""
+
+    __slots__ = ("_src", "_n", "_seed", "_head", "_ba", "oid")
+    GEN_BLOCK = 1 << 16
+
+    def __init__(self, src: bytes | None = None, size: int | None = None, seed: str = "", head: bytes = b"",
+                 oid: str | None = None):
+        self._src = src
+        self._n = len(src) if src is not None else int(size or 0)
+        self._seed = seed
+        self._head = head
+        self._ba = None
+        self.oid = oid
+
+    # ------------------------------------------------------------ reading
+    @property
+    def materialized(self) -> bool:
+        return self._ba is not None
+
+    @property
+    def shared(self) -> bool:
+        """Costs no memory of its own (no private copy)."""
+        return self._ba is None
+
+    def _block(self, i: int) -> bytes:
+        import hashlib
+        return hashlib.shake_256(f"{self._seed}:{i}".encode()).digest(self.GEN_BLOCK)
+
+    def _range(self, a: int, b: int) -> bytes:
+        if self._ba is not None:
+            return bytes(self._ba[a:b])
+        if self._src is not None:
+            return self._src[a:b]
+        a, b = max(0, a), min(self._n, b)
+        if a >= b:
+            return b""
+        out = []
+        pos = a
+        while pos < b:
+            if pos < len(self._head):
+                take = self._head[pos:min(b, len(self._head))]
+            else:
+                bi, off = divmod(pos, self.GEN_BLOCK)
+                take = self._block(bi)[off:off + (b - pos)]
+            out.append(take)
+            pos += len(take)
+        return b"".join(out)
+
+    def tobytes(self) -> bytes:
+        return self._range(0, len(self))
+
+    def __len__(self) -> int:
+        return len(self._ba) if self._ba is not None else self._n
+
+    def __bytes__(self) -> bytes:
+        return self.tobytes()
+
+    def __bool__(self) -> bool:
+        return len(self) > 0
+
+    def __getitem__(self, k):
+        if self._ba is not None:
+            return self._ba[k]
+        if isinstance(k, slice):
+            a, b, step = k.indices(len(self))
+            if step == 1:
+                return self._range(a, b)
+            return self.tobytes()[k]
+        if k < 0:
+            k += len(self)
+        if not 0 <= k < len(self):
+            raise IndexError("index out of range")
+        return self._range(k, k + 1)[0]
+
+    def __iter__(self):
+        return iter(self.tobytes())
+
+    def __eq__(self, other):
+        if isinstance(other, LazyData):
+            if self._ba is None and other._ba is None and self._src is None and other._src is None:
+                return (self._seed, self._n, self._head) == (other._seed, other._n, other._head)
+            other = other.tobytes()
+        try:
+            return len(self) == len(other) and self.tobytes() == bytes(other)
+        except TypeError:
+            return NotImplemented
+
+    __hash__ = None
+
+    def __contains__(self, x):
+        return x in self.tobytes()
+
+    def __add__(self, other):
+        return self.tobytes() + bytes(other)
+
+    def __getattr__(self, name):
+        # bytes methods (decode, find, startswith, split ...): on the content
+        if name.startswith("__"):
+            raise AttributeError(name)
+        return getattr(self._ba if self._ba is not None else self.tobytes(), name)
+
+    # ------------------------------------------------------------ writing (copy on write)
+    def _own(self) -> bytearray:
+        if self._ba is None:
+            self._ba = bytearray(self.tobytes())
+            self._src = None
+            self.oid = None
+        return self._ba
+
+    def __setitem__(self, k, v):
+        if isinstance(k, slice) and k.start is None and k.stop is None and k.step is None:
+            self._ba = bytearray(v.tobytes() if isinstance(v, LazyData) else v)   # replacing it all: don't copy first
+            self._src = None
+        else:
+            self._own()[k] = v
+        self.oid = None
+
+    def clone(self) -> "LazyData":
+        """Another file with the same content, sharing it until either is written."""
+        if self._ba is not None:
+            return LazyData(src=bytes(self._ba))
+        return LazyData(src=self._src, size=self._n, seed=self._seed, head=self._head, oid=self.oid)
+
+    def __delitem__(self, k):
+        del self._own()[k]
+        self.oid = None
+
+    def __iadd__(self, other):
+        self._own().extend(bytes(other))
+        self.oid = None
+        return self
+
+    def extend(self, other):
+        self._own().extend(bytes(other))
+        self.oid = None
+
+    def clear(self):
+        self._ba = bytearray()
+        self._src = None
+        self.oid = None
+
+    def __repr__(self):
+        what = "private" if self._ba is not None else "shared" if self._src is not None else f"generated {self._seed!r}"
+        return f"<LazyData {len(self)} bytes, {what}>"
+
+
+def same_content(a, b) -> bool:
+    """Do two file contents hold the same bytes (cheaply when they share a source)?"""
+    if a is b:
+        return True
+    if isinstance(a, LazyData) and isinstance(b, LazyData) and a.oid and a.oid == b.oid:
+        return True
+    return len(a) == len(b) and bytes(a) == bytes(b)
+
+
 class Inode:
     __slots__ = ("ino", "type", "mode", "uid", "gid", "atime", "mtime", "ctime", "nlink", "data", "entries",
                  "target", "parent", "dev", "xattr")
@@ -468,7 +629,10 @@ class FS:
             new = into.symlink(node.target, path, "/", uid, gid)
         else:
             new = into.create(path, "/", node.mode, uid, gid)
-            new.data[:] = node.data or b""
+            if isinstance(node.data, LazyData) and node.data.shared:
+                new.data = node.data.clone()      # copy on write: no copy yet
+            else:
+                new.data[:] = node.data or b""
             new.mode = node.mode
         if keep:
             new.mtime, new.atime = node.mtime, node.atime

@@ -138,6 +138,8 @@ class LiveTerm:
         self.tmux_prompt = None
         self.ran: list[str] = []        # KeySim's record of pane commands
         self.last_tree = None
+        self.git_key = None
+        self.last_git = None
         if spec.keys == "tmux" or "tmux" in extra:
             name = extra.get("tmux", "main")
             sess.run(f"tmux new -d -s {name}", quiet=True, history=False)
@@ -428,7 +430,32 @@ class LiveTerm:
             if dkey != getattr(self, "last_db", None):
                 self.last_db = dkey
                 res["db"] = db
+        git = self.git_view()
+        if git is not None:
+            res["git"] = git
         return res
+
+    def git_view(self):
+        """The Git / GitHub panels' picture, when it changed (git problems only; recomputed after each command)."""
+        if self.spec.git is None and self.spec.github is None and not self.spec.ghrepos:
+            return None
+        cwd = "" if self.ended else (self.sh.get("PWD", self.sess.proc.cwd) or self.sess.proc.cwd)
+        key = (self.world.local._pid, cwd, self.k.now // 5_000_000_000)
+        if key == self.git_key:
+            return None
+        self.git_key = key
+        from .exec import Ctx
+        from .git.viz import snapshot
+        ctx = Ctx(self.sess.proc, ["git"], {"HOME": self.home, "TZ": self.sh.get("TZ", "") or ""}, self.sh)
+        try:
+            snap = snapshot(ctx, cwd or self.start_cwd, self.start_cwd)
+        except Exception as e:  # noqa: BLE001  (the panel must never break the terminal)
+            snap = {"error": f"{type(e).__name__}: {e}"}
+        text = json.dumps(snap, sort_keys=True)
+        if text == self.last_git:
+            return None
+        self.last_git = text
+        return snap or {}
 
     # ------------------------------------------------------------ input
 
@@ -1262,6 +1289,7 @@ def start(problem: dict, log: list, real_ms: float, dark: bool = False) -> dict:
         t.advance(t.k.now, cond=lambda: t.where() != "r", max_steps=SLICE)
         t.sync()
     t.sent = len(t.log)
+    t.world.net_async = True          # from here on a person is watching: network requests don't block the page
     t.offset = t.k.now - int(real_ms * 1_000_000)
     t.pending.clear()
     t.vim_shown = None

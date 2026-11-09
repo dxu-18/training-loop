@@ -16,7 +16,7 @@ const TOPICS = [
   { id: "matplotlib", part: 1, mode: "python", packages: ["numpy", "matplotlib"] },
   { id: "huggingface", part: 1, mode: "python", packages: ["numpy"] },
   { id: "bash", part: 2, mode: "shell", packages: [], terminal: true },
-  { id: "git", part: 2, mode: "shell", packages: [] },
+  { id: "git", part: 2, mode: "shell", packages: [], terminal: true },
   { id: "vim", part: 2, mode: null, packages: [], terminal: true },
   { id: "sql", part: 2, mode: "text/x-sql", packages: [], terminal: true, extra: { "10.15": ["numpy", "pandas"] } },
   { id: "latex", part: 2, mode: "stex", packages: [], latex: true },

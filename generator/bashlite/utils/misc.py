@@ -425,7 +425,9 @@ APT_PACKAGES = {"tree": "2.1.1-2ubuntu3", "htop": "3.3.0-4build1", "jq": "1.7.1-
                 "tldr": "1.6.1-1", "tmux": "3.4-1build1", "shellcheck": "0.9.0-1", "nvtop": "3.0.2-1", "bc": "1.07.1-3build1",
                 "zip": "3.0-13build1", "unzip": "6.0-28ubuntu4", "curl": "8.5.0-2ubuntu10", "wget": "1.21.4-1ubuntu4",
                 "rsync": "3.2.7-1ubuntu1", "git": "1:2.43.0-1ubuntu7", "python3-venv": "3.12.3-0ubuntu2",
-                "python3-pip": "24.0+dfsg-1ubuntu1", "build-essential": "12.10ubuntu1", "vim": "2:9.1.0016-1ubuntu7"}
+                "python3-pip": "24.0+dfsg-1ubuntu1", "build-essential": "12.10ubuntu1", "vim": "2:9.1.0016-1ubuntu7",
+                "git-lfs": "3.4.1-1ubuntu0.2"}
+APT_PROGRAMS = {"git-lfs": ["git-lfs"]}
 
 
 @util("apt", "apt-get")
@@ -463,6 +465,10 @@ def u_apt(ctx):
             ctx.w(f"Selecting previously unselected package {p}.\nPreparing to unpack .../{p}_{APT_PACKAGES[p]}_amd64.deb ...\n"
                   f"Unpacking {p} ({APT_PACKAGES[p]}) ...\nSetting up {p} ({APT_PACKAGES[p]}) ...\n")
             ctx.fs.write_file(f"/var/lib/bashlite/apt/{p}", APT_PACKAGES[p] + "\n", "/", 0o644, 0, 0)
+            from ..exec import stub_bytes
+            for prog in APT_PROGRAMS.get(p, []):
+                node = ctx.fs.write_file(f"/usr/bin/{prog}", stub_bytes(prog), "/", 0o755, 0, 0)
+                node.mode = (node.mode & ~0o777) | 0o755
         return 0
     if cmd in ("list",):
         for p in sorted(APT_PACKAGES):

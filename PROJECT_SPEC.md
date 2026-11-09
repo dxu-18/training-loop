@@ -961,6 +961,55 @@ runtime, can't run in the Python grader or tests, and has no psql. So, as with b
 * **Checks:** `tests/test_sql_section.py` (every item of every template: the reference passes, an idle session fails;
   glossary coverage; the PostgreSQL corpus; psql's errors; grading messages; hidden databases; the command line).
 
+### Session 25 (2026-11-01 → 11-08): Git & GitHub (8.01–8.14) on bash-lite, with GitHub-lite
+Request: the git section on bash-lite, with a git that can clone, fetch, pull and push against a simulated GitHub
+(never the real one), SSH preferred over HTTPS; 30 small (1–5 MB) and 5 medium (~100 MB) practice repositories,
+loaded only when a problem uses one; cloning real public repositories read-only under a size cap; and a visualizer
+for repositories and GitHub (branches, merges, pull requests) like the Files panel.
+
+* **git in Python** (`generator/bashlite/git/`): real SHA-1 objects in a world-wide object table, the real binary
+  index, refs/packed-refs/reflogs, config files, .gitignore, a port of xdiff (Myers with git's heuristics), 3-way
+  merges (merge/diff3/zdiff3, `-X`), and the porcelain: status/add/commit/restore/reset/rm/mv/clean, log (graph,
+  -S/-G/-L, --follow, formats)/show/diff/blame/shortlog/grep/bisect, branch/switch/checkout/merge/rebase (-i with
+  GIT_SEQUENCE_EDITOR or the editor, --onto, --autosquash)/cherry-pick/revert/stash/tag/describe, remotes, clone
+  (--depth, -b, --bare, --recurse-submodules), fetch/pull/push (leases, rejections, hints), worktree, submodule,
+  sparse-checkout, plumbing (rev-parse, cat-file, ls-tree, for-each-ref, archive, fsck...). Help texts are our own.
+* **Checked against real git 2.39:** `scripts/diff_git.py` runs `tests/git_corpus/*.sh` in both (fixed dates and
+  identity), command by command; 9 cases, 0 differences apart from lines marked `#~` (version wording).
+* **GitHub-lite** (`git/github.py`): accounts with SSH keys and tokens, the SSH greeting and host-key prompt, HTTPS
+  token auth (password auth refused as on github.com), repositories with protection rules, pull requests and issues
+  sharing numbers, reviews, merges by merge/squash/rebase (committed by the GitHub bot), releases, Actions runs from
+  `.github/workflows` (pass/fail from the tests), Pages served to curl at `*.github.io`, raw.githubusercontent.com,
+  the 100 MB file limit (GH001). The `gh` CLI covers auth, repo (create --source --push, clone, fork, view),
+  pr (create, list, view, checkout, diff, review, merge, status, checks), issue, run, workflow, release, api, ssh-key.
+* **Tools:** `git-lfs` (apt; track/install/pull/push/ls-files/migrate, LFS uploads on push), and pip packages
+  `git-filter-repo`, `pre-commit` (its common hooks, ruff and ruff-format), `nbstripout` (as a git filter too),
+  `dvc` (init/add/remote/push/pull/status) and `ruff`.
+* **The practice repositories** (`git/catalog*.py`): 35 recipes (30 light, 5 medium) modelled on familiar projects
+  (an HTTP library, a microframework, leftpad, a GPT training repo, dotfiles, a Pages site, a thesis, a kernel with
+  ~500 commits and maintainer merges, a monorepo, a game with LFS art...), with fictional contributors, tags,
+  releases, merged/open PRs and issues, and git-gym repositories built around one skill (a regression to bisect,
+  conflicting branches, secrets in history, WIP commits, submodules, LFS, hooks). Built on first use only and
+  deterministically (same commit ids every session); big files are LazyData (size + seed), so a 100 MB repository
+  costs a few MB until its files are read.
+* **Real repositories** (`git/realclone.py`): a clone of an unknown name asks api.github.com and fetches the files
+  from raw.githubusercontent.com (both allow cross-origin requests; codeload tarballs don't). Read-only, one snapshot
+  commit, at most 20 MB / 600 files: over the cap the clone stops, nothing is kept, and the user is told why. Live
+  sessions fetch asynchronously (the command sleeps while the browser fetches); replays fetch synchronously, from a
+  cache first.
+* **Panels:** Files | Git | GitHub tabs beside the terminal (`docs/terminal.js`). Git: the three areas (working
+  tree, staging area, repository), an SVG commit graph with branch/remote/tag labels, branches with ahead/behind,
+  stash, remotes, tags, an in-progress banner. GitHub: account, repository, branches (default, protected), PRs with
+  state, checks and reviews, issues, Actions runs, releases, Pages. The snapshot (`git/viz.py`) is recomputed after
+  each command.
+* **Grading:** most problems compare the state `/usr/lib/bashlite/gitstate` prints (`git/gitstate.py`): branches,
+  history, index, working tree, stash, remotes, the GitHub-lite side, with commit ids made from content (message,
+  author, tree, parents) and never dates, so commits typed slower than the reference still match. History-reading
+  problems compare output on commits the setup made (fixed ids).
+* **140 templates** in `generator/sections/s08_git/` (10 per module, 2 per tier), mostly catalogs; the Instructions
+  come from `scripts/instruction_notes.py` (GIT). `scripts/git_templates.py` / `tests/test_git_section.py`: every item
+  of every template passes with its reference session, prints no fatal/error, has a clean setup, and fails idle.
+
 ### Open problem: Hugging Face in the browser
 Pyodide has no `transformers`. Options: extend the shim idea (a tiny tokenizer/pipeline layer over torch-lite),
 AST and pattern checks, or an optional "run locally" mode. **Not decided yet.**
@@ -979,6 +1028,8 @@ generator/            Python package: question generation + grading (runs locall
     s02_pandas/       _common.py (themed DataFrame builder `frame()`, challenge()) + m01_core.py … m19_performance.py
     s03_pytorch/      _common.py (HEADER imports torch/nn/F, tensor literals, challenge()) + m01_tensors.py … m19_dpo.py
     s07_bash/         _common.py (P/K problem helpers, files() heredocs, catalog(), challenge()) + m01_basics.py … m17_keys_history.py
+    s08_git/          _common.py (P() problem helper with check=(gitstate sections, dir), Repo() setup builder, catalog())
+                      + m01_setup.py … m14_ml.py
     s09_vim/          _common.py (V() problem helper: runs the reference once for the target text, cursor target and
                       Instructions; drill(); ML-themed texts) + m01_modes.py … m12_vimrc.py
     s10_sql/          _common.py (Q() problem helper: runs the reference for the target, drill(), retries), _data.py (the
@@ -988,7 +1039,9 @@ generator/            Python package: question generation + grading (runs locall
   bashlite/           bash-lite: a simulated Ubuntu machine in pure Python (vfs, parser, kernel, shell, builtins, utils/ commands,
                       world/basefs, directives, check = the bash grader, keys = readline/tmux simulator, features,
                       live = the live terminal: key-by-key sessions on the real clock, logs, replays;
-                      vim/ = the Vim engine, utils/vim.py = the `vim` command, vimcheck = the Vim grader)
+                      vim/ = the Vim engine, utils/vim.py = the `vim` command, vimcheck = the Vim grader;
+                      git/ = git + GitHub-lite + gh + git-lfs/filter-repo/pre-commit/nbstripout/dvc, the practice
+                      repositories (catalog*.py), realclone, viz = the panels' data, gitstate = the git grader)
   postgreslite/       postgres-lite: PostgreSQL 16 + psql 16 in Python (lexer, parser, types + pg_catalog.txt, coerce,
                       analyze, executor, funcs, aggs, dml, ddl, server = cluster/sessions/transactions, psql, describe,
                       explain = the planner, glossary = the Instructions); bashlite/utils/psqlprog.py runs it in the
@@ -1025,6 +1078,8 @@ scripts/vim_templates.py  every Vim template item: the reference passes, an idle
 scripts/vim_e2e.py        browser check of the Vim pages
 scripts/sql_templates.py  every SQL template item: the reference passes, an idle session fails (--oracle: real PostgreSQL)
 scripts/sql_corpus.py     postgres-lite vs PostgreSQL 16 on tests/sql_corpus (--record saves a real server's output)
+scripts/git_templates.py  every Git template item: the reference passes, no fatal/error, an idle session fails
+scripts/diff_git.py       bash-lite's git vs real git on tests/git_corpus (command by command)
 ```
 
 Local dev:
@@ -1051,7 +1106,7 @@ Legend: ✅ done · 🟡 partial · ⬜ not started
 | 5 | Matplotlib | ⬜ | exec + figure inspection | |
 | 6 | Hugging Face | ⬜ | **open problem** | |
 | 7 | Bash | ✅ **all 17 modules live**: 176 templates in `generator/sections/s07_bash/` (every module ≥ 2 templates per tier, 2 challenges each), answered in a live terminal | bash-lite: simulated Ubuntu machine (`generator/bashlite/`); the terminal session is replayed and its output / files compared; keystrokes for 7.17 | sessions 7, 8 |
-| 8 | Git & GitHub | ⬜ | command | |
+| 8 | Git & GitHub | ✅ **all 14 modules live**: 140 templates in `generator/sections/s08_git/` (every module ≥ 2 templates per tier), answered in a live terminal beside Files, Git and GitHub panels | bash-lite's git and GitHub-lite (`generator/bashlite/git/`, checked against real git 2.39): repository and GitHub state compared with date-independent commit ids, or the output of history commands | session 25 |
 | 9 | Vim | ✅ **all 12 modules live**: 121 templates in `generator/sections/s09_vim/` (every module ≥ 2 templates per tier), answered in Vim in the live terminal | bash-lite's Vim (`generator/bashlite/vim/`, checked against real Vim 9.1); Vim's end state compared with the reference keys', plus required / forbidden commands and a keystroke par | session 22 |
 | 10 | SQL | ✅ **all 16 modules live**: 182 templates in `generator/sections/s10_sql/` (every module ≥ 2 templates per tier), answered in a live psql beside a Database panel | postgres-lite (`generator/postgreslite/`, checked against a real PostgreSQL 16.2): results / end states compared on the shown and hidden databases, plans, psql settings, files | session 24 |
 | 11 | LaTeX | ✅ **all 18 modules live**: 180 templates in `generator/sections/s11_latex/` (10 per module), answered in an editor with Compile (the PDF beside it) and Submit | latex-lite (`generator/latexlite/`): LaTeX interpreted in Python, math by KaTeX, TikZ/pgfplots as SVG, Beamer slides; the compiled documents compared, plus required / forbidden commands | session 23 |
