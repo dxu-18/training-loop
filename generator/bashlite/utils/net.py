@@ -350,6 +350,10 @@ def u_ssh(ctx):
               "           [-O ctl_cmd] [-o option] [-P tag] [-p port] [-R address]\n           [-S ctl_path] [-W host:port] [-w local_tun[:remote_tun]]\n"
               "           destination [command [argument ...]]\n")
         return 255
+    gh_host = ctx.world.resolve(ssh_config(ctx, parse_dest(dest)[1]).get("hostname", parse_dest(dest)[1]))
+    if gh_host is not None and gh_host.extra.get("github") is not None and not show_config:
+        from ..git.github import ssh_command     # GitHub-lite: a greeting or "Permission denied", no shell
+        return (yield from ssh_command(ctx, gh_host.extra["github"], command))
     if show_config:
         user, alias, port = parse_dest(dest)
         cfg = ssh_config(ctx, alias)
@@ -1143,6 +1147,13 @@ def http_request(ctx, url, method="GET", headers=None, body=b""):
     if fixed is not None:
         res = fixed(method, path, headers, body) if callable(fixed) else fixed
         return res if isinstance(res, HttpResult) else HttpResult(200, {}, res if isinstance(res, bytes) else str(res).encode())
+    if h.endswith((".github.io", "github.com", "githubusercontent.com")):
+        from ..git.github import web as github_web     # GitHub-lite's repositories, Pages sites and raw files
+        res = github_web(ctx, h, path + query, method)
+        if res is not None:
+            return res
+        if h == "github.com":
+            return default_web(h, path, method, headers, body)
     target = None
     if h in ("localhost", "127.0.0.1", "0.0.0.0", ctx.host.name):
         target = ctx.host

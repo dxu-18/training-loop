@@ -1065,7 +1065,11 @@ def _copy_node(ctx, src_node, src_path, dst_path, opts, depth=0):
     except FSError as e:
         ctx.err(f"cannot create regular file '{dst_path}': {e.msg}")
         return 1
-    node.data[:] = src_node.data if src_node.type == "f" else b""
+    from ..vfs import LazyData
+    if src_node.type == "f" and isinstance(src_node.data, LazyData) and src_node.data.shared:
+        node.data = src_node.data.clone()          # a big generated file: shared until written
+    else:
+        node.data[:] = src_node.data if src_node.type == "f" else b""
     node.mtime = node.ctime = ctx.now
     if preserve:
         node.mtime, node.atime = src_node.mtime, src_node.atime

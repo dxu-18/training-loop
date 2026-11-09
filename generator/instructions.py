@@ -47,7 +47,7 @@ def data() -> dict:
 
 def canon(key: str, section: str = "") -> str:
     """One name per API: np.cumsum and x.cumsum() are both 'cumsum'; Bash features and syntax are their own name."""
-    if section == "bash" or key.startswith("syntax:"):
+    if section in ("bash", "git") or key.startswith("syntax:"):
         return key
     return key.rsplit(".", 1)[-1]
 
@@ -282,7 +282,7 @@ def instructions(problem, with_keys: bool = False) -> list[dict]:
         chosen = [x for x in items if x in older]
     chosen = (required + [x for x in chosen if x not in required])[:MAX_ITEMS]
     out = [x[1] for x in chosen]
-    if section == "bash":
+    if section in ("bash", "git"):
         out = _merge_commands(out)
     keys = [x["key"] for x in out]     # an accessor (s.str) next to one of its methods says nothing more
     out = [x for x in out if not (x["key"] in (".str", ".dt", ".cat") and len(keys) > 1)]
@@ -293,7 +293,7 @@ def _required(p: dict, section: str) -> set[str]:
     """The names a problem's `require` asks for (every alternative of "a|b")."""
     out = set()
     for req in p.get("require") or []:
-        if section == "bash":
+        if section in ("bash", "git"):
             from .bashlite.features import alternatives
             out |= set(alternatives(req))
         else:

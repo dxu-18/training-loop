@@ -8,7 +8,8 @@ from generator.core import REGISTRY, build, generate, is_live, modules, template
 from generator.grader import grade
 
 SEEDS = range(25)
-ALL = [t for s in REGISTRY for t in templates(s)]
+# Git runs in the live terminal with its own checks (tests/test_git_section.py)
+ALL = [t for s in REGISTRY if s != "git" for t in templates(s)]
 IDS = lambda t: f"{t.section}-{t.module}-{t.tier}-{t.name}"  # noqa: E731
 
 NUMPY_MODULES = [f"1.{i:02d}" for i in range(1, 19)]

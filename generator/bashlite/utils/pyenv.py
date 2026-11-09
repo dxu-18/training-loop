@@ -80,6 +80,17 @@ INDEX = {
     "fastapi": ("0.119.0", [], ["pydantic"], "FastAPI framework, high performance, easy to learn, fast to code, ready for production"),
     "pydantic": ("2.12.2", [], ["typing-extensions"], "Data validation using Python type hints"),
     "uvicorn": ("0.37.0", [], [], "The lightning-fast ASGI server."),
+    "pre-commit": ("4.3.0", [], ["pyyaml", "virtualenv", "identify", "cfgv", "nodeenv"],
+                   "A framework for managing and maintaining multi-language pre-commit hooks."),
+    "virtualenv": ("20.35.3", [], ["filelock"], "Virtual Python Environment builder"),
+    "identify": ("2.6.15", [], [], "File identification library for Python"),
+    "cfgv": ("3.4.0", [], [], "Validate configuration and produce human readable error messages."),
+    "nodeenv": ("1.9.1", [], [], "Node.js virtual environment builder"),
+    "git-filter-repo": ("2.47.0", [], [], "Quickly rewrite git repository history"),
+    "nbstripout": ("0.8.1", [], ["nbformat"], "Strips outputs from Jupyter and IPython notebooks"),
+    "nbformat": ("5.10.4", [], [], "The Jupyter Notebook format"),
+    "dvc": ("3.63.0", [], ["pyyaml", "requests", "tqdm", "packaging"], "Git for data scientists - manage your code "
+            "and data together"),
 }
 
 
@@ -150,9 +161,13 @@ def set_installed(ctx, root, kind, name, version, editable=None):
 CONSOLE = {"pip": [("pip", "pip._internal.cli.main"), ("pip3", "pip._internal.cli.main"), ("pip3.12", "pip._internal.cli.main")],
            "jupyterlab": [("jupyter", "jupyter_core.command"), ("jupyter-lab", "jupyterlab.labapp")],
            "torch": [("torchrun", "torch.distributed.run")], "tensorboard": [("tensorboard", "tensorboard.main")],
-           "uv": [("uv", "uv")]}
+           "uv": [("uv", "uv")], "ruff": [("ruff", "ruff")], "pre-commit": [("pre-commit", "pre_commit.main")],
+           "git-filter-repo": [("git-filter-repo", "git_filter_repo")],
+           "nbstripout": [("nbstripout", "nbstripout._nbstripout")], "dvc": [("dvc", "dvc.cli")]}
 ENTRY = {"pip._internal.cli.main": "pip", "jupyter_core.command": "jupyter", "jupyterlab.labapp": "jupyter-lab",
-         "torch.distributed.run": "torchrun", "tensorboard.main": "tensorboard", "uv": "uv"}
+         "torch.distributed.run": "torchrun", "tensorboard.main": "tensorboard", "uv": "uv", "ruff": "ruff",
+         "pre_commit.main": "pre-commit", "git_filter_repo": "git-filter-repo", "nbstripout._nbstripout": "nbstripout",
+         "dvc.cli": "dvc"}
 
 
 def console_script(python, module):

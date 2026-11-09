@@ -743,6 +743,192 @@
     }
   }
 
+  // ------------------------------------------------------------ the Git and GitHub panels (git problems)
+  const LANE_COLORS = ["#3b82f6", "#e8590c", "#2b8a3e", "#ae3ec9", "#d6336c", "#0c8599", "#f08c00", "#5c7cfa"];
+  const STATUS_WORD = { M: "modified", A: "new file", D: "deleted", R: "renamed", T: "type changed", U: "conflict" };
+  const ago = (t) => {
+    const s = Math.max(0, Date.now() / 1000 - t);
+    return s < 3600 ? `${Math.round(s / 60)}m` : s < 86400 ? `${Math.round(s / 3600)}h` :
+      s < 86400 * 60 ? `${Math.round(s / 86400)}d` : s < 86400 * 730 ? `${Math.round(s / 86400 / 30)}mo` : `${Math.round(s / 86400 / 365)}y`;
+  };
+
+  // lanes for a newest-first commit list: each commit gets a column; each parent edge a path
+  function graphLayout(commits) {
+    const row = new Map(commits.map((c, i) => [c.id, i]));
+    const lanes = [];
+    const pos = [];
+    const edges = [];
+    let width = 1;
+    commits.forEach((c, i) => {
+      let col = lanes.indexOf(c.id);
+      if (col < 0) { col = lanes.indexOf(null); if (col < 0) col = lanes.length; }
+      for (let j = 0; j < lanes.length; j++) if (j !== col && lanes[j] === c.id) lanes[j] = null;   // lines join here
+      lanes[col] = null;
+      pos[i] = col;
+      c.p.forEach((p, k) => {
+        if (!row.has(p)) return;
+        let lane = lanes.indexOf(p);
+        if (lane < 0) {
+          lane = k === 0 && lanes[col] == null ? col : lanes.indexOf(null);
+          if (lane < 0) lane = lanes.length;
+          lanes[lane] = p;
+        }
+        edges.push({ from: i, col, lane, to: row.get(p) });
+      });
+      width = Math.max(width, lanes.length, col + 1);
+    });
+    for (const e of edges) e.toCol = pos[e.to];
+    return { pos, edges, width };
+  }
+
+  function graphSvg(commits, layout, rowH, laneW) {
+    const x = (col) => 8 + col * laneW;
+    const y = (r) => rowH / 2 + r * rowH;
+    const parts = [];
+    for (const e of layout.edges) {
+      const color = LANE_COLORS[e.lane % LANE_COLORS.length];
+      const x1 = x(e.col), y1 = y(e.from), x2 = x(e.lane), x3 = x(e.toCol), y3 = y(e.to);
+      let d = `M${x1} ${y1}`;
+      if (x2 !== x1) d += ` C${x1} ${y1 + rowH * 0.6} ${x2} ${y1 + rowH * 0.4} ${x2} ${y1 + rowH}`;
+      const yEnd = x3 !== x2 ? y3 - rowH : y3;
+      if (yEnd > y1 + rowH || x2 === x1) d += ` L${x2} ${Math.max(yEnd, y1)}`;
+      if (x3 !== x2) d += ` C${x2} ${y3 - rowH * 0.4} ${x3} ${y3 - rowH * 0.6} ${x3} ${y3}`;
+      parts.push(`<path d="${d}" stroke="${color}" />`);
+    }
+    commits.forEach((c, i) => {
+      const color = LANE_COLORS[layout.pos[i] % LANE_COLORS.length];
+      const head = c.r.some((r) => r.head);
+      parts.push(`<circle cx="${x(layout.pos[i])}" cy="${y(i)}" r="${head ? 5 : 4}" fill="${c.pm ? "var(--surface, #fff)" : color}"
+        stroke="${color}" stroke-width="${c.pm ? 2 : head ? 2.5 : 0}"/>`);
+    });
+    const w = 16 + layout.width * laneW, h = commits.length * rowH;
+    return `<svg class="gp-svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" aria-hidden="true">${parts.join("")}</svg>`;
+  }
+
+  function refPill(r) {
+    const cls = r.k === "branch" ? (r.head ? "br head" : "br") : r.k;
+    const label = r.k === "branch" && r.head ? `HEAD → ${escH(r.n)}` : r.k === "tag" ? `🏷 ${escH(r.n)}` : escH(r.n);
+    return `<span class="gp-ref ${cls}">${label}</span>`;
+  }
+
+  class GitPanel {
+    constructor(el) { this.el = el; this.data = null; }
+    update(repo) { this.data = repo; this.render(); }
+    render() {
+      const r = this.data;
+      if (!r) { this.el.innerHTML = `<div class="gp-empty">No repository here yet. <code>git init</code> or <code>git clone</code> one and it shows up here.</div>`; return; }
+      if (r.error) { this.el.innerHTML = `<div class="gp-empty">${escH(r.error)}</div>`; return; }
+      const a = r.areas;
+      const fileRows = (list, kind) => list.map(([st, p]) =>
+        `<li class="ga-f ${kind}"><span class="ga-st">${escH(st)}</span><span class="ga-p" title="${escH(STATUS_WORD[st] || st)}">${escH(p)}</span></li>`).join("");
+      const head = r.head.branch ? `on <b>${escH(r.head.branch)}</b>` : r.head.id ? `<b class="bad">detached HEAD</b> at ${escH(r.head.id)}` : "no commits yet";
+      const state = r.state ? `<div class="gp-state">${escH(r.state.replace("-i", " (interactive)"))} in progress` +
+        (a.conflicts.length ? ` · ${a.conflicts.length} conflicted file${a.conflicts.length > 1 ? "s" : ""}` : "") + `</div>` : "";
+      const areas = `<div class="ga">
+        <div class="ga-box"><div class="ga-h">Working tree <span>${a.unstaged.length + a.untracked.length + a.conflicts.length}</span></div><ul>
+          ${a.conflicts.map((p) => `<li class="ga-f conflict"><span class="ga-st">U</span><span class="ga-p">${escH(p)}</span></li>`).join("")}
+          ${fileRows(a.unstaged, "unstaged")}${a.untracked.map((p) => `<li class="ga-f untracked"><span class="ga-st">?</span><span class="ga-p">${escH(p)}</span></li>`).join("")}</ul></div>
+        <div class="ga-arrow">git add →</div>
+        <div class="ga-box"><div class="ga-h">Staging area <span>${a.staged.length}</span></div><ul>${fileRows(a.staged, "staged")}</ul></div>
+        <div class="ga-arrow">git commit →</div>
+        <div class="ga-box"><div class="ga-h">Repository</div><div class="ga-repo">${head}${r.head.id ? `<br><span class="dim">${escH(r.head.id)}</span>` : ""}</div></div>
+      </div>`;
+      const rowH = 24, laneW = 14;
+      const lay = graphLayout(r.commits);
+      const gw = 16 + lay.width * laneW;
+      const rows = r.commits.map((c) => `<div class="gp-row" style="height:${rowH}px">
+          <span class="gp-id">${escH(c.id)}</span>${c.r.map(refPill).join("")}
+          <span class="gp-s" title="${escH(c.a)} · ${new Date(c.t * 1000).toLocaleString()}">${escH(c.s)}</span>
+          <span class="gp-a">${escH(c.a.split(" ")[0])} · ${ago(c.t)}</span></div>`).join("");
+      const graph = r.commits.length ? `<div class="gp-graph" style="--gw:${gw}px">${graphSvg(r.commits, lay, rowH, laneW)}<div class="gp-rows">${rows}</div></div>` +
+        (r.more ? `<div class="gp-more">older commits not shown${r.shallow ? " · shallow clone" : ""}</div>` : r.shallow ? `<div class="gp-more">shallow clone: history ends here</div>` : "") : `<div class="gp-empty">No commits yet.</div>`;
+      const branches = r.branches.map((b) => `<li class="${b.head ? "cur" : ""}"><span class="gb-n">${b.head ? "● " : ""}${escH(b.n)}</span>
+        <span class="gb-id">${escH(b.id)}</span>${b.up ? `<span class="gb-up">${escH(b.up)}${b.gone ? " (gone)" : ""}
+        ${b.ahead ? `<b class="ahead">↑${b.ahead}</b>` : ""}${b.behind ? `<b class="behind">↓${b.behind}</b>` : ""}</span>` : ""}</li>`).join("");
+      const stash = r.stash.length ? `<div class="gp-sub">Stash</div><ul class="gp-list">${r.stash.map((s) => `<li><span class="gb-n">${escH(s.n)}</span> ${escH(s.s)}</li>`).join("")}</ul>` : "";
+      const remotes = r.remotes.length ? `<div class="gp-sub">Remotes</div><ul class="gp-list">${r.remotes.map((m) => `<li><span class="gb-n">${escH(m.n)}</span> <span class="dim">${escH(m.url)}</span></li>`).join("")}</ul>` : "";
+      const tags = r.tags.length ? `<div class="gp-sub">Tags</div><div class="gp-tags">${r.tags.slice(-24).map((t) => `<span class="gp-ref tag">🏷 ${escH(t)}</span>`).join("")}</div>` : "";
+      this.el.innerHTML = `<div class="gp-path" title="${escH(r.path)}">${escH(r.path)}${r.bare ? " (bare)" : ""}</div>${state}${areas}
+        <div class="gp-sub">History</div>${graph}
+        <div class="gp-sub">Branches</div><ul class="gp-list gp-branches">${branches || `<li class="dim">none yet</li>`}</ul>${stash}${remotes}${tags}`;
+    }
+  }
+
+  const PR_ICON = { OPEN: "⑂", DRAFT: "⑂", MERGED: "⛙", CLOSED: "⊘" };
+  const CHECK = { success: ["✓", "good"], failure: ["✗", "bad"], in_progress: ["●", "warn"], queued: ["●", "warn"] };
+
+  class GitHubPanel {
+    constructor(el) { this.el = el; this.data = null; }
+    update(gh) { this.data = gh; this.render(); }
+    render() {
+      const g = this.data;
+      if (!g) { this.el.innerHTML = `<div class="gp-empty">GitHub isn't part of this problem.</div>`; return; }
+      const who = g.me ? `Signed in as <b>${escH(g.me)}</b> · ${g.keys} SSH key${g.keys === 1 ? "" : "s"}` : `Not signed in (<code>gh auth login</code>)`;
+      const r = g.repo;
+      if (!r) {
+        this.el.innerHTML = `<div class="gh-who">${who}</div><div class="gp-empty">No GitHub repository yet: clone one, or <code>gh repo create</code>.</div>` +
+          (g.repos && g.repos.length ? `<div class="gp-sub">Your repositories</div><ul class="gp-list">${g.repos.map((x) => `<li>${escH(x)}</li>`).join("")}</ul>` : "");
+        return;
+      }
+      const badges = [r.private ? "Private" : "Public", r.fork_of ? `fork of ${r.fork_of}` : "", r.real ? "real github.com · read-only" : ""].filter(Boolean)
+        .map((b) => `<span class="gh-badge">${escH(b)}</span>`).join("");
+      const branches = r.branches.map((b) => `<li><span class="gb-n">${escH(b.n)}</span><span class="gb-id">${escH(b.id)}</span>
+        ${b.default ? `<span class="gh-badge">default</span>` : ""}${b.protected ? `<span class="gh-badge lock">🔒 protected</span>` : ""}</li>`).join("");
+      const prs = r.prs.map((p) => {
+        const ck = p.checks && CHECK[p.checks] ? `<span class="gh-ck ${CHECK[p.checks][1]}" title="checks: ${escH(p.checks)}">${CHECK[p.checks][0]}</span>` : "";
+        const rv = (p.approved ? `<span class="gh-rv good">✓ ${p.approved} approved</span>` : "") + (p.changes ? `<span class="gh-rv bad">changes requested</span>` : "");
+        return `<li class="gh-pr ${p.state.toLowerCase()}"><span class="gh-pri">${PR_ICON[p.state] || "⑂"}</span>
+          <div><div><b>#${p.n}</b> ${escH(p.title)} ${ck}</div>
+          <div class="dim">${escH(p.head)} → ${escH(p.base)} · ${escH(p.by)} · <span class="gh-st">${p.state.toLowerCase()}</span> ${rv}</div></div></li>`;
+      }).join("");
+      const issues = r.issues.map((i) => `<li class="gh-is ${i.state.toLowerCase()}"><span class="gh-pri">${i.state === "OPEN" ? "◎" : "✓"}</span>
+        <div><b>#${i.n}</b> ${escH(i.title)} ${i.labels.map((l) => `<span class="gh-label">${escH(l)}</span>`).join("")}</div></li>`).join("");
+      const runs = r.runs.map((x) => `<li><span class="gh-ck ${(CHECK[x.status] || ["", ""])[1]}">${(CHECK[x.status] || ["·"])[0]}</span>
+        <b>${escH(x.wf)}</b> <span class="dim">${escH(x.title)} · ${escH(x.branch)} · ${escH(x.status.replace("_", " "))}</span></li>`).join("");
+      this.el.innerHTML = `<div class="gh-who">${who}</div>
+        <div class="gh-repo"><div class="gh-name">${escH(r.full)}</div>${badges}${r.desc ? `<div class="dim">${escH(r.desc)}</div>` : ""}
+        ${r.pages ? `<div>Pages: <a href="#" onclick="return false" class="gh-pages">${escH(r.pages)}</a> <span class="dim">(curl it)</span></div>` : ""}</div>
+        <div class="gp-sub">Branches</div><ul class="gp-list">${branches || `<li class="dim">empty repository</li>`}</ul>
+        <div class="gp-sub">Pull requests</div><ul class="gp-list gh-list">${prs || `<li class="dim">none</li>`}</ul>
+        <div class="gp-sub">Issues</div><ul class="gp-list gh-list">${issues || `<li class="dim">none</li>`}</ul>
+        ${runs ? `<div class="gp-sub">Actions</div><ul class="gp-list">${runs}</ul>` : ""}
+        ${r.tags.length ? `<div class="gp-sub">Tags</div><div class="gp-tags">${r.tags.map((t) => `<span class="gp-ref tag">🏷 ${escH(t)}</span>`).join("")}</div>` : ""}
+        ${r.releases.length ? `<div class="gp-sub">Releases</div><div class="gp-tags">${r.releases.map((t) => `<span class="gh-badge">${escH(t)}</span>`).join("")}</div>` : ""}`;
+    }
+  }
+
+  // Files | Git | GitHub tabs over the side panel (the tabs appear once a git problem sends its first picture)
+  class SidePanel {
+    constructor(el) {
+      this.el = el;
+      el.innerHTML = `<div class="sp-tabs" role="tablist" hidden>
+          <button class="sp-tab on" data-tab="files">Files</button><button class="sp-tab" data-tab="git">Git</button><button class="sp-tab" data-tab="github">GitHub</button></div>
+        <div class="sp-pane" data-pane="files"></div><div class="sp-pane gp" data-pane="git" hidden></div><div class="sp-pane gp" data-pane="github" hidden></div>`;
+      this.files = new FilesPanel(el.querySelector('[data-pane="files"]'));
+      this.git = new GitPanel(el.querySelector('[data-pane="git"]'));
+      this.gh = new GitHubPanel(el.querySelector('[data-pane="github"]'));
+      this.tabs = el.querySelector(".sp-tabs");
+      this.chosen = false;
+      this.tabs.onclick = (e) => { const b = e.target.closest(".sp-tab"); if (b) { this.chosen = true; this.show(b.dataset.tab); } };
+    }
+    show(name) {
+      for (const b of this.tabs.querySelectorAll(".sp-tab")) b.classList.toggle("on", b.dataset.tab === name);
+      for (const p of this.el.querySelectorAll(".sp-pane")) p.hidden = p.dataset.pane !== name;
+    }
+    reset() { this.tabs.hidden = true; this.chosen = false; this.show("files"); }
+    gitUpdate(snap) {
+      if (!snap) return;
+      if (this.tabs.hidden) {
+        this.tabs.hidden = false;
+        this.tabs.querySelector('[data-tab="github"]').hidden = !snap.github;
+      }
+      if (snap.github) this.tabs.querySelector('[data-tab="github"]').hidden = false;
+      this.git.update(snap.repo || null);
+      this.gh.update(snap.github || null);
+      if (!this.chosen && snap.repo) { this.chosen = true; this.show("git"); }
+    }
+  }
+
   // ------------------------------------------------------------ the session (page <-> worker)
   function loadLog(key, seed) {
     try {
@@ -779,7 +965,8 @@
       this.key = key;
       this.problem = problem;
       this.onState = onState || (() => {});
-      this.files = new FilesPanel(filesEl);
+      this.side = new SidePanel(filesEl);
+      this.files = this.side.files;
       this.db = dbEl ? new DbPanel(dbEl) : null;
       this.mt = new MacTerminal(host, { onInput: (ev) => this.input(ev), onResize: (cols) => this.resized(cols), onSubmit });
       this.queue = [];
@@ -810,6 +997,7 @@
       }
       if (res.error) { await this.mt.write(`\x1b[31m${res.error}\x1b[0m\r\n`); return; }
       await this.mt.reset();
+      this.side.reset();
       this.files.setStart(res.start_tree || res.tree);
       if (this.db) this.db.setStart(res.start_db || res.db);
       this.alive = true;
@@ -866,6 +1054,7 @@
       else this.mt.update(res.out, res.view, res.title);
       if (res.tree) this.files.update(res.tree);
       if (res.db && this.db) this.db.update(res.db);
+      if (res.git) this.side.gitUpdate(res.git);
       if (res.editor && !this.nano) this.openNano(res.editor);
       this.lastView = res.view;
       this.onState({ ended: res.ended, view: res.view, editor: !!res.editor });

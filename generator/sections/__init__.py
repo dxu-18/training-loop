@@ -1,3 +1,3 @@
 """One package per COMP_GUIDE section; importing it registers its templates."""
 
-from . import s01_numpy, s02_pandas, s03_pytorch, s07_bash, s09_vim, s10_sql, s11_latex  # noqa: F401
+from . import s01_numpy, s02_pandas, s03_pytorch, s07_bash, s08_git, s09_vim, s10_sql, s11_latex  # noqa: F401

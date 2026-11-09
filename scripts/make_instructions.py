@@ -31,7 +31,7 @@ from generator.core import TIERS, build, modules, templates  # noqa: E402
 from generator.instructions import DATA_FILE, canon, names_of  # noqa: E402
 import instruction_notes as notes  # noqa: E402
 
-SECTIONS = ("numpy", "pandas", "pytorch", "bash")
+SECTIONS = ("numpy", "pandas", "pytorch", "bash", "git")
 
 
 def problems(section, seeds):
@@ -55,6 +55,8 @@ def guide_modules(section):
     """canonical name -> the first module whose COMP_GUIDE code lists it (where the guide introduces it)."""
     import guide_coverage as gc
     first = {}
+    if section == "git":
+        return first                 # git: where a command is first used
     if section == "bash":
         for mid, spec in gc.GUIDE_BASH.items():
             for f in spec.split(", "):
@@ -142,7 +144,7 @@ def main():
             continue
         order, intro, keys = collect(section, args.seeds)
         found[section] = (order, intro, keys)
-    want = {s: sorted(k for k in keys if not k.startswith("syntax:")) for s, (_, _, keys) in found.items() if s != "bash"}
+    want = {s: sorted(k for k in keys if not k.startswith("syntax:")) for s, (_, _, keys) in found.items() if s not in ("bash", "git")}
     auto = {}
     if want:
         r = subprocess.run([args.python, str(ROOT / "scripts" / "_docstrings.py")], input=json.dumps(want),
@@ -158,7 +160,7 @@ def main():
                 if d:
                     docs[key] = {"n": n, "s": s, "d": d}
                 continue
-            if section == "bash":
+            if section in ("bash", "git"):
                 e = bash_doc(key)
                 words = key.split(" ")
                 if e is None and len(words) == 3 and words[2].startswith("-"):   # pip install -q -> pip -q
