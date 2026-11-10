@@ -24,7 +24,7 @@ MAX_ITEMS = 4
 MAX_OLDER = 2
 
 # module aliases whose dotted names are kept whole (np.random.default_rng, F.softmax, nn.Linear ...)
-ALIASES = ("np", "pd", "torch", "F", "nn", "S", "tl", "triton", "dist", "dcp", "benchmark", "plt", "math")
+ALIASES = ("np", "pd", "torch", "F", "nn", "S", "tl", "triton", "dist", "dcp", "benchmark", "plt", "math", "sklearn")
 # plain-Python methods that are not the point of a problem (dict.items, str.join ...)
 PY_METHODS = {"append", "extend", "update", "items", "keys", "values", "get", "format", "pop", "add", "copy",
               "setdefault", "remove", "insert", "count", "index", "sort", "split", "join", "strip", "lower", "upper",
@@ -32,7 +32,24 @@ PY_METHODS = {"append", "extend", "update", "items", "keys", "values", "get", "f
 PY_METHODS_KEEP = {"pandas": {"count", "index", "sort", "split", "join", "strip", "lower", "upper", "startswith",
                               "endswith", "replace", "get", "pop", "update", "copy", "add", "values", "keys", "items"},
                    "numpy": {"sort", "copy", "split", "flush", "index", "count"},
-                   "pytorch": {"split", "add", "copy", "index", "sort", "count"}}
+                   "pytorch": {"split", "add", "copy", "index", "sort", "count"},
+                   "sklearn": {"split", "copy", "index", "sort", "count", "get", "values", "keys", "items"}}
+# any import statement (sklearn problems: the imports themselves aren't APIs to describe)
+IMPORT_STMT = re.compile(r"^[ \t]*(?:from[ \t]+\S+[ \t]+import[ \t]+(?:\([^)]*\)|[^\n]+)|import[ \t]+[^\n]+)", re.M)
+# `from sklearn.preprocessing import StandardScaler, MinMaxScaler as MM` (one line or parenthesized)
+SK_IMPORT = re.compile(r"^[ \t]*from[ \t]+sklearn[\w.]*[ \t]+import[ \t]+(\([^)]*\)|[^\n]+)", re.M)
+
+
+def sk_imported(code: str) -> tuple[dict[str, str], list[tuple[int, int]]]:
+    """Names a piece of code imports from sklearn ({local name: real name}) and the spans of those imports."""
+    names, spans = {}, []
+    for m in SK_IMPORT.finditer(code):
+        spans.append(m.span())
+        for part in m[1].strip("()").replace("\n", " ").split(","):
+            name, _, alias = part.strip().partition(" as ")
+            if name.strip().isidentifier():
+                names[(alias or name).strip()] = name.strip()
+    return names, spans
 
 DATA_FILE = Path(__file__).with_name("data") / "instructions.json"
 
@@ -47,7 +64,7 @@ def data() -> dict:
 
 def canon(key: str, section: str = "") -> str:
     """One name per API: np.cumsum and x.cumsum() are both 'cumsum'; Bash features and syntax are their own name."""
-    if section in ("bash", "git") or key.startswith("syntax:"):
+    if section in ("bash", "git", "docker") or key.startswith("syntax:"):
         return key
     return key.rsplit(".", 1)[-1]
 
@@ -71,6 +88,8 @@ def bash_kept(f: str) -> bool:
         return bool(BASH_OPT.match(words[1]) or sub.match(words[1]))
     if len(words) == 3 and words[1] == "-m":                   # python3 -m venv
         return BASH_WORD.match(words[2]) is not None
+    if len(words) == 4:                                       # docker compose up -d, gh pr create --title
+        return bool(sub.match(words[1]) and sub.match(words[2]) and BASH_OPT.match(words[3]))
     return len(words) == 3 and bool(sub.match(words[1])) and bool(sub.match(words[2]) or BASH_OPT.match(words[2]))
 
 
@@ -88,6 +107,9 @@ def _blank_strings(code: str) -> str:
 def py_names(code: str, section: str) -> list[tuple[int, str]]:
     """(position, key) of the API names a solution uses, in order: 'np.cumsum', '.reshape', 'F.softmax' ..."""
     code = _blank_strings(code)
+    raw = code
+    if section == "sklearn":
+        code = IMPORT_STMT.sub(lambda m: " " * len(m[0]), code)
     keep = PY_METHODS_KEEP.get(section, set())
     out = []
     for m in re.finditer(r"(?<![\w.])([A-Za-z_]\w*)((?:\.[A-Za-z_]\w*)+)", code):
@@ -106,6 +128,13 @@ def py_names(code: str, section: str) -> list[tuple[int, str]]:
         for a in re.finditer(r"[A-Za-z_]\w*", m[1]):
             if a[0] not in PY_METHODS or a[0] in keep:
                 out.append((m.start(1) + a.start(), "." + a[0]))
+    if section == "sklearn":                       # StandardScaler(), cross_val_score(...): imported, used bare
+        names, spans = sk_imported(raw)
+        for local, real in names.items():
+            for m in re.finditer(rf"(?<![\w.]){re.escape(local)}\b(?!\s*=(?!=))", code):
+                if not any(a <= m.start() < b for a, b in spans):
+                    out.append((m.start(), real))
+                    break
     return sorted(set(out))
 
 
@@ -282,7 +311,7 @@ def instructions(problem, with_keys: bool = False) -> list[dict]:
         chosen = [x for x in items if x in older]
     chosen = (required + [x for x in chosen if x not in required])[:MAX_ITEMS]
     out = [x[1] for x in chosen]
-    if section in ("bash", "git"):
+    if section in ("bash", "git", "docker"):
         out = _merge_commands(out)
     keys = [x["key"] for x in out]     # an accessor (s.str) next to one of its methods says nothing more
     out = [x for x in out if not (x["key"] in (".str", ".dt", ".cat") and len(keys) > 1)]
@@ -293,7 +322,7 @@ def _required(p: dict, section: str) -> set[str]:
     """The names a problem's `require` asks for (every alternative of "a|b")."""
     out = set()
     for req in p.get("require") or []:
-        if section in ("bash", "git"):
+        if section in ("bash", "git", "docker"):
             from .bashlite.features import alternatives
             out |= set(alternatives(req))
         else:

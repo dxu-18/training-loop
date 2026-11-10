@@ -433,7 +433,30 @@ class LiveTerm:
         git = self.git_view()
         if git is not None:
             res["git"] = git
+        dk = self.docker_view()
+        if dk is not None:
+            res["docker"] = dk
         return res
+
+    def docker_view(self):
+        """The Docker panel's picture, when it changed (docker problems only)."""
+        if self.spec.docker is None:
+            return None
+        key = (self.world.local._pid, self.k.now // 2_000_000_000, len(getattr(self.world.local.extra.get("dockerd"),
+                                                                                "events", [])))
+        if key == getattr(self, "docker_key", None):
+            return None
+        self.docker_key = key
+        from .docker.viz import snapshot
+        try:
+            snap = snapshot(self.world)
+        except Exception as e:  # noqa: BLE001  (the panel must never break the terminal)
+            snap = {"error": f"{type(e).__name__}: {e}"}
+        text = json.dumps(snap, sort_keys=True)
+        if text == getattr(self, "last_docker", None):
+            return None
+        self.last_docker = text
+        return snap or {}
 
     def git_view(self):
         """The Git / GitHub panels' picture, when it changed (git problems only; recomputed after each command)."""

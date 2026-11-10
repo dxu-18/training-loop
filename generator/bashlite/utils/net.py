@@ -1155,7 +1155,12 @@ def http_request(ctx, url, method="GET", headers=None, body=b""):
         if h == "github.com":
             return default_web(h, path, method, headers, body)
     target = None
-    if h in ("localhost", "127.0.0.1", "0.0.0.0", ctx.host.name):
+    resolver = ctx.host.extra.get("resolver")         # inside a container: its networks' names (docker/engine.py)
+    if resolver is not None:
+        target = resolver(h)
+        if target is None and (ctx.host.extra["container"].cfg.get("network") == "none" or h not in INTERNET):
+            raise HttpError(6, f"Could not resolve host: {h}")
+    elif h in ("localhost", "127.0.0.1", "0.0.0.0", ctx.host.name):
         target = ctx.host
     else:
         target = world.resolve(h)
@@ -1172,6 +1177,8 @@ def http_request(ctx, url, method="GET", headers=None, body=b""):
             return rsvc.handler(method, path + query, headers, body)
         if svc.handler is None:
             raise HttpError(52, "Empty reply from server")
+        if getattr(svc, "loopback", False) and target is not ctx.host:
+            raise HttpError(7, f"Failed to connect to {h} port {port} after 0 ms: Couldn't connect to server")
         return svc.handler(method, path + query, headers, body)
     if h not in INTERNET:
         raise HttpError(6, f"Could not resolve host: {h}")
@@ -1345,7 +1352,8 @@ def u_curl(ctx):
         if target and target != "-":
             try:
                 of = ctx.open(target, "w")
-                of.inode.data[:] = payload
+                if of.inode is not None:             # /dev/null and other devices have no inode
+                    of.inode.data[:] = payload
             except FSError as e:
                 ctx.e(f"curl: (23) Failure writing output to destination\n" if e.code != "ENOENT" else
                       f"Warning: Failed to open the file {target}: No such file or directory\ncurl: (23) Failure writing output to destination\n")
@@ -1508,7 +1516,8 @@ def u_ping(ctx):
     if target is None:
         ctx.e("ping: usage error: Destination address required\n")
         return 1
-    host = ctx.world.resolve(target)
+    resolver = ctx.host.extra.get("resolver")
+    host = resolver(target) if resolver is not None else ctx.world.resolve(target)
     ip = host.ip if host else INTERNET.get(target)
     if ip is None and re.fullmatch(r"\d+\.\d+\.\d+\.\d+", target):
         ip = target

@@ -40,7 +40,52 @@ except ImportError:
 
 import time  # noqa: E402
 
+try:
+    import sklearn  # noqa: E402
+    import sklearn.experimental.enable_halving_search_cv  # noqa: E402,F401
+    import sklearn.experimental.enable_iterative_imputer  # noqa: E402,F401
+except ImportError:
+    sklearn = None
+
 ROOTS = {"np": np, "pd": pd, "math": math, "plt": plt, "time": time}
+if sklearn is not None:
+    ROOTS["sklearn"] = sklearn
+
+# scikit-learn modules whose public names a solution imports (sklearn.metrics.pairwise.cosine_similarity ...)
+SK_EXTRA = ("base", "utils", "metrics.pairwise", "feature_extraction.text", "gaussian_process.kernels", "utils.validation",
+            "utils.class_weight", "utils.estimator_checks", "utils.discovery", "frozen")
+
+
+def _sk_index():
+    """public scikit-learn name -> (import path, object): StandardScaler -> sklearn.preprocessing.StandardScaler."""
+    import importlib
+    idx = {}
+    if sklearn is None:
+        return idx
+    for name in ("clone", "set_config", "get_config", "config_context"):
+        idx[name] = (f"sklearn.{name}", getattr(sklearn, name))
+    mods = list(SK_EXTRA[:2]) + [m for m in sklearn.__all__ if not m.startswith("_") and m[0].islower()] + \
+        list(SK_EXTRA[2:])
+    for m in mods:
+        try:
+            mod = importlib.import_module(f"sklearn.{m}")
+        except Exception:  # noqa: BLE001
+            continue
+        if not hasattr(mod, "__file__"):
+            continue
+        listed = getattr(mod, "__all__", None)
+        for name in listed or [n for n in dir(mod) if not n.startswith("_")]:
+            obj = getattr(mod, name, None)
+            if obj is None or inspect.ismodule(obj) or not callable(obj):
+                continue
+            home = getattr(obj, "__module__", "") or ""
+            if not listed and not (home == f"sklearn.{m}" or home.startswith(f"sklearn.{m}._")):
+                continue                  # a module without __all__: only what it defines itself
+            idx.setdefault(name, (f"sklearn.{m}.{name}", obj))
+    return idx
+
+
+SK_INDEX = _sk_index()
 if torch is not None:
     ROOTS.update({"torch": torch, "F": F, "nn": torch.nn, "S": torch.optim.lr_scheduler, "dist": torch.distributed})
     try:
@@ -89,6 +134,34 @@ def _method_owners(section):
         except AttributeError:
             pass
         return owners
+    if section == "sklearn" and sklearn is not None:
+        from scipy import sparse
+        get = lambda n: SK_INDEX[n][1]  # noqa: E731
+        names = [("LogisticRegression", "clf."), ("StandardScaler", "scaler."), ("Pipeline", "pipe."),
+                 ("ColumnTransformer", "ct."), ("GridSearchCV", "search."), ("RandomizedSearchCV", "search."),
+                 ("KMeans", "km."), ("PCA", "pca."), ("RandomForestClassifier", "rf."),
+                 ("DecisionTreeClassifier", "tree."), ("HistGradientBoostingClassifier", "hgb."),
+                 ("GradientBoostingClassifier", "gb."), ("OneHotEncoder", "ohe."), ("OrdinalEncoder", "enc."),
+                 ("SimpleImputer", "imp."), ("LinearRegression", "reg."), ("Ridge", "reg."), ("Lasso", "reg."),
+                 ("RidgeCV", "reg."), ("LassoCV", "reg."), ("LogisticRegressionCV", "clf."), ("SVC", "svc."),
+                 ("KNeighborsClassifier", "knn."), ("NearestNeighbors", "nn."), ("GaussianMixture", "gmm."),
+                 ("BayesianGaussianMixture", "bgm."), ("DBSCAN", "db."), ("AgglomerativeClustering", "agg."),
+                 ("TfidfVectorizer", "vec."), ("CountVectorizer", "vec."), ("SelectKBest", "sel."), ("RFE", "rfe."),
+                 ("RFECV", "rfecv."), ("SelectFromModel", "sel."), ("PolynomialFeatures", "poly."),
+                 ("MinMaxScaler", "scaler."), ("LabelEncoder", "le."), ("TunedThresholdClassifierCV", "tuned."),
+                 ("CalibratedClassifierCV", "cal."), ("IsolationForest", "iso."), ("MLPClassifier", "mlp."),
+                 ("GaussianProcessRegressor", "gp."), ("SGDClassifier", "sgd."), ("StratifiedKFold", "cv."),
+                 ("HalvingGridSearchCV", "search."), ("VarianceThreshold", "sel."), ("TruncatedSVD", "svd."),
+                 ("NMF", "nmf."), ("LatentDirichletAllocation", "lda."), ("TSNE", "tsne."),
+                 ("ConfusionMatrixDisplay", "ConfusionMatrixDisplay."), ("RocCurveDisplay", "RocCurveDisplay."),
+                 ("DecisionBoundaryDisplay", "disp."), ("BaseEstimator", "est.")]
+        owners = [(get(n), pre) for n, pre in names if n in SK_INDEX]
+        mpl = [(Axes, "ax."), (Figure, "fig.")] if Axes is not None else []
+        if Axes is not None:
+            from matplotlib.text import Text
+            mpl.append((Text, "label."))
+        return owners + [(np.ndarray, "a."), (pd.DataFrame, "df."), (pd.Series, "s."), (np, "np."), (pd, "pd.")] + \
+            mpl + [(sparse.csr_matrix, "Xs.")] + common
     if section == "pytorch" and torch is not None:
         extra = [(torch.amp.GradScaler, "scaler."), (torch.nn.parallel.DistributedDataParallel, "ddp."),
                  (torch.profiler.profile, "prof."), (time, "time.")]
@@ -184,7 +257,51 @@ def describe(obj, shown, _depth=0):
     return sig, desc, callable_
 
 
+def _field(doc, name):
+    """The description of `name : type` in a numpydoc Parameters / Attributes / Returns section (or None)."""
+    m = re.search(rf"^([ \t]*){re.escape(name)} : [^\n]*\n((?:\1[ \t]+[^\n]*\n?)+)", doc, re.M)
+    if not m:
+        return None
+    desc = _first_sentence(_clean(m.group(2)))
+    return desc if len(desc) >= 8 else None
+
+
+def _sk_field_owners():
+    """Everything whose docstring may describe a field: estimators, displays, functions returning Bunches, the tree
+    structure (tree_.children_left ...), in that order."""
+    out = []
+    for name, (path, obj) in SK_INDEX.items():
+        pre = "disp." if name.endswith("Display") else "est." if isinstance(obj, type) else f"{name}(...)."
+        out.append((obj, pre))
+    try:
+        from sklearn.tree._tree import Tree
+        out.insert(0, (Tree, "tree.tree_."))
+    except ImportError:
+        pass
+    return out
+
+
+def _fitted_attr(section, name):
+    """A learned attribute (coef_, classes_) or a result field (fpr, importances_mean): its entry in an owner's
+    numpydoc sections; the usual owners first, then any public scikit-learn object."""
+    for owner, prefix in list(_method_owners(section)) + _sk_field_owners():
+        desc = _field(inspect.getdoc(owner) or "", name)
+        if desc:
+            return {"n": prefix + name, "s": "", "d": desc}
+    return None
+
+
 def lookup(section, key):
+    if section == "sklearn" and "." not in key and key in SK_INDEX:     # StandardScaler, cross_val_score
+        path, obj = SK_INDEX[key]
+        r = describe(obj, path)
+        if r:
+            return {"n": path, "s": r[0], "d": r[1]}
+        return None
+    if section == "sklearn" and key.startswith(".") and key.endswith("_") and not key.endswith("__"):
+        r = _fitted_attr(section, key[1:])
+        if r:
+            return r
     if not key.startswith("."):
         obj = _resolve(key)
         r = describe(obj, key)
@@ -205,6 +322,8 @@ def lookup(section, key):
         if r:
             sig, desc, _ = r
             return {"n": shown if prop else shown + "()", "s": "" if prop else sig, "d": desc}
+    if section == "sklearn" and not name.startswith("_"):      # disp.fpr, r.importances_mean, tree_.threshold
+        return _fitted_attr(section, name)
     return None
 
 

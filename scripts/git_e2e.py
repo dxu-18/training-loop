@@ -21,7 +21,7 @@ BASE = "http://127.0.0.1:8771"
 srv = subprocess.Popen([sys.executable, "-m", "http.server", "8771", "-b", "127.0.0.1", "-d", "docs"],
                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 time.sleep(1)
-IDLE = "view.term && view.term.alive && !view.term.inflight && !view.term.queue.length"
+IDLE = "typeof view !== 'undefined' && view && view.term && view.term.alive && !view.term.inflight && !view.term.queue.length"
 problems = []
 
 

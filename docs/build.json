@@ -1,5 +1,5 @@
 {
- "hash": "41e0ad700161",
+ "hash": "443f4919493a",
  "topics": {
   "numpy": {
    "title": "NumPy",
@@ -694,241 +694,241 @@
     {
      "id": "4.01",
      "title": "The estimator API",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 5,
+      "easy": 8,
+      "medium": 11,
+      "hard": 9,
+      "challenge": 3
      }
     },
     {
      "id": "4.02",
      "title": "Datasets",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 3,
+      "easy": 7,
+      "medium": 7,
+      "hard": 8,
+      "challenge": 6
      }
     },
     {
      "id": "4.03",
      "title": "Splitting & cross-validation",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 3,
+      "easy": 8,
+      "medium": 7,
+      "hard": 8,
+      "challenge": 6
      }
     },
     {
      "id": "4.04",
      "title": "Scaling & feature transforms",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 3,
+      "easy": 7,
+      "medium": 8,
+      "hard": 8,
+      "challenge": 6
      }
     },
     {
      "id": "4.05",
      "title": "Encoding categories & imputing missing values",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 3,
+      "easy": 7,
+      "medium": 7,
+      "hard": 7,
+      "challenge": 6
      }
     },
     {
      "id": "4.06",
      "title": "Pipelines & ColumnTransformer",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 5,
+      "easy": 9,
+      "medium": 6,
+      "hard": 9,
+      "challenge": 3
      }
     },
     {
      "id": "4.07",
      "title": "Feature selection",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 3,
+      "easy": 10,
+      "medium": 7,
+      "hard": 11,
+      "challenge": 3
      }
     },
     {
      "id": "4.08",
      "title": "Linear models",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 11,
+      "medium": 8,
+      "hard": 11,
+      "challenge": 3
      }
     },
     {
      "id": "4.09",
      "title": "SVMs, nearest neighbours & naive Bayes",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 4,
+      "easy": 10,
+      "medium": 7,
+      "hard": 9,
+      "challenge": 3
      }
     },
     {
      "id": "4.10",
      "title": "Trees & ensembles",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 4,
+      "easy": 9,
+      "medium": 10,
+      "hard": 10,
+      "challenge": 6
      }
     },
     {
      "id": "4.11",
      "title": "Clustering & mixture models",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 4,
+      "easy": 10,
+      "medium": 11,
+      "hard": 10,
+      "challenge": 6
      }
     },
     {
      "id": "4.12",
      "title": "Dimensionality reduction & embeddings",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 3,
+      "easy": 10,
+      "medium": 11,
+      "hard": 9,
+      "challenge": 6
      }
     },
     {
      "id": "4.13",
      "title": "Classification metrics",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 4,
+      "easy": 9,
+      "medium": 11,
+      "hard": 10,
+      "challenge": 6
      }
     },
     {
      "id": "4.14",
      "title": "Regression, clustering & distance metrics",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 4,
+      "easy": 9,
+      "medium": 8,
+      "hard": 10,
+      "challenge": 4
      }
     },
     {
      "id": "4.15",
      "title": "Hyperparameter search",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 3,
+      "easy": 9,
+      "medium": 10,
+      "hard": 9,
+      "challenge": 3
      }
     },
     {
      "id": "4.16",
      "title": "Probability calibration & decision thresholds",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 3,
+      "easy": 10,
+      "medium": 11,
+      "hard": 9,
+      "challenge": 4
      }
     },
     {
      "id": "4.17",
      "title": "Model inspection & built-in plots",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 4,
+      "easy": 11,
+      "medium": 7,
+      "hard": 10,
+      "challenge": 3
      }
     },
     {
      "id": "4.18",
      "title": "Text features",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 5,
+      "easy": 7,
+      "medium": 9,
+      "hard": 6,
+      "challenge": 5
      }
     },
     {
      "id": "4.19",
      "title": "Outliers, multi-output, semi-supervised & other models",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 4,
+      "easy": 7,
+      "medium": 9,
+      "hard": 8,
+      "challenge": 5
      }
     },
     {
      "id": "4.20",
      "title": "Custom estimators, persistence & configuration",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 4,
+      "easy": 7,
+      "medium": 8,
+      "hard": 7,
+      "challenge": 5
      }
     }
    ]
@@ -2234,169 +2234,169 @@
     {
      "id": "12.01",
      "title": "Setup & first commands",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 2,
+      "hard": 2,
+      "challenge": 2
      }
     },
     {
      "id": "12.02",
      "title": "Running containers",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 2,
+      "hard": 2,
+      "challenge": 2
      }
     },
     {
      "id": "12.03",
      "title": "Managing containers",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 2,
+      "hard": 2,
+      "challenge": 2
      }
     },
     {
      "id": "12.04",
      "title": "Images",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 2,
+      "hard": 2,
+      "challenge": 2
      }
     },
     {
      "id": "12.05",
      "title": "Dockerfile instructions",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 2,
+      "hard": 2,
+      "challenge": 2
      }
     },
     {
      "id": "12.06",
      "title": "Building images & .dockerignore",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 2,
+      "hard": 2,
+      "challenge": 2
      }
     },
     {
      "id": "12.07",
      "title": "Best practices & multi-stage builds",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 2,
+      "hard": 2,
+      "challenge": 2
      }
     },
     {
      "id": "12.08",
      "title": "Volumes & bind mounts",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 2,
+      "hard": 2,
+      "challenge": 2
      }
     },
     {
      "id": "12.09",
      "title": "Networking",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 2,
+      "hard": 2,
+      "challenge": 2
      }
     },
     {
      "id": "12.10",
      "title": "Docker Compose",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 2,
+      "hard": 2,
+      "challenge": 2
      }
     },
     {
      "id": "12.11",
      "title": "GPUs & ML images",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 2,
+      "hard": 2,
+      "challenge": 2
      }
     },
     {
      "id": "12.12",
      "title": "Recipes: Jupyter & a model API",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 2,
+      "hard": 2,
+      "challenge": 2
      }
     },
     {
      "id": "12.13",
      "title": "Registries",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 2,
+      "hard": 2,
+      "challenge": 2
      }
     },
     {
      "id": "12.14",
      "title": "Debugging & cleanup",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 2,
+      "medium": 2,
+      "hard": 2,
+      "challenge": 2
      }
     }
    ]

@@ -316,7 +316,7 @@ class FS:
             if gids is not None and not self.can(node, 1, uid, gids):
                 raise FSError("EACCES")
             if c == "..":
-                node = node.parent
+                node = self._up(node)
                 continue
             child = node.entries.get(c)
             if child is None:
@@ -331,6 +331,30 @@ class FS:
                 child = self._walk(start, tcomps, True, depth + 1, uid, gids)
             node = child
         return node
+
+    def _up(self, node: Inode) -> Inode:
+        """The parent directory, as seen from this filesystem (a mounted directory's parent is the mount point's)."""
+        binds = self.__dict__.get("binds")
+        if binds:
+            hit = binds.get(id(node))
+            if hit is not None:
+                return hit[0]
+        return node.parent
+
+    def _check_ro(self, d: Inode) -> None:
+        """EROFS when directory `d` is inside a read-only mount (containers' `-v src:dst:ro`)."""
+        binds = self.__dict__.get("binds")
+        if not binds:
+            return
+        node, seen = d, 0
+        while seen < 256:
+            hit = binds.get(id(node))
+            if hit is not None and hit[2]:
+                raise FSError("EROFS")
+            up = self._up(node)
+            if up is node or up is None:
+                return
+            node, seen = up, seen + 1
 
     def lookup(self, path: str, cwd: str = "/", follow: bool = True, uid: int = 0, gids=None) -> Inode:
         """The inode at `path` (FSError on failure). Pass uid/gids to enforce search permission."""
@@ -369,7 +393,7 @@ class FS:
     def path_of(self, node: Inode) -> str:
         parts = []
         while node is not self.root:
-            parent = node.parent
+            parent = self._up(node)
             if parent is None:
                 raise FSError("ENOENT")
             name = next((k for k, v in parent.entries.items() if v is node), None)
@@ -407,7 +431,7 @@ class FS:
                 if c in ("", "."):
                     continue
                 if c == "..":
-                    node = node.parent
+                    node = self._up(node)
                     continue
                 child = node.entries.get(c)
                 if child is not None and child.type == "l":
@@ -428,6 +452,7 @@ class FS:
         return self._link_new(d, name, "d", mode, uid, gid)
 
     def _link_new(self, d: Inode, name: str, type_: str, mode: int, uid: int, gid: int) -> Inode:
+        self._check_ro(d)
         node = self._new(type_, mode, uid, gid)
         d.entries[name] = node
         if type_ == "d":
@@ -445,6 +470,8 @@ class FS:
                 raise FSError("EEXIST")
             if node.type == "d":
                 raise FSError("EISDIR")
+            if self.__dict__.get("binds"):
+                self._check_ro(self.parent_of(path, cwd)[0])
             return node
         except FSError as e:
             if e.code != "ENOENT":
@@ -511,6 +538,7 @@ class FS:
             raise FSError("ENOENT")
         if node.type == "d":
             raise FSError("EISDIR")
+        self._check_ro(d)
         self._check_delete(d, node, uid, gids)
         del d.entries[name]
         node.nlink -= 1
@@ -550,6 +578,8 @@ class FS:
         if node is None:
             raise FSError("ENOENT")
         dd, dname = self.parent_of(dst, cwd, uid, gids)
+        self._check_ro(sd)
+        self._check_ro(dd)
         if node.type == "d":   # can't move a directory inside itself
             p = dd
             while True:

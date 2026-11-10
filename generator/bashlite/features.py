@@ -383,7 +383,12 @@ SUBCOMMAND_TOOLS = {"pip", "pip3", "uv", "conda", "tmux", "apt", "apt-get", "bre
                     "crontab", "ssh-keygen", "kubectl", "npm", "cargo", "go", "gh", "dvc", "pre-commit"}
 # tools whose subcommands have subcommands: `gh pr create`, `git stash pop`, `git remote add`, `dvc remote add`
 NESTED = {"gh": None, "dvc": {"remote"},
+          "docker": {"system", "volume", "network", "image", "container", "compose", "builder", "buildx", "scout"},
           "git": {"stash", "remote", "bisect", "worktree", "submodule", "lfs", "sparse-checkout", "notes", "reflog"}}
+# docker run IMAGE CMD...: what follows the image (or exec's container) is the container's command, not docker's
+DOCKER_RUNLIKE = {"run", "exec", "create", "compose run", "compose exec", "container run", "container exec"}
+DOCKER_BOOL = re.compile(r"^-[dirtPqT]+$|^--(rm|detach|interactive|tty|init|privileged|read-only|publish-all|"
+                         r"no-healthcheck|quiet|no-deps|build|service-ports|no-TTY|remove-orphans|sig-proxy)$")
 
 
 def _flags(name, args, out):
@@ -392,6 +397,7 @@ def _flags(name, args, out):
     first_operand = True
     prev_flag = None
     sub = None
+    want_val = False                  # docker run: the last flag takes a value (the next word isn't the image)
 
     def add(feature):
         out.add(f"{name} {feature}")
@@ -408,6 +414,7 @@ def _flags(name, args, out):
             flag = a.split("=", 1)[0]
             add(flag)
             prev_flag = flag if "=" not in a else None
+            want_val = "=" not in a and not DOCKER_BOOL.match(flag)
             continue
         if a.startswith("-") and len(a) > 1 and not re.match(r"^-\d+(\.\d+)?$", a) or (name == "head" or name == "tail") and re.match(r"^-\d+$", a):
             add(a)
@@ -419,6 +426,13 @@ def _flags(name, args, out):
             elif name != "find" and body[:1].isalpha():
                 add(f"-{body[0]}")       # -k3,3nr, -d, -v+1d: the option letter
             prev_flag = a
+            want_val = not DOCKER_BOOL.match(a)
+            continue
+        if name == "docker" and sub in DOCKER_RUNLIKE:
+            if not want_val:
+                break                    # the image / container: the rest is the command run inside
+            want_val = False
+            prev_flag = None
             continue
         if a.startswith("+") and name in ("tail", "set", "shopt"):
             out.add(f"{name} {a}")

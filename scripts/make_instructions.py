@@ -31,7 +31,7 @@ from generator.core import TIERS, build, modules, templates  # noqa: E402
 from generator.instructions import DATA_FILE, canon, names_of  # noqa: E402
 import instruction_notes as notes  # noqa: E402
 
-SECTIONS = ("numpy", "pandas", "pytorch", "bash", "git")
+SECTIONS = ("numpy", "pandas", "pytorch", "sklearn", "bash", "git", "docker")
 
 
 def problems(section, seeds):
@@ -55,7 +55,7 @@ def guide_modules(section):
     """canonical name -> the first module whose COMP_GUIDE code lists it (where the guide introduces it)."""
     import guide_coverage as gc
     first = {}
-    if section == "git":
+    if section in ("git", "docker"):
         return first                 # git: where a command is first used
     if section == "bash":
         for mid, spec in gc.GUIDE_BASH.items():
@@ -144,7 +144,7 @@ def main():
             continue
         order, intro, keys = collect(section, args.seeds)
         found[section] = (order, intro, keys)
-    want = {s: sorted(k for k in keys if not k.startswith("syntax:")) for s, (_, _, keys) in found.items() if s not in ("bash", "git")}
+    want = {s: sorted(k for k in keys if not k.startswith("syntax:")) for s, (_, _, keys) in found.items() if s not in ("bash", "git", "docker")}
     auto = {}
     if want:
         r = subprocess.run([args.python, str(ROOT / "scripts" / "_docstrings.py")], input=json.dumps(want),
@@ -154,13 +154,15 @@ def main():
         docs = {}
         prev = old.get(section, {}).get("docs", {})
         manual = notes.NOTES.get(section, {})
+        if section == "docker":                  # the shell around docker commands: as the bash section says it
+            manual = {**notes.NOTES["bash"], **manual}
         for key in keys:
             if key in manual:
                 n, s, d = manual[key]
                 if d:
                     docs[key] = {"n": n, "s": s, "d": d}
                 continue
-            if section in ("bash", "git"):
+            if section in ("bash", "git", "docker"):
                 e = bash_doc(key)
                 words = key.split(" ")
                 if e is None and len(words) == 3 and words[2].startswith("-"):   # pip install -q -> pip -q

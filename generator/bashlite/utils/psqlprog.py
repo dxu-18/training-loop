@@ -285,14 +285,41 @@ def u_psql(ctx):
     if o["version"]:
         ctx.w("psql (PostgreSQL) 16.4 (Ubuntu 16.4-0ubuntu0.24.04.2)\n")
         return 0
-    if o.get("host") not in (None, "localhost", "127.0.0.1", "/var/run/postgresql", "::1"):
-        ctx.e(f'psql: error: could not translate host name "{o["host"]}" to address: Name or service not known\n')
-        return 2
+    remote = None
+    if o.get("host") not in (None, "localhost", "127.0.0.1", "/var/run/postgresql", "::1") or \
+            ctx.host.extra.get("container") is not None:
+        # a server in a container (docker/programs.py): reached by name on a docker network, or its own socket
+        name = o.get("host") or "localhost"
+        resolver = ctx.host.extra.get("resolver")
+        target = resolver(name) if resolver is not None else world.resolve(name)
+        if target is None:
+            ctx.e(f'psql: error: could not translate host name "{name}" to address: Name or service not known\n'
+                  if o.get("host") else f'psql: error: connection to server on socket "{SOCKET}" failed: No such file '
+                                        f'or directory\n\tIs the server running locally and accepting connections on '
+                                        f'that socket?\n')
+            return 2
+        if 5432 not in target.services or target.extra.get("pg") is None:
+            ctx.e(f'psql: error: connection to server at "{name}" ({target.ip}), port 5432 failed: Connection refused\n'
+                  f'\tIs the server running on that host and accepting TCP/IP connections?\n' if o.get("host") else
+                  f'psql: error: connection to server on socket "{SOCKET}" failed: No such file or directory\n\tIs '
+                  f'the server running locally and accepting connections on that socket?\n')
+            return 2
+        pw = target.extra.get("pg_password")
+        if o.get("host") and pw is not None and target is not ctx.host:
+            given = ctx.env.get("PGPASSWORD")
+            if given is None:
+                ctx.e(f"Password for user {o['user']}: \n")
+                given = ""
+            if given != pw:
+                ctx.e(f'psql: error: connection to server at "{name}" ({target.ip}), port 5432 failed: FATAL:  '
+                      f'password authentication failed for user "{o["user"]}"\n')
+                return 2
+        remote = target.extra["pg"]
     if o.get("port") not in (None, "5432"):
         ctx.e(f'psql: error: connection to server on socket "/var/run/postgresql/.s.PGSQL.{o["port"]}" failed: No '
               'such file or directory\n\tIs the server running locally and accepting connections on that socket?\n')
         return 2
-    cluster = cluster_of(world)
+    cluster = remote if remote is not None else cluster_of(world)
     if o["user"] not in cluster.roles:
         ctx.e(_conn_error(f'role "{o["user"]}" does not exist'))
         return 2
@@ -499,5 +526,17 @@ def u_dropdb(ctx):
 
 @util("pg_isready")
 def u_pg_isready(ctx):
-    ctx.w("/var/run/postgresql:5432 - accepting connections\n")
+    a = ctx.argv[1:]
+    host = a[a.index("-h") + 1] if "-h" in a and a.index("-h") + 1 < len(a) else None
+    where = f"{host}:5432" if host else "/var/run/postgresql:5432"
+    if ctx.host.extra.get("container") is not None or host not in (None, "localhost", "127.0.0.1"):
+        resolver = ctx.host.extra.get("resolver")
+        target = (resolver(host or "localhost") if resolver else ctx.world.resolve(host)) if (host or resolver) \
+            else ctx.host
+        if target is None or 5432 not in target.services:
+            if "-q" not in a:
+                ctx.w(f"{where} - no response\n")
+            return 2
+    if "-q" not in a:
+        ctx.w(f"{where} - accepting connections\n")
     return 0

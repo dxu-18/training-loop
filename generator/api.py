@@ -117,7 +117,12 @@ def self_test(section: str, seeds: int = 2, only: str = "", skip: str = "") -> s
         if (want and tpl.module not in want) or tpl.module in drop:
             continue
         core._PICKED.clear()
-        core.build(tpl, 0)
+        try:
+            core.build(tpl, 0)
+        except Exception as e:  # noqa: BLE001  (report it with the template's name, check the rest)
+            failures.append({"template": tpl.name, "module": tpl.module, "seed": 0, "message": "generation crashed",
+                             "error": f"{type(e).__name__}: {e}"})
+            continue
         n_items = core._PICKED[0] if core._PICKED else 0
         runs += [(tpl, seed, None) for seed in range(seeds)]
         runs += [(tpl, i, i) for i in range(n_items)]  # catalogs: every item once, too

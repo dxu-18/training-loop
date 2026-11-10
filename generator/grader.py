@@ -25,6 +25,42 @@ import warnings
 
 os.environ.setdefault("MPLBACKEND", "Agg")  # headless plotting (Pyodide runs us in a Web Worker)
 
+def numpy_32bit_compat():
+    """Pyodide is 32-bit: np.intp is int32, and NumPy refuses to cast int64 counts 'safely' to it, so
+    `np.repeat(a, rng.integers(...))` and `np.bincount(int64_array)` raise there but work on every 64-bit machine.
+    Make them accept int64 input whose values fit, as the problems (and learners) expect. A no-op on 64-bit."""
+    try:
+        import numpy as np
+    except ImportError:
+        return
+    if np.dtype(np.intp).itemsize >= 8 or getattr(np, "_tl_intp_compat", False):
+        return
+    import functools
+    lim = np.iinfo(np.intp)
+
+    def fit(v):
+        a = np.asarray(v)
+        if a.dtype.kind in "iu" and a.dtype.itemsize > np.dtype(np.intp).itemsize and \
+                (a.size == 0 or (a.min() >= lim.min and a.max() <= lim.max)):
+            return a.astype(np.intp)
+        return v
+
+    bincount, repeat = np.bincount, np.repeat
+
+    @functools.wraps(bincount)
+    def _bincount(x, weights=None, minlength=0):
+        return bincount(fit(x), weights, minlength=minlength)
+
+    @functools.wraps(repeat)
+    def _repeat(a, repeats, axis=None):
+        return repeat(a, fit(repeats), axis)
+
+    np.bincount, np.repeat = _bincount, _repeat
+    np._tl_intp_compat = True
+
+
+numpy_32bit_compat()      # again on every run: in the browser NumPy may load after this module
+
 USER_FILE = "<answer>"
 STDOUT = "<stdout>"
 MAX_REPR = 4000
@@ -94,6 +130,7 @@ def _sandbox():
     try:
         import numpy as np
         saved = (np.get_printoptions(), np.geterr())
+        numpy_32bit_compat()
     except ImportError:
         np = saved = None
     old = os.getcwd()
@@ -121,6 +158,12 @@ def _sandbox():
                 pd.reset_option("^display\\.")
         if (plt := sys.modules.get("matplotlib.pyplot")) is not None:
             plt.close("all")
+        if (skl := sys.modules.get("sklearn")) is not None:   # undo set_config(transform_output=...) and the like
+            try:
+                from sklearn._config import _global_config   # the defaults (set_config changes a per-thread copy)
+                skl.set_config(**_global_config)
+            except Exception:  # noqa: BLE001
+                pass
 
 
 def _detach(value):
