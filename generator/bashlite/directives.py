@@ -74,6 +74,7 @@ class Spec:
     git: dict | None = None                         # #: git (identity / default branch in ~/.gitconfig)
     github: dict | None = None                      # #: github
     ghrepos: list = field(default_factory=list)     # #: ghrepo [(owner/name, opts)]
+    docker: dict | None = None                      # #: docker [flags] (docker-lite: docker/engine.py)
 
 
 class DirectiveError(ValueError):
@@ -106,7 +107,8 @@ def _opts(words):
         m = re.match(r"^([a-z_]+)=(.*)$", w)
         if m:
             opts[m.group(1)] = m.group(2)
-        elif re.match(r"^[a-z]+$", w) and not rest and w in ("key", "private", "noinit", "noident", "noconfig"):
+        elif re.match(r"^[a-z]+$", w) and not rest and w in ("key", "private", "noinit", "noident", "noconfig",
+                                                             "docker"):
             opts[w] = True
         else:
             rest = words[k:]
@@ -210,6 +212,12 @@ def parse(lines: list[str]) -> Spec:
                 k, eq, v = w.partition("=")
                 opts[k] = v if eq else True
             sp.ghrepos.append((words[0], opts))
+        elif name == "docker":
+            opts = {}
+            for w in shlex.split(arg):
+                k, eq, v = w.partition("=")
+                opts[k] = v if eq else True
+            sp.docker = opts
         elif name == "keys":
             sp.keys = arg or "readline"
         else:
@@ -373,6 +381,14 @@ def build(spec: Spec, seed: int = 0):
         world.tty.width = spec.columns
     for name, opts in spec.hosts:
         _add_host(world, name, opts)
+        if opts.get("docker"):                     # Docker Engine on that machine too
+            from .docker.engine import daemon_of
+            from .exec import stub_bytes
+            h = world.hosts[name]
+            daemon_of(world, h)
+            for prog in ("docker", "systemctl"):
+                n = h.fs.write_file(f"/usr/bin/{prog}", stub_bytes(prog), "/", 0o755, 0, 0)
+                n.mode = 0o755
     for alias, target in spec.dns:
         world.dns[alias] = target
     for url, opts, body in spec.urls:
@@ -401,7 +417,54 @@ def build(spec: Spec, seed: int = 0):
         sh.set_var("COLUMNS", str(spec.columns))
     if spec.git is not None or spec.github is not None or spec.ghrepos:
         _git_setup(world, spec, home)
+    if spec.docker is not None:
+        _docker_setup(world, spec.docker, home)
     return world, sess
+
+
+def _docker_setup(world, o: dict, home: str):
+    """#: docker [missing] [stopped] [nogroup] [notoolkit] [cuda=12.4] [hub=user:token] [pull=img,img] ...
+    Docker Engine on the machine (the daemon running, ada in the docker group), images already pulled."""
+    from .docker.engine import daemon_of
+    from .exec import stub_bytes
+    fs = world.local.fs
+    d = daemon_of(world)
+    if o.get("missing"):
+        d.installed = False
+        d.running = False
+        for prog in ("systemctl", "sg", "newgrp"):
+            n = fs.write_file(f"/usr/bin/{prog}", stub_bytes(prog), "/", 0o755, 0, 0)
+            n.mode = 0o755
+    else:
+        for prog in ("docker", "systemctl", "sg", "newgrp"):
+            n = fs.write_file(f"/usr/bin/{prog}", stub_bytes(prog), "/", 0o755, 0, 0)
+            n.mode = 0o755
+    n = fs.write_file("/usr/lib/bashlite/dockerstate", stub_bytes("bashlite-dockerstate"), "/", 0o755, 0, 0)
+    n.mode = 0o755
+    if o.get("stopped"):
+        d.running = False
+    if o.get("nogroup"):
+        host = world.local
+        name, members = host.groups.get(999, ("docker", set()))
+        members.discard("ada")
+        text = bytes(fs.lookup("/etc/group").data).decode()
+        text = "\n".join(("docker:x:999:" if ln.startswith("docker:") else ln) for ln in text.split("\n"))
+        fs.write_file("/etc/group", text, "/", 0o644, 0, 0)
+    if o.get("notoolkit"):
+        d.gpu_toolkit = False
+    world.local.extra["cuda_driver"] = o.get("cuda", "12.4")
+    if o.get("hub"):
+        user, _, token = str(o["hub"]).partition(":")
+        world.__dict__.setdefault("docker_hub_accounts", {})[user] = token or "dckr_pat_" + user
+    for ref in str(o.get("pull", "")).split(","):
+        if ref:
+            from .docker.cmd_images import lookup_remote, normalize
+            src, digest = lookup_remote(world, ref)
+            if isinstance(src, str):
+                img = d.find_image(normalize(ref)) or d.catalog_image(src)
+                img.created = world.kernel.now - 14 * 86400 * 10 ** 9
+                d.add_image(img, [normalize(ref)])
+                img.repo_digests = sorted(set(img.repo_digests + [f"{normalize(ref).rsplit(':', 1)[0]}@{digest}"]))
 
 
 def _git_setup(world, spec: Spec, home: str):

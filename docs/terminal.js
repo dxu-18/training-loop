@@ -897,16 +897,53 @@
     }
   }
 
+  const STATE_CLS = { running: "good", exited: "bad", created: "dim", paused: "warn", restarting: "warn" };
+
+  class DockerPanel {
+    constructor(el) { this.el = el; this.data = null; }
+    update(dk) { this.data = dk; this.render(); }
+    render() {
+      const k = this.data;
+      if (!k) { this.el.innerHTML = `<div class="gp-empty">Docker isn't part of this problem.</div>`; return; }
+      if (k.error) { this.el.innerHTML = `<div class="gp-empty">${escH(k.error)}</div>`; return; }
+      const daemon = k.running ? `<span class="gh-badge">daemon running</span>` : `<span class="gh-badge lock">daemon not reachable</span>`;
+      const cs = k.containers.map((c) => {
+        const st = c.state === "exited" ? `exited (${c.exit}${c.oom ? ", OOM" : ""})` : c.state;
+        const health = c.health ? ` <span class="dk-health ${c.health}">${escH(c.health)}</span>` : "";
+        const extra = [c.ports.length ? `ports ${c.ports.join(", ")}` : "", c.mounts.length ? `mounts ${c.mounts.join(", ")}` : "",
+          c.nets.length ? `net ${c.nets.join(", ")}` : "", c.gpus ? `gpus ${Array.isArray(c.gpus) ? c.gpus.join(",") : c.gpus}` : ""]
+          .filter(Boolean).map((x) => `<div class="dim">${escH(x)}</div>`).join("");
+        return `<li class="dk-c"><span class="dk-dot ${STATE_CLS[c.state] || "dim"}"></span><div><div><b>${escH(c.name)}</b>
+          <span class="dim">${escH(c.image || "")}</span> · <span class="dk-st ${STATE_CLS[c.state] || ""}">${escH(st)}</span>${health}</div>${extra}</div></li>`;
+      }).join("");
+      const imgs = k.images.map((i) => `<li><span class="gb-n">${escH(i.ref)}</span><span class="gb-id">${escH(i.id)}</span>
+        <span class="dim">${escH(i.size)}</span>${i.built ? `<span class="gh-badge">built here</span>` : ""}</li>`).join("");
+      const b = k.build;
+      const build = b && b.steps && b.steps.length ? `<div class="gp-sub">Last build ${b.tags && b.tags.length ? "· " + escH(b.tags.join(", ")) : ""}
+        ${b.ok === true ? `<span class="gh-badge">${escH(b.size || "")}</span>` : b.ok === false ? `<span class="gh-badge lock">failed</span>` : ""}</div>
+        <ol class="dk-build">${b.steps.map((st) => `<li class="${st.step.startsWith("ERROR") ? "bad" : st.cached ? "cached" : ""}">
+          <span>${escH(st.step.replace(/^\[[^\]]*\]\s*/, ""))}</span><span class="dim">${st.cached ? "CACHED" : st.secs + "s"}</span></li>`).join("")}</ol>` : "";
+      const vols = k.volumes.length ? `<div class="gp-sub">Volumes</div><ul class="gp-list">${k.volumes.map((v) =>
+        `<li><span class="gb-n">${escH(v.name)}</span><span class="dim">${v.used.length ? "used by " + escH(v.used.join(", ")) : "unused"}</span></li>`).join("")}</ul>` : "";
+      const nets = k.networks.length ? `<div class="gp-sub">Networks</div><ul class="gp-list">${k.networks.map((n) =>
+        `<li><span class="gb-n">${escH(n.name)}</span><span class="dim">${n.members.length ? escH(n.members.join(", ")) : "empty"}</span></li>`).join("")}</ul>` : "";
+      this.el.innerHTML = `<div class="gh-who">${daemon}${k.auth.length ? ` · logged in to ${escH(k.auth.join(", "))}` : ""}</div>
+        <div class="gp-sub">Containers</div><ul class="gp-list gh-list">${cs || `<li class="dim">none yet: <code>docker run</code> one</li>`}</ul>
+        ${build}<div class="gp-sub">Images</div><ul class="gp-list">${imgs || `<li class="dim">none pulled yet</li>`}</ul>${vols}${nets}`;
+    }
+  }
+
   // Files | Git | GitHub tabs over the side panel (the tabs appear once a git problem sends its first picture)
   class SidePanel {
     constructor(el) {
       this.el = el;
       el.innerHTML = `<div class="sp-tabs" role="tablist" hidden>
-          <button class="sp-tab on" data-tab="files">Files</button><button class="sp-tab" data-tab="git">Git</button><button class="sp-tab" data-tab="github">GitHub</button></div>
-        <div class="sp-pane" data-pane="files"></div><div class="sp-pane gp" data-pane="git" hidden></div><div class="sp-pane gp" data-pane="github" hidden></div>`;
+          <button class="sp-tab on" data-tab="files">Files</button><button class="sp-tab" data-tab="git">Git</button><button class="sp-tab" data-tab="github">GitHub</button><button class="sp-tab" data-tab="docker" hidden>Docker</button></div>
+        <div class="sp-pane" data-pane="files"></div><div class="sp-pane gp" data-pane="git" hidden></div><div class="sp-pane gp" data-pane="github" hidden></div><div class="sp-pane gp" data-pane="docker" hidden></div>`;
       this.files = new FilesPanel(el.querySelector('[data-pane="files"]'));
       this.git = new GitPanel(el.querySelector('[data-pane="git"]'));
       this.gh = new GitHubPanel(el.querySelector('[data-pane="github"]'));
+      this.dk = new DockerPanel(el.querySelector('[data-pane="docker"]'));
       this.tabs = el.querySelector(".sp-tabs");
       this.chosen = false;
       this.tabs.onclick = (e) => { const b = e.target.closest(".sp-tab"); if (b) { this.chosen = true; this.show(b.dataset.tab); } };
@@ -915,7 +952,21 @@
       for (const b of this.tabs.querySelectorAll(".sp-tab")) b.classList.toggle("on", b.dataset.tab === name);
       for (const p of this.el.querySelectorAll(".sp-pane")) p.hidden = p.dataset.pane !== name;
     }
-    reset() { this.tabs.hidden = true; this.chosen = false; this.show("files"); }
+    reset() {
+      this.tabs.hidden = true; this.chosen = false; this.show("files");
+      for (const t of ["git", "github"]) this.tabs.querySelector(`[data-tab="${t}"]`).hidden = false;
+      this.tabs.querySelector('[data-tab="docker"]').hidden = true;
+    }
+    dockerUpdate(snap) {
+      if (!snap) return;
+      if (this.tabs.hidden) {          // a Docker problem: Files and Docker only
+        this.tabs.hidden = false;
+        for (const t of ["git", "github"]) this.tabs.querySelector(`[data-tab="${t}"]`).hidden = true;
+      }
+      this.tabs.querySelector('[data-tab="docker"]').hidden = false;
+      this.dk.update(snap);
+      if (!this.chosen) { this.chosen = true; this.show("docker"); }
+    }
     gitUpdate(snap) {
       if (!snap) return;
       if (this.tabs.hidden) {
@@ -1055,6 +1106,7 @@
       if (res.tree) this.files.update(res.tree);
       if (res.db && this.db) this.db.update(res.db);
       if (res.git) this.side.gitUpdate(res.git);
+      if (res.docker) this.side.dockerUpdate(res.docker);
       if (res.editor && !this.nano) this.openNano(res.editor);
       this.lastView = res.view;
       this.onState({ ended: res.ended, view: res.view, editor: !!res.editor });

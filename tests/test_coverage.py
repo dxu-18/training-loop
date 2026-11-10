@@ -11,7 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 import guide_coverage as coverage  # noqa: E402
 
 
-@pytest.mark.parametrize("section", ["numpy", "pandas", "pytorch"])
+@pytest.mark.parametrize("section", ["numpy", "pandas", "pytorch", "sklearn"])
 def test_every_guide_api_is_practised(section):
     rep = coverage.report(section, seeds=40)
     missing = {m: r["api_missing"] for m, r in rep.items() if r["api_missing"]}

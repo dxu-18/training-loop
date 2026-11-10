@@ -27,7 +27,7 @@ ITEMS = _items()
 def test_catalog_item(tpl, i):
     core._FORCE_ITEM[0] = i
     try:
-        for seed in range(4):
+        for seed in range(2 if tpl.section == "sklearn" else 4):     # scikit-learn: every grade fits models
             p = build(tpl, seed).to_dict()
             res = grade(p, p["solution"])
             assert res["correct"], f"item {i} seed {seed}: {res}\n{p['prompt']}\n{p['setup']}\n{p['solution']}"

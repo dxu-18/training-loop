@@ -79,7 +79,9 @@ INDEX = {
     "ruff": ("0.14.1", [], [], "An extremely fast Python linter and code formatter, written in Rust."),
     "fastapi": ("0.119.0", [], ["pydantic"], "FastAPI framework, high performance, easy to learn, fast to code, ready for production"),
     "pydantic": ("2.12.2", [], ["typing-extensions"], "Data validation using Python type hints"),
-    "uvicorn": ("0.37.0", [], [], "The lightning-fast ASGI server."),
+    "uvicorn": ("0.37.0", [], ["click", "h11"], "The lightning-fast ASGI server."),
+    "click": ("8.3.0", [], [], "Composable command line interface toolkit"),
+    "h11": ("0.16.0", [], [], "A pure-Python, bring-your-own-I/O implementation of HTTP/1.1"),
     "pre-commit": ("4.3.0", [], ["pyyaml", "virtualenv", "identify", "cfgv", "nodeenv"],
                    "A framework for managing and maintaining multi-language pre-commit hooks."),
     "virtualenv": ("20.35.3", [], ["filelock"], "Virtual Python Environment builder"),
@@ -113,13 +115,19 @@ def env_of(ctx, path=None):
             return root, "venv"
         if ctx.fs.exists(root + "/conda-meta"):
             return root, "conda"
+        if root == "/usr/local" and ctx.fs.exists("/usr/local/lib/python3.12/site-packages"):
+            return root, "image"            # a python:* container image (docker/images.py)
     venv = ctx.env.get("VIRTUAL_ENV")
     if venv and ctx.fs.exists(venv + "/pyvenv.cfg") and not p:
         return venv, "venv"
+    if ctx.fs.exists("/usr/local/lib/python3.12/site-packages") and not ctx.fs.exists("/usr/lib/python3/dist-packages"):
+        return "/usr/local", "image"
     return "/usr", "system"
 
 
 def site_dir(root, kind):
+    if kind == "image":
+        return "/usr/local/lib/python3.12/site-packages"
     return "/usr/lib/python3/dist-packages" if kind == "system" else f"{root}/{SITE}"
 
 
@@ -163,11 +171,12 @@ CONSOLE = {"pip": [("pip", "pip._internal.cli.main"), ("pip3", "pip._internal.cl
            "torch": [("torchrun", "torch.distributed.run")], "tensorboard": [("tensorboard", "tensorboard.main")],
            "uv": [("uv", "uv")], "ruff": [("ruff", "ruff")], "pre-commit": [("pre-commit", "pre_commit.main")],
            "git-filter-repo": [("git-filter-repo", "git_filter_repo")],
-           "nbstripout": [("nbstripout", "nbstripout._nbstripout")], "dvc": [("dvc", "dvc.cli")]}
+           "nbstripout": [("nbstripout", "nbstripout._nbstripout")], "dvc": [("dvc", "dvc.cli")],
+           "uvicorn": [("uvicorn", "uvicorn.main")], "huggingface-hub": [("huggingface-cli", "huggingface_hub.cli")]}
 ENTRY = {"pip._internal.cli.main": "pip", "jupyter_core.command": "jupyter", "jupyterlab.labapp": "jupyter-lab",
          "torch.distributed.run": "torchrun", "tensorboard.main": "tensorboard", "uv": "uv", "ruff": "ruff",
          "pre_commit.main": "pre-commit", "git_filter_repo": "git-filter-repo", "nbstripout._nbstripout": "nbstripout",
-         "dvc.cli": "dvc"}
+         "dvc.cli": "dvc", "uvicorn.main": "uvicorn", "huggingface_hub.cli": "huggingface-cli"}
 
 
 def console_script(python, module):
@@ -177,8 +186,9 @@ def console_script(python, module):
 
 
 def write_console_scripts(ctx, root, kind, name):
-    bindir = "/usr/local/bin" if kind == "system" else f"{root}/bin"
-    python = "/usr/bin/python3" if kind == "system" else f"{root}/bin/python{'3' if kind == 'venv' else ''}"
+    bindir = "/usr/local/bin" if kind in ("system", "image") else f"{root}/bin"
+    python = "/usr/bin/python3" if kind == "system" else "/usr/local/bin/python" if kind == "image" else \
+        f"{root}/bin/python{'3' if kind == 'venv' else ''}"
     for script, module in CONSOLE.get(norm(name), []):
         node = ctx.fs.write_file(f"{bindir}/{script}", console_script(python, module), "/", 0o755, ctx.uid, ctx.proc.gid)
         node.mode = 0o755
@@ -197,7 +207,7 @@ def remove_installed(ctx, root, kind, name):
             _rm_tree(ctx.fs, f"{d}/{entry}")
             removed = True
     if removed:
-        bindir = "/usr/local/bin" if kind == "system" else f"{root}/bin"
+        bindir = "/usr/local/bin" if kind in ("system", "image") else f"{root}/bin"
         for script, _ in CONSOLE.get(norm(name), []):
             if ctx.fs.exists(f"{bindir}/{script}", follow=False):
                 ctx.fs.unlink(f"{bindir}/{script}")
@@ -228,7 +238,10 @@ def make_venv(ctx, path, prompt=None, quiet=True, kind="venv"):
                                         f"executable = /usr/bin/python3.12\ncommand = /usr/bin/python3 -m venv {full}\n"
                                         + (f"prompt = {prompt}\n" if prompt else ""), "/", 0o644, ctx.uid, ctx.proc.gid)
     if not fs.exists(f"{full}/bin/python3", follow=False):
-        fs.symlink("/usr/bin/python3", f"{full}/bin/python3")
+        # the interpreter the venv was made from: /usr/local/bin/python3 in a python:* image
+        base = "/usr/local/bin/python3" if not fs.exists("/usr/bin/python3") and fs.exists("/usr/local/bin/python3") \
+            else "/usr/bin/python3"
+        fs.symlink(base, f"{full}/bin/python3")
         fs.symlink("python3", f"{full}/bin/python")
         fs.symlink("python3", f"{full}/bin/python3.12")
     act = ACTIVATE.replace("@@VENV@@", full).replace("@@PROMPT@@", name)
@@ -469,6 +482,14 @@ def install_order(items):
 def pip_install(ctx, rest, root, kind, have):
     upgrade = any(x in ("-U", "--upgrade") for x in rest)
     quiet = any(x in ("-q", "--quiet", "-qq") for x in rest)
+    if ctx.host.extra.get("offline") and any(not x.startswith("-") for x in rest):
+        name = next(x for x in rest if not x.startswith("-") and x != "-r")
+        ctx.w("WARNING: Retrying (Retry(total=4, connect=None, read=None, redirect=None, status=None)) after connection "
+              "broken by 'NewConnectionError(\"<pip._vendor.urllib3.connection.HTTPSConnection object>: Failed to "
+              "establish a new connection: [Errno -3] Temporary failure in name resolution\")': /simple/\n")
+        ctx.e(f"ERROR: Could not find a version that satisfies the requirement {name} (from versions: none)\n"
+              f"ERROR: No matching distribution found for {name}\n")
+        return 1
     if kind == "system" and "--break-system-packages" not in rest and "--user" not in rest or \
             kind == "system" and "--user" in rest and "--break-system-packages" not in rest:
         ctx.e(PEP668)
@@ -554,8 +575,13 @@ def pip_install(ctx, rest, root, kind, have):
         out.append("Successfully installed " + " ".join(f"{n}-{v}" for n, v in done))
     if not quiet:
         ctx.w("".join(x + "\n" for x in out))
+    if kind == "image" and ctx.uid == 0 and not any(x.startswith("--root-user-action") for x in rest):
+        yield from ctx.flush()
+        ctx.e("WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour "
+              "with the system package manager. It is recommended to use a virtual environment instead: "
+              "https://pip.pypa.io/warnings/venv\n")
     pipver = installed(ctx, root, kind).get("pip", ("pip", "24.0"))[1]
-    if kind != "system" and vkey(pipver) < vkey(INDEX["pip"][0]):
+    if kind not in ("system", "image") and vkey(pipver) < vkey(INDEX["pip"][0]):
         yield from ctx.flush()
         ctx.e(f"\n[notice] A new release of pip is available: {pipver} -> {INDEX['pip'][0]}\n"
               f"[notice] To update, run: pip install --upgrade pip\n")
@@ -731,7 +757,8 @@ class PySandbox:
         self.offset = 0.0
         self.cwd = ctx.cwd
         self.site = site_dir(root, kind)
-        self.python_path = "/usr/bin/python3" if kind == "system" else f"{root}/bin/python"
+        self.python_path = "/usr/bin/python3" if kind == "system" else "/usr/local/bin/python" if kind == "image" \
+            else f"{root}/bin/python"
         self.writers = {}
         self.filedata = {}
 
@@ -753,6 +780,8 @@ class PySandbox:
 
     # ---- file API
     def open(self, file, mode="r", buffering=-1, encoding=None, errors=None, newline=None, closefd=True, opener=None):
+        if encoding == "locale":          # pathlib's read_text()/write_text() ask for the locale's encoding
+            encoding = "utf-8"
         if isinstance(file, int):
             if file in self.writers:
                 return self.writers[file]

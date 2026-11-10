@@ -2,6 +2,8 @@
 
 import itertools
 import math
+import sys
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -1223,6 +1225,13 @@ def max_preference_pairs(ns):
     return best(0, 0)
 
 
+# scikit-learn's challenges keep their brute forces in tests/sklearn_brutes/ (one file per module)
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from sklearn_brutes import load as _load_sklearn_brutes  # noqa: E402
+
+BRUTE.update(_load_sklearn_brutes())
+
+
 def test_every_challenge_has_a_brute_force():
     missing = sorted({t.name for t in CHALLENGES} - set(BRUTE))
     assert not missing, missing
@@ -1250,6 +1259,8 @@ def _same(got, expected):
         return np.array_equal(np.asarray(got), expected)
     if isinstance(expected, float):
         return math.isclose(got, expected, rel_tol=1e-9, abs_tol=1e-9)
+    if isinstance(expected, (tuple, list)) and isinstance(got, (tuple, list)) and len(got) == len(expected):
+        return all(_same(g, e) for g, e in zip(got, expected))      # e.g. (array, count)
     return got == expected
 
 

@@ -32,6 +32,9 @@ def write(kernel, of: OpenFile | None, data: bytes):
         return
     if k in ("null", "zero", "rand"):
         return
+    if k == "log":                  # a container's stdout/stderr (docker/engine.py LogSink)
+        of.tty.write(of.stream, data)
+        return
     if k == "pipe":
         p = of.pipe
         while data:

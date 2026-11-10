@@ -21,7 +21,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-SECTIONS = {"numpy": 1, "pandas": 2, "pytorch": 3}
+SECTIONS = {"numpy": 1, "pandas": 2, "pytorch": 3, "sklearn": 4}
 
 # alias -> prefix kept in the key ("" = the top-level namespace, so torch.cumsum and x.cumsum() match)
 ALIASES = {"np": "", "pd": "", "torch": "", "F": "F.", "nn": "nn.", "tl": "tl.", "triton": "triton.", "dist": "dist.",
@@ -32,7 +32,8 @@ PY_METHODS = {"append", "extend", "update", "items", "keys", "values", "get", "f
 PY_METHODS_KEEP = {"pandas": {"count", "index", "sort", "split", "join", "strip", "lower", "upper", "startswith",
                               "endswith", "replace", "get", "pop", "update", "copy", "add", "values", "keys", "items"},
                    "numpy": {"sort", "copy", "split", "flush", "index", "count"},
-                   "pytorch": {"split", "add", "copy", "index", "sort", "count"}}
+                   "pytorch": {"split", "add", "copy", "index", "sort", "count"},
+                   "sklearn": {"split", "copy", "index", "sort", "count", "get", "values", "keys", "items"}}
 
 # Guide syntax that cannot be practised in the browser (Pyodide), with the reason.
 EXCLUDED = {
@@ -55,6 +56,9 @@ EXCLUDED = {
         "read_parquet": "loading pyarrow switches pandas' string storage mid-session", ".to_parquet": "see read_parquet",
         ".to_markdown": "tabulate isn't in Pyodide", "kde": "needs SciPy (not loaded on the plotting page)",
     },
+    "sklearn": {"datasets": "a module (its loaders are practised)", "UMAP": "umap-learn isn't in Pyodide",
+                "fetch_california_housing": "downloads data (no network in the browser)",
+                "fetch_openml": "downloads data", "fetch_20newsgroups": "downloads data"},
     "numpy": {"trapz": "removed in NumPy 2.4 (use np.trapezoid, which is practised)",
               "memmap": "writable memory maps don't work in Pyodide", "flush": "writable memory maps don't work in Pyodide"},
 }
@@ -93,8 +97,30 @@ def user_names(code: str) -> set[str]:
     return names - {""}
 
 
+@lru_cache(maxsize=None)
+def sklearn_vocab() -> frozenset[str]:
+    """Every name the guide's scikit-learn code imports from sklearn (StandardScaler, cross_val_score ...)."""
+    from generator.instructions import sk_imported
+    return frozenset(n for code in guide_blocks("sklearn").values() for n in sk_imported(code)[0].values())
+
+
+def sklearn_bare(code: str) -> set[str]:
+    """sklearn names used bare (StandardScaler()), outside import statements."""
+    from generator.instructions import sk_imported
+    names, spans = sk_imported(code)
+    vocab = set(sklearn_vocab()) | set(names)
+    body = code
+    for a, b in reversed(spans):
+        body = body[:a] + " " * (b - a) + body[b:]
+    return {n for n in vocab if re.search(rf"(?<![\w.]){re.escape(n)}\b(?!\s*=(?!=))", body)}
+
+
 def keys(code: str, section: str, ignore: set[str] = frozenset()) -> tuple[set[str], set[str]]:
     """(API keys, keyword-argument keys) used in code."""
+    bare = sklearn_bare(code) if section == "sklearn" else set()
+    if section == "sklearn":     # import statements name modules, not APIs
+        from generator.instructions import IMPORT_STMT
+        code = IMPORT_STMT.sub("", code)
     code = re.sub(r"(?m)#.*$", lambda m: m[0] if "·" in m[0] or ":" in m[0] else "", code)  # keep API-list comments
     code = re.sub(r"(?s)(\"\"\"|\'\'\').*?\1", '""', code)  # string contents aren't syntax ('model.pt')
     code = re.sub(r"(?<![\w])[rbfu]?(\"[^\"\n]*\"|'[^'\n]*')", '""', code)
@@ -118,6 +144,7 @@ def keys(code: str, section: str, ignore: set[str] = frozenset()) -> tuple[set[s
     for m in re.finditer(r"[(,]\s*([a-z_]\w*)=(?!=)", code):
         if m[1] not in ignore:
             kws.add(m[1] + "=")
+    api |= {n for n in bare if n not in ignore}
     return api, kws
 
 

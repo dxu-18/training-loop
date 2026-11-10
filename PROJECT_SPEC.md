@@ -1010,6 +1010,85 @@ for repositories and GitHub (branches, merges, pull requests) like the Files pan
   come from `scripts/instruction_notes.py` (GIT). `scripts/git_templates.py` / `tests/test_git_section.py`: every item
   of every template passes with its reference session, prints no fatal/error, has a clean setup, and fails idle.
 
+### Session 26 (2026-11-08 → 11-09): Docker (12.01–12.14) on bash-lite, with docker-lite
+Request: the Docker module, after reading COMP_GUIDE §12 and planning interesting, extensive problems across the whole
+curriculum.
+
+* **docker-lite** (`generator/bashlite/docker/`, ~7.5k lines): the daemon and CLI in Python on bash-lite's kernel.
+  A container is a simulated host whose filesystem is a copy-on-write clone of its image's; PID 1 runs as a normal
+  bash-lite process (signals, exit codes, `--init`), its output goes to a log; published ports are host services
+  proxied to the container. run/create/start/stop/kill/rm/ps/logs/exec/inspect (Go templates in `gotmpl.py`)/top/
+  stats/cp/port/events, the real error texts and exit codes (125, 126, 127, 137 with OOM, 139, 143), graceful stop
+  (exec form vs. `sh -c` PID 1, the 10 s SIGKILL). Help texts are our own.
+* **Images** (`images.py`): 22 catalog images built from the distributions' program sets (hello-world, busybox,
+  alpine, ubuntu, debian, python 3.11/3.12 (slim, alpine), nginx, postgres:16, curl, nvidia/cuda, pytorch, Jupyter's
+  scipy-notebook, and teaching images `mlgym/trainer|memhog|crasher`). **Builds** (`build.py`): the Dockerfile
+  instructions incl. multi-stage, ARG/--build-arg, `--target`, heredocs, `.dockerignore`, COPY --chown/--chmod/
+  --from, `RUN --mount=type=cache|secret` (secrets never in a layer or history), BuildKit-style output, a layer cache
+  keyed by instruction, file contents and args (so a code change keeps the dependency layers CACHED), virtual sizes
+  for pip/apt/caches, history, buildx multi-platform builds, `docker scout cves`.
+* **Volumes, mounts, networks:** named volumes, bind mounts grafted into the container's filesystem (`:ro` gives
+  EROFS, `..` works), tmpfs; the default bridge (no names) vs. user networks (DNS by name, aliases, `--internal`),
+  `host.docker.internal:host-gateway`, localhost-only publishing. Postgres and psql run across containers.
+* **Compose** (`compose.py`): a YAML subset; up/down (-v)/ps/logs/exec/run/restart/config/build, project naming
+  (`<proj>-<svc>-1`, `<proj>_default`), env_file, `depends_on: condition: service_healthy` with health checks.
+* **GPUs:** `--gpus all|N|"device=..."` against the machine's GPUs (`#: gpus N`), the CUDA driver version vs. the
+  image's requirement, a missing NVIDIA Container Toolkit (install, `nvidia-ctk runtime configure`, restart docker),
+  the DataLoader bus error from a 64 MB `/dev/shm` (`--shm-size`, `--ipc=host`).
+* **Registries:** Docker Hub, ghcr.io (logins with GitHub-lite tokens from `gh auth token`) and quay.io, world-wide
+  so another host (`#: host NAME key docker`, over ssh) can pull what you pushed; denied/unauthorized pushes, digests,
+  `--all-tags`; save/load. Model-serving recipes run a FastAPI/uvicorn sentiment API (/health, /predict, routes added
+  by the user), Jupyter prints its token URL, `huggingface-cli download` bakes weights for `--network none`.
+* **Panel:** a Docker tab beside Files (`docs/terminal.js` DockerPanel; snapshot `docker/viz.py`): images,
+  containers with state, ports, health, mounts and GPUs, volumes, networks, compose projects, the last build's steps.
+* **Grading:** most problems compare `/usr/lib/bashlite/dockerstate` sections (`docker/state.py`: containers by name,
+  images by tag, volumes, networks, registry pushes, logins, compose projects; no ids or times) plus behaviour after
+  the session (`post`): what the built image prints, which layers stay CACHED after a code change, the image size, who
+  a container runs as, what curl gets from a published port. Reading problems compare `--format`/inspect output.
+* **140 templates** in `generator/sections/s12_docker/` (10 per module, 2 per tier); the Instructions come from
+  `scripts/instruction_notes.py` (DOCKER, plus the bash notes for the shell around it). Docker's feature names stop
+  at the image (`docker run IMG cmd -x` is not `docker run -x`). `scripts/docker_templates.py` /
+  `tests/test_docker_section.py`: every item of every template passes with its reference session, prints no error,
+  has a clean setup, and fails idle.
+
+### Session 27 (2026-11-09 → 11-10): scikit-learn (4.01–4.20)
+Request: the scikit-learn section, with diverse and interesting problems and far more distinct problems than the 100
+questions of a module (lite 10, easy 25, medium 35, hard 25, challenge 5), so learners who go past 100 (random
+tiers) rarely see a repeat.
+
+* **Runtime:** Pyodide's scikit-learn 1.8.0 (the version the guide is written against; the same version is in the
+  local venv for the tests). The sklearn page loads numpy, pandas and scikit-learn (matplotlib only for 4.17). The
+  setup imports NumPy/pandas and builds the data; learners write their own sklearn imports, and the Instructions show
+  each name with its full import path (`sklearn.preprocessing.StandardScaler(...)`). The grader now also restores
+  scikit-learn's global config after every run (a `set_config(transform_output='pandas')` can't leak).
+* **Problems** (`generator/sections/s04_sklearn/`, one file per module): 691 templates, most of them catalogs, giving
+  3,184 distinct problem kinds (distinct solutions; every catalog item and task variant counts) — at least
+  15 / 30 / 40 / 30 / 6 per module for lite / easy / medium / hard / challenge. Data: the bundled datasets (shuffled
+  where rows are sorted by class), seeded `make_*` generators, and `table()`: ten themed DataFrame scenarios (churn,
+  houses, loans, students, training runs, servers, patients, flights, bike rentals, phones) with numeric and
+  categorical columns, optional NaNs, generated from a seed. Problems range from one API at a time to leakage fixes,
+  imbalanced data, grouped/temporal splits, by-hand reimplementations checked against sklearn, interpretation and
+  debugging; every reference is deterministic (`random_state` given in the prompt) and fast enough for Pyodide.
+* **Challenges** (92 templates, 169 kinds, ≥ 6 per module): algorithmic tasks about how methods work (prefix-sum CV and
+  standardization queries, merging scaler shards, the best stump split, k-means++ seeding, PAVA, ROC AUC with ties,
+  ridge leave-one-out shortcuts, TF-IDF from scratch, Fenwick-tree ECDFs ...), with 2–3 variants each stored in the
+  setup; large hidden tests; brute forces in `tests/sklearn_brutes/` (one file per module, often scikit-learn itself).
+* **Instructions:** `generator/instructions.py` tracks names imported from sklearn and used bare;
+  `scripts/_docstrings.py` describes them from scikit-learn's docstrings (the public API index, fitted attributes and
+  result fields from the numpydoc sections, the tree structure), plus hand-written notes for dataset Bunch fields.
+* **Coverage:** `scripts/guide_coverage.py` handles bare sklearn names (the guide's §4 imports are the vocabulary);
+  every guide API of every module is practised (`tests/test_coverage.py` covers sklearn). Excluded: the `fetch_*`
+  downloaders (no network) and UMAP (not in Pyodide).
+* **Checks:** `scripts/sklearn_templates.py [modules]` grades every catalog item's reference (twice, which catches
+  nondeterminism), checks that wrong answers fail, variety over seeds, the Instructions, Pyodide hazards (`n_jobs`,
+  `fetch_*`), reference speed, and prints distinct kinds per tier next to the questions per tier.
+  `scripts/sklearn_e2e.py` checks the pages in a browser and grades every template (every catalog item) inside
+  Pyodide: 2,238 grades, 0 failures, the slowest 1.6 s against a 15–20 s limit.
+* **Pyodide is 32-bit:** `np.intp` is int32 there, so `np.repeat(a, rng.integers(...))` and `np.bincount` on int64
+  arrays raise in the browser but work on 64-bit machines. `grader.numpy_32bit_compat()` makes both accept int64
+  input whose values fit (a no-op on 64-bit; applied on every run, since NumPy may load after the grader). Also
+  seed `liblinear`/`saga` models: without `random_state` they draw from NumPy's global RNG.
+
 ### Open problem: Hugging Face in the browser
 Pyodide has no `transformers`. Options: extend the shim idea (a tiny tokenizer/pipeline layer over torch-lite),
 AST and pattern checks, or an optional "run locally" mode. **Not decided yet.**
@@ -1027,6 +1106,8 @@ generator/            Python package: question generation + grading (runs locall
     s01_numpy/        _common.py (helpers, challenge()) + one file per subsection: m01_printing.py … m18_ml_patterns.py
     s02_pandas/       _common.py (themed DataFrame builder `frame()`, challenge()) + m01_core.py … m19_performance.py
     s03_pytorch/      _common.py (HEADER imports torch/nn/F, tensor literals, challenge()) + m01_tensors.py … m19_dpo.py
+    s04_sklearn/      _common.py (P/catalog/challenge, datasets: builtin/synth_clf/synth_reg, table() = themed
+                      DataFrames) + m01_estimators.py … m20_custom.py (auto-imported in order)
     s07_bash/         _common.py (P/K problem helpers, files() heredocs, catalog(), challenge()) + m01_basics.py … m17_keys_history.py
     s08_git/          _common.py (P() problem helper with check=(gitstate sections, dir), Repo() setup builder, catalog())
                       + m01_setup.py … m14_ml.py
@@ -1036,12 +1117,16 @@ generator/            Python package: question generation + grading (runs locall
                       shop, ML-runs, events ... databases with hidden variants) + m01_select.py … m16_analytics.py
     s11_latex/        _common.py (L() problem helper: compiles the reference once for the target preview and the
                       Instructions; drill(); @fixed) + m01_skeleton.py … m18_troubleshooting.py
+    s12_docker/       _common.py (P() problem helper with check=(dockerstate sections), catalog(), files(), the model API
+                      app) + m01_setup.py … m14_debug.py
   bashlite/           bash-lite: a simulated Ubuntu machine in pure Python (vfs, parser, kernel, shell, builtins, utils/ commands,
                       world/basefs, directives, check = the bash grader, keys = readline/tmux simulator, features,
                       live = the live terminal: key-by-key sessions on the real clock, logs, replays;
                       vim/ = the Vim engine, utils/vim.py = the `vim` command, vimcheck = the Vim grader;
                       git/ = git + GitHub-lite + gh + git-lfs/filter-repo/pre-commit/nbstripout/dvc, the practice
-                      repositories (catalog*.py), realclone, viz = the panels' data, gitstate = the git grader)
+                      repositories (catalog*.py), realclone, viz = the panels' data, gitstate = the git grader;
+                      docker/ = docker-lite: engine, images (catalog), build, compose, cli + cmd_*, programs inside
+                      images, gotmpl, viz = the Docker panel, state = the docker grader)
   postgreslite/       postgres-lite: PostgreSQL 16 + psql 16 in Python (lexer, parser, types + pg_catalog.txt, coerce,
                       analyze, executor, funcs, aggs, dml, ddl, server = cluster/sessions/transactions, psql, describe,
                       explain = the planner, glossary = the Instructions); bashlite/utils/psqlprog.py runs it in the
@@ -1102,7 +1187,7 @@ Legend: ✅ done · 🟡 partial · ⬜ not started
 | 1 | NumPy | ✅ **all 18 modules live**: 277 templates in `generator/sections/s01_numpy/` (every module ≥ 2 templates per tier, 2 challenges each) | exec (Pyodide) | session 3 |
 | 2 | pandas | ✅ **all 19 modules live**: 261 templates in `generator/sections/s02_pandas/` (every module ≥ 2 templates per tier, 2 challenges each) | exec (Pyodide) + figure/Styler inspection for 2.18 | session 4 |
 | 3 | PyTorch | ✅ **all 19 modules live**: 240 templates in `generator/sections/s03_pytorch/` (every module ≥ 2 templates per tier, 2 challenges each) | exec (Pyodide) on torch-lite + triton-lite | session 5 |
-| 4 | scikit-learn | ⬜ | exec | |
+| 4 | scikit-learn | ✅ **all 20 modules live**: 691 templates in `generator/sections/s04_sklearn/` (3,184 distinct problem kinds; every tier of every module has more kinds than questions) | exec in Pyodide's scikit-learn 1.8: the reference reruns on the same seeded data and values are compared; challenges have hidden tests and brute forces | session 27 |
 | 5 | Matplotlib | ⬜ | exec + figure inspection | |
 | 6 | Hugging Face | ⬜ | **open problem** | |
 | 7 | Bash | ✅ **all 17 modules live**: 176 templates in `generator/sections/s07_bash/` (every module ≥ 2 templates per tier, 2 challenges each), answered in a live terminal | bash-lite: simulated Ubuntu machine (`generator/bashlite/`); the terminal session is replayed and its output / files compared; keystrokes for 7.17 | sessions 7, 8 |
@@ -1110,7 +1195,7 @@ Legend: ✅ done · 🟡 partial · ⬜ not started
 | 9 | Vim | ✅ **all 12 modules live**: 121 templates in `generator/sections/s09_vim/` (every module ≥ 2 templates per tier), answered in Vim in the live terminal | bash-lite's Vim (`generator/bashlite/vim/`, checked against real Vim 9.1); Vim's end state compared with the reference keys', plus required / forbidden commands and a keystroke par | session 22 |
 | 10 | SQL | ✅ **all 16 modules live**: 182 templates in `generator/sections/s10_sql/` (every module ≥ 2 templates per tier), answered in a live psql beside a Database panel | postgres-lite (`generator/postgreslite/`, checked against a real PostgreSQL 16.2): results / end states compared on the shown and hidden databases, plans, psql settings, files | session 24 |
 | 11 | LaTeX | ✅ **all 18 modules live**: 180 templates in `generator/sections/s11_latex/` (10 per module), answered in an editor with Compile (the PDF beside it) and Submit | latex-lite (`generator/latexlite/`): LaTeX interpreted in Python, math by KaTeX, TikZ/pgfplots as SVG, Beamer slides; the compiled documents compared, plus required / forbidden commands | session 23 |
-| 12 | Docker | ⬜ | command / Dockerfile | |
+| 12 | Docker | ✅ **all 14 modules live**: 140 templates in `generator/sections/s12_docker/` (every module ≥ 2 templates per tier), answered in a live terminal beside Files and Docker panels | docker-lite (`generator/bashlite/docker/`): engine state (containers, images, volumes, networks, registries, compose) compared without ids or times, plus behaviour: the built image's output, cached layers, sizes, users, HTTP responses | session 26 |
 | 13 | Data Structures & Algorithms (Part III) | ✅ **all 12 live** (binary search, mergesort, quicksort, linked lists, stacks, queues, unbounded arrays, hash tables, BSTs, dictionaries & sets, heaps, priority queues; all options × element types × Python/C++/Java/Rust, contracts optional) | Pyodide (Python), Compiler Explorer (C++/Java/Rust); line-by-line output diff | session 11 |
 
 ### What exists (as of session 5; the Bash topic and its terminal are described in §2, sessions 7–8)
@@ -1146,8 +1231,7 @@ Legend: ✅ done · 🟡 partial · ⬜ not started
 ### Next steps (suggested order)
 0. Part III, one tutorial at a time, in COMP_GUIDE §13's order (stacks and queues reuse the linked-list node), each as
    a `docs/dsa/<name>.js` like `linked-list.js`, plus its reference/mutant self-test.
-1. scikit-learn (exec checker; add `"scikit-learn"` packages, already listed in `docs/app.js`) and
-   Matplotlib (reuse the 2.18 figure-inspection `post` pattern).
+1. Matplotlib (reuse the 2.18 figure-inspection `post` pattern, and 4.17's Display/Axes value checks).
 2. SQL section (sqlite3 checker); Git and Docker on top of bash-lite (a simulated `git` and `docker`).
 3. Hugging Face (§2 open problem; torch-lite is a starting point).
 4. Medal art, then the style pass.

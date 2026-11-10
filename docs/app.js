@@ -12,7 +12,7 @@ const TOPICS = [
   { id: "numpy", part: 1, mode: "python", packages: ["numpy"] },
   { id: "pandas", part: 1, mode: "python", packages: ["numpy", "pandas"], extra: { "2.03": ["jinja2"], "2.11": ["tzdata"], "2.18": ["matplotlib", "jinja2"] } },
   { id: "pytorch", part: 1, mode: "python", packages: ["numpy"] },
-  { id: "sklearn", part: 1, mode: "python", packages: ["numpy", "scikit-learn"] },
+  { id: "sklearn", part: 1, mode: "python", packages: ["numpy", "pandas", "scikit-learn"], extra: { "4.17": ["matplotlib"] } },
   { id: "matplotlib", part: 1, mode: "python", packages: ["numpy", "matplotlib"] },
   { id: "huggingface", part: 1, mode: "python", packages: ["numpy"] },
   { id: "bash", part: 2, mode: "shell", packages: [], terminal: true },
@@ -20,7 +20,7 @@ const TOPICS = [
   { id: "vim", part: 2, mode: null, packages: [], terminal: true },
   { id: "sql", part: 2, mode: "text/x-sql", packages: [], terminal: true, extra: { "10.15": ["numpy", "pandas"] } },
   { id: "latex", part: 2, mode: "stex", packages: [], latex: true },
-  { id: "docker", part: 2, mode: "shell", packages: [] },
+  { id: "docker", part: 2, mode: "shell", packages: [], terminal: true },
 ];
 const TOPIC = Object.fromEntries(TOPICS.map((t) => [t.id, t]));
 const INSTRUCTIONS_UNTIL = 10;   // the Instructions start open for questions 1..10

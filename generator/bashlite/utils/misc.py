@@ -426,8 +426,8 @@ APT_PACKAGES = {"tree": "2.1.1-2ubuntu3", "htop": "3.3.0-4build1", "jq": "1.7.1-
                 "zip": "3.0-13build1", "unzip": "6.0-28ubuntu4", "curl": "8.5.0-2ubuntu10", "wget": "1.21.4-1ubuntu4",
                 "rsync": "3.2.7-1ubuntu1", "git": "1:2.43.0-1ubuntu7", "python3-venv": "3.12.3-0ubuntu2",
                 "python3-pip": "24.0+dfsg-1ubuntu1", "build-essential": "12.10ubuntu1", "vim": "2:9.1.0016-1ubuntu7",
-                "git-lfs": "3.4.1-1ubuntu0.2"}
-APT_PROGRAMS = {"git-lfs": ["git-lfs"]}
+                "git-lfs": "3.4.1-1ubuntu0.2", "docker.io": "24.0.7-0ubuntu4.1", "nvidia-container-toolkit": "1.16.2-1"}
+APT_PROGRAMS = {"git-lfs": ["git-lfs"], "docker.io": ["docker"], "nvidia-container-toolkit": ["nvidia-ctk"]}
 
 
 @util("apt", "apt-get")
@@ -469,6 +469,10 @@ def u_apt(ctx):
             for prog in APT_PROGRAMS.get(p, []):
                 node = ctx.fs.write_file(f"/usr/bin/{prog}", stub_bytes(prog), "/", 0o755, 0, 0)
                 node.mode = (node.mode & ~0o777) | 0o755
+            if p == "docker.io":                      # installing Docker starts its service
+                from ..docker.engine import daemon_of
+                dd = daemon_of(ctx.world)
+                dd.installed = dd.running = True
         return 0
     if cmd in ("list",):
         for p in sorted(APT_PACKAGES):
