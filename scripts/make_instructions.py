@@ -31,7 +31,7 @@ from generator.core import TIERS, build, modules, templates  # noqa: E402
 from generator.instructions import DATA_FILE, canon, names_of  # noqa: E402
 import instruction_notes as notes  # noqa: E402
 
-SECTIONS = ("numpy", "pandas", "pytorch", "sklearn", "bash", "git", "docker")
+SECTIONS = ("numpy", "pandas", "pytorch", "sklearn", "matplotlib", "bash", "git", "docker")
 
 
 def problems(section, seeds):

@@ -1089,6 +1089,35 @@ tiers) rarely see a repeat.
   input whose values fit (a no-op on 64-bit; applied on every run, since NumPy may load after the grader). Also
   seed `liblinear`/`saga` models: without `random_state` they draw from NumPy's global RNG.
 
+### Session 28 (2026-11-10 → 11-17): Matplotlib (5.01–5.15)
+Request: the Matplotlib section, as diverse and interesting as scikit-learn's, with far more distinct problems than
+the 100 questions of a module.
+
+* **Grading plots without pixels:** `generator/figcheck.py` turns figures into plain data — line data and styles,
+  bars, scatter offsets / sizes / colors, labels and titles, limits, scales, ticks and formatted tick labels, legend
+  texts, texts and annotations, images and norms, colorbars, patches, collections, grid shapes and spans, figure
+  sizes — and each problem's `post` code reads only what its prompt asks for, so any correct way of drawing passes
+  (pyplot or explicit, `ax.set(...)` or setters). Saved files are checked by their bytes (signatures, `plt.imread`
+  shapes, PDF page counts, GIF frames). The grader imports figcheck up front and, after every run, closes all
+  figures and resets rcParams (`mpl.rcdefaults()`, interactive off), so style changes can't leak.
+* **Problems** (`generator/sections/s05_matplotlib/`, one file per module): 334 templates giving 2,306
+  distinct problem kinds, every tier of every module above its question count. Setup imports NumPy, `mpl` and
+  `plt` and builds themed data (`curves()`, `categories()`, `classes()`, `signal()`, `matrix()`); learners import the
+  rest. Problems go from single calls to figures built to a spec, reusable `ax=None` plotting functions checked by
+  calling them, pyplot ↔ explicit translations, debugging broken plotting code, and the guide's drills and 14 ML
+  recipes (5.15's page also loads scikit-learn).
+* **Challenges** (45 templates, 132 kinds): what plotting computes — pyplot's figure bookkeeping, autoscale
+  over ranges of lines (sparse tables), nice tick steps, the offset text rule, tick-label thinning, histogram and
+  box-plot statistics, colormap / norm lookups, contour crossings, PNG row filters, PDF pagination, palette
+  quantization, ROC / PR operating points ... with brute forces in `tests/mpl_brutes/` (often real Matplotlib).
+* **Shared tooling, generalized:** bare-name tracking for Instructions and coverage covers `from matplotlib… /
+  mpl_toolkits… import`; `scripts/_docstrings.py` indexes Matplotlib's public names and looks methods up on its
+  classes (Axes, Figure, Line2D, Colorbar, PolarAxes, Axes3D ...); `scripts/py_templates.py --section` and
+  `scripts/py_e2e.py --section` replace the scikit-learn-only checker and browser test (thin wrappers keep the old
+  names). Coverage excludes the guide's Jupyter and PyTorch comments.
+* **Checks:** the checker (0 failures), every guide API practised in its module, and every template graded inside
+  Pyodide (`scripts/py_e2e.py --section matplotlib`).
+
 ### Open problem: Hugging Face in the browser
 Pyodide has no `transformers`. Options: extend the shim idea (a tiny tokenizer/pipeline layer over torch-lite),
 AST and pattern checks, or an optional "run locally" mode. **Not decided yet.**
@@ -1108,6 +1137,8 @@ generator/            Python package: question generation + grading (runs locall
     s03_pytorch/      _common.py (HEADER imports torch/nn/F, tensor literals, challenge()) + m01_tensors.py … m19_dpo.py
     s04_sklearn/      _common.py (P/catalog/challenge, datasets: builtin/synth_clf/synth_reg, table() = themed
                       DataFrames) + m01_estimators.py … m20_custom.py (auto-imported in order)
+    s05_matplotlib/   _common.py (P adds figcheck as `fc` to post code, catalog, challenge, themed data) +
+                      m01_setup.py … m15_ml_recipes.py; generator/figcheck.py = figures as data
     s07_bash/         _common.py (P/K problem helpers, files() heredocs, catalog(), challenge()) + m01_basics.py … m17_keys_history.py
     s08_git/          _common.py (P() problem helper with check=(gitstate sections, dir), Repo() setup builder, catalog())
                       + m01_setup.py … m14_ml.py
@@ -1188,7 +1219,7 @@ Legend: ✅ done · 🟡 partial · ⬜ not started
 | 2 | pandas | ✅ **all 19 modules live**: 261 templates in `generator/sections/s02_pandas/` (every module ≥ 2 templates per tier, 2 challenges each) | exec (Pyodide) + figure/Styler inspection for 2.18 | session 4 |
 | 3 | PyTorch | ✅ **all 19 modules live**: 240 templates in `generator/sections/s03_pytorch/` (every module ≥ 2 templates per tier, 2 challenges each) | exec (Pyodide) on torch-lite + triton-lite | session 5 |
 | 4 | scikit-learn | ✅ **all 20 modules live**: 691 templates in `generator/sections/s04_sklearn/` (3,184 distinct problem kinds; every tier of every module has more kinds than questions) | exec in Pyodide's scikit-learn 1.8: the reference reruns on the same seeded data and values are compared; challenges have hidden tests and brute forces | session 27 |
-| 5 | Matplotlib | ⬜ | exec + figure inspection | |
+| 5 | Matplotlib | ✅ **all 15 modules live**: 334 templates in `generator/sections/s05_matplotlib/` (2,306 distinct problem kinds; every tier of every module has more kinds than questions) | exec in Pyodide's Matplotlib 3.10: figures inspected as data (`generator/figcheck.py`), saved files by their bytes; challenges have hidden tests and brute forces | session 28 |
 | 6 | Hugging Face | ⬜ | **open problem** | |
 | 7 | Bash | ✅ **all 17 modules live**: 176 templates in `generator/sections/s07_bash/` (every module ≥ 2 templates per tier, 2 challenges each), answered in a live terminal | bash-lite: simulated Ubuntu machine (`generator/bashlite/`); the terminal session is replayed and its output / files compared; keystrokes for 7.17 | sessions 7, 8 |
 | 8 | Git & GitHub | ✅ **all 14 modules live**: 140 templates in `generator/sections/s08_git/` (every module ≥ 2 templates per tier), answered in a live terminal beside Files, Git and GitHub panels | bash-lite's git and GitHub-lite (`generator/bashlite/git/`, checked against real git 2.39): repository and GitHub state compared with date-independent commit ids, or the output of history commands | session 25 |
@@ -1231,10 +1262,8 @@ Legend: ✅ done · 🟡 partial · ⬜ not started
 ### Next steps (suggested order)
 0. Part III, one tutorial at a time, in COMP_GUIDE §13's order (stacks and queues reuse the linked-list node), each as
    a `docs/dsa/<name>.js` like `linked-list.js`, plus its reference/mutant self-test.
-1. Matplotlib (reuse the 2.18 figure-inspection `post` pattern, and 4.17's Display/Axes value checks).
-2. SQL section (sqlite3 checker); Git and Docker on top of bash-lite (a simulated `git` and `docker`).
-3. Hugging Face (§2 open problem; torch-lite is a starting point).
-4. Medal art, then the style pass.
+1. Hugging Face (§2 open problem; torch-lite is a starting point) — the last Part I section.
+2. Medal art, then the style pass.
 
 **Adding a section:** copy the `s01_numpy/` layout (`_common.py` with a `template(module, tier)` wrapper that
 fixes the section, one file per subsection), import the package in `generator/sections/__init__.py`, and give every

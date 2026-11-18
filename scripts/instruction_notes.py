@@ -959,3 +959,37 @@ SKLEARN = {k: (n, "", d) for k, (n, d) in {
 }.items()}
 
 NOTES["sklearn"] = SKLEARN
+
+
+# Section 5 (Matplotlib): names docstrings can't describe (attributes, constants), in our own words
+MATPLOTLIB = {k: (n, "", d) for k, (n, d) in {
+    "mpl.__version__": ("mpl.__version__", "The installed Matplotlib version, as a string."),
+    ".transAxes": ("ax.transAxes", "Axes coordinates: (0, 0) is the bottom-left and (1, 1) the top-right of the Axes."),
+    ".transData": ("ax.transData", "Data coordinates (the default for everything you plot)."),
+    ".transFigure": ("fig.transFigure", "Figure coordinates: (0, 0) bottom-left, (1, 1) top-right of the figure."),
+    ".flat": ("axes.flat", "Iterate over a grid of Axes as one flat sequence."),
+    ".axes": ("fig.axes", "The list of the figure's Axes, in the order they were added."),
+    ".patches": ("ax.patches", "The patches (bars, rectangles, wedges ...) drawn on the Axes."),
+    ".spines": ("ax.spines", "The four border lines of the Axes, by name: 'left', 'right', 'top', 'bottom'."),
+    ".rcParams": ("plt.rcParams", "The global settings dict: defaults for fonts, sizes, colors, lines ..."),
+    "plt.rcParams": ("plt.rcParams", "The global settings dict: defaults for fonts, sizes, colors, lines ..."),
+    "mpl.rcParams": ("mpl.rcParams", "The global settings dict: defaults for fonts, sizes, colors, lines ..."),
+    ".collections": ("ax.collections", "The collections on the Axes (scatter points, filled areas, line sets ...)."),
+    ".texts": ("ax.texts", "The texts added to the Axes with text() / annotate()."),
+    ".xaxis": ("ax.xaxis", "The x Axis object: ticks, locators, formatters and the axis label live on it."),
+    ".yaxis": ("ax.yaxis", "The y Axis object: ticks, locators, formatters and the axis label live on it."),
+    ".canvas": ("fig.canvas", "The figure's drawing surface (draw it, read its pixels with buffer_rgba)."),
+    ".levels": ("cs.levels", "The values at which a contour plot drew its lines or filled bands."),
+    ".dpi_scale_trans": ("fig.dpi_scale_trans", "Inches coordinates: offsets measured in inches on the figure."),
+    ".rowspan": ("ss.rowspan", "The grid rows an Axes spans (a range)."),
+    ".colspan": ("ss.colspan", "The grid columns an Axes spans (a range)."),
+    ".vertices": ("path.vertices", "A path's points, as an (N, 2) array."),
+    ".norm": ("im.norm", "How a mappable maps data values to the 0-1 range of its colormap."),
+    ".set_rticks": ("pax.set_rticks()", "Set where the circular grid lines (radial ticks) of a polar Axes go."),
+    ".n_frames": ("img.n_frames", "Pillow: how many frames an image (an animated GIF) has."),
+    "mpl.rcParams.update": ("mpl.rcParams.update()", "Change several settings at once from a dict."),
+    "plt.style.library": ("plt.style.library", "The built-in styles, by name, with the settings each one changes."),
+    ".draw_idle": ("fig.canvas.draw_idle()", "Ask for a redraw when the GUI is next idle (for live-updating plots)."),
+}.items()}
+
+NOTES["matplotlib"] = MATPLOTLIB

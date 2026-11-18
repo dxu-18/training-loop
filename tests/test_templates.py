@@ -20,7 +20,7 @@ def test_reference_passes(tpl):
     # challenges also run large hidden tests, and test_challenges.py checks them against brute force
     # (Vim, SQL, scikit-learn: a few seeds; test_vim_section.py, test_sql_section.py and test_catalogs.py check every
     # item of every template; scripts/sklearn_templates.py checks scikit-learn's in depth)
-    for seed in (range(6) if tpl.tier == "challenge" else range(4) if tpl.section in ("vim", "sql", "sklearn") else SEEDS):
+    for seed in (range(6) if tpl.tier == "challenge" else range(4) if tpl.section in ("vim", "sql", "sklearn", "matplotlib") else SEEDS):
         p = build(tpl, seed).to_dict()
         res = grade(p, p["solution"])
         assert res["correct"], f"seed {seed}: {res}\n{p['prompt']}\n{p['setup']}\n{p['solution']}"
@@ -28,7 +28,7 @@ def test_reference_passes(tpl):
 
 @pytest.mark.parametrize("tpl", ALL, ids=IDS)
 def test_wrong_answers_fail(tpl):
-    for seed in range(2 if tpl.section == "sklearn" else 5):     # scikit-learn: every grade fits models
+    for seed in range(2 if tpl.section in ("sklearn", "matplotlib") else 5):   # every grade fits models / draws
         p = build(tpl, seed).to_dict()
         for wrong in ("result = None", "result = 0", "1 +"):
             assert not grade(p, wrong)["correct"], (seed, wrong)
@@ -82,6 +82,14 @@ def test_sklearn_modules_complete():
         assert is_live("sklearn", m), m
         for tier in TIERS:
             assert len(templates("sklearn", m, tier)) >= 2, (m, tier)
+
+
+def test_matplotlib_modules_complete():
+    assert modules("matplotlib") == [f"5.{i:02d}" for i in range(1, 16)]
+    for m in modules("matplotlib"):
+        assert is_live("matplotlib", m), m
+        for tier in TIERS:
+            assert len(templates("matplotlib", m, tier)) >= 2, (m, tier)
 
 
 def test_bash_modules_complete():
