@@ -1,5 +1,5 @@
 {
- "hash": "443f4919493a",
+ "hash": "700efe101b6e",
  "topics": {
   "numpy": {
    "title": "NumPy",
@@ -939,181 +939,181 @@
     {
      "id": "5.01",
      "title": "Setup, backends & the two interfaces",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 4,
+      "easy": 6,
+      "medium": 8,
+      "hard": 6,
+      "challenge": 2
      }
     },
     {
      "id": "5.02",
      "title": "Figures, subplots & layouts",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 4,
+      "easy": 5,
+      "medium": 7,
+      "hard": 5,
+      "challenge": 3
      }
     },
     {
      "id": "5.03",
      "title": "Line & scatter plots",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 3,
+      "easy": 5,
+      "medium": 7,
+      "hard": 5,
+      "challenge": 3
      }
     },
     {
      "id": "5.04",
      "title": "Bars, histograms & distributions",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 3,
+      "easy": 5,
+      "medium": 7,
+      "hard": 5,
+      "challenge": 3
      }
     },
     {
      "id": "5.05",
      "title": "Areas, error bars, reference lines & spans",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 3,
+      "easy": 5,
+      "medium": 8,
+      "hard": 5,
+      "challenge": 3
      }
     },
     {
      "id": "5.06",
      "title": "Images, heatmaps, contours & vector fields",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 4,
+      "easy": 6,
+      "medium": 8,
+      "hard": 5,
+      "challenge": 3
      }
     },
     {
      "id": "5.07",
      "title": "Pie, polar & 3D",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 3,
+      "easy": 5,
+      "medium": 6,
+      "hard": 4,
+      "challenge": 3
      }
     },
     {
      "id": "5.08",
      "title": "Titles, labels, limits, scales & ticks",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 4,
+      "easy": 6,
+      "medium": 7,
+      "hard": 5,
+      "challenge": 3
      }
     },
     {
      "id": "5.09",
      "title": "Legends, annotations, text & math",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 3,
+      "easy": 5,
+      "medium": 5,
+      "hard": 4,
+      "challenge": 3
      }
     },
     {
      "id": "5.10",
      "title": "Colors, colormaps, norms & colorbars",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 5,
+      "medium": 5,
+      "hard": 4,
+      "challenge": 3
      }
     },
     {
      "id": "5.11",
      "title": "Styles & rcParams",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 4,
+      "medium": 6,
+      "hard": 4,
+      "challenge": 3
      }
     },
     {
      "id": "5.12",
      "title": "Saving & exporting",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 3,
+      "easy": 5,
+      "medium": 6,
+      "hard": 4,
+      "challenge": 3
      }
     },
     {
      "id": "5.13",
      "title": "Patches, collections & coordinate systems",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 4,
+      "medium": 8,
+      "hard": 5,
+      "challenge": 4
      }
     },
     {
      "id": "5.14",
      "title": "Animation & live-updating plots",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 4,
+      "medium": 7,
+      "hard": 4,
+      "challenge": 3
      }
     },
     {
      "id": "5.15",
      "title": "ML visualization recipes",
-     "live": false,
+     "live": true,
      "templates": {
-      "lite": 0,
-      "easy": 0,
-      "medium": 0,
-      "hard": 0,
-      "challenge": 0
+      "lite": 2,
+      "easy": 4,
+      "medium": 6,
+      "hard": 5,
+      "challenge": 3
      }
     }
    ]

@@ -1225,11 +1225,13 @@ def max_preference_pairs(ns):
     return best(0, 0)
 
 
-# scikit-learn's challenges keep their brute forces in tests/sklearn_brutes/ (one file per module)
+# scikit-learn's and Matplotlib's challenges keep their brute forces in tests/sklearn_brutes/ and tests/mpl_brutes/
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from mpl_brutes import load as _load_mpl_brutes  # noqa: E402
 from sklearn_brutes import load as _load_sklearn_brutes  # noqa: E402
 
 BRUTE.update(_load_sklearn_brutes())
+BRUTE.update(_load_mpl_brutes())
 
 
 def test_every_challenge_has_a_brute_force():

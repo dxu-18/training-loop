@@ -24,7 +24,8 @@ MAX_ITEMS = 4
 MAX_OLDER = 2
 
 # module aliases whose dotted names are kept whole (np.random.default_rng, F.softmax, nn.Linear ...)
-ALIASES = ("np", "pd", "torch", "F", "nn", "S", "tl", "triton", "dist", "dcp", "benchmark", "plt", "math", "sklearn")
+ALIASES = ("np", "pd", "torch", "F", "nn", "S", "tl", "triton", "dist", "dcp", "benchmark", "plt", "math", "sklearn",
+           "mpl", "mticker", "mdates", "mtransforms")
 # plain-Python methods that are not the point of a problem (dict.items, str.join ...)
 PY_METHODS = {"append", "extend", "update", "items", "keys", "values", "get", "format", "pop", "add", "copy",
               "setdefault", "remove", "insert", "count", "index", "sort", "split", "join", "strip", "lower", "upper",
@@ -33,17 +34,21 @@ PY_METHODS_KEEP = {"pandas": {"count", "index", "sort", "split", "join", "strip"
                               "endswith", "replace", "get", "pop", "update", "copy", "add", "values", "keys", "items"},
                    "numpy": {"sort", "copy", "split", "flush", "index", "count"},
                    "pytorch": {"split", "add", "copy", "index", "sort", "count"},
-                   "sklearn": {"split", "copy", "index", "sort", "count", "get", "values", "keys", "items"}}
+                   "sklearn": {"split", "copy", "index", "sort", "count", "get", "values", "keys", "items"},
+                   "matplotlib": {"copy", "index", "sort", "count", "update", "get", "items", "values", "keys"}}
 # any import statement (sklearn problems: the imports themselves aren't APIs to describe)
 IMPORT_STMT = re.compile(r"^[ \t]*(?:from[ \t]+\S+[ \t]+import[ \t]+(?:\([^)]*\)|[^\n]+)|import[ \t]+[^\n]+)", re.M)
-# `from sklearn.preprocessing import StandardScaler, MinMaxScaler as MM` (one line or parenthesized)
-SK_IMPORT = re.compile(r"^[ \t]*from[ \t]+sklearn[\w.]*[ \t]+import[ \t]+(\([^)]*\)|[^\n]+)", re.M)
+# `from sklearn.preprocessing import StandardScaler, MinMaxScaler as MM` (one line or parenthesized): sections whose
+# library is used through names imported bare
+LIB_PACKAGES = {"sklearn": r"sklearn[\w.]*", "matplotlib": r"(?:matplotlib|mpl_toolkits)[\w.]*"}
+LIB_IMPORT = {sec: re.compile(rf"^[ \t]*from[ \t]+{pkg}[ \t]+import[ \t]+(\([^)]*\)|[^\n]+)", re.M)
+              for sec, pkg in LIB_PACKAGES.items()}
 
 
-def sk_imported(code: str) -> tuple[dict[str, str], list[tuple[int, int]]]:
-    """Names a piece of code imports from sklearn ({local name: real name}) and the spans of those imports."""
+def sk_imported(code: str, section: str = "sklearn") -> tuple[dict[str, str], list[tuple[int, int]]]:
+    """Names a piece of code imports from the section's library ({local name: real name}) and those imports' spans."""
     names, spans = {}, []
-    for m in SK_IMPORT.finditer(code):
+    for m in LIB_IMPORT[section].finditer(code):
         spans.append(m.span())
         for part in m[1].strip("()").replace("\n", " ").split(","):
             name, _, alias = part.strip().partition(" as ")
@@ -108,7 +113,7 @@ def py_names(code: str, section: str) -> list[tuple[int, str]]:
     """(position, key) of the API names a solution uses, in order: 'np.cumsum', '.reshape', 'F.softmax' ..."""
     code = _blank_strings(code)
     raw = code
-    if section == "sklearn":
+    if section in LIB_PACKAGES:
         code = IMPORT_STMT.sub(lambda m: " " * len(m[0]), code)
     keep = PY_METHODS_KEEP.get(section, set())
     out = []
@@ -128,8 +133,8 @@ def py_names(code: str, section: str) -> list[tuple[int, str]]:
         for a in re.finditer(r"[A-Za-z_]\w*", m[1]):
             if a[0] not in PY_METHODS or a[0] in keep:
                 out.append((m.start(1) + a.start(), "." + a[0]))
-    if section == "sklearn":                       # StandardScaler(), cross_val_score(...): imported, used bare
-        names, spans = sk_imported(raw)
+    if section in LIB_PACKAGES:                     # StandardScaler(), Rectangle(...): imported, used bare
+        names, spans = sk_imported(raw, section)
         for local, real in names.items():
             for m in re.finditer(rf"(?<![\w.]){re.escape(local)}\b(?!\s*=(?!=))", code):
                 if not any(a <= m.start() < b for a, b in spans):

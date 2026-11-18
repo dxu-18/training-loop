@@ -61,6 +61,8 @@ def numpy_32bit_compat():
 
 numpy_32bit_compat()      # again on every run: in the browser NumPy may load after this module
 
+from . import figcheck  # noqa: E402,F401  (post code reads figures with it; imports matplotlib lazily)
+
 USER_FILE = "<answer>"
 STDOUT = "<stdout>"
 MAX_REPR = 4000
@@ -158,6 +160,14 @@ def _sandbox():
                 pd.reset_option("^display\\.")
         if (plt := sys.modules.get("matplotlib.pyplot")) is not None:
             plt.close("all")
+        if (mpl := sys.modules.get("matplotlib")) is not None:  # undo plt.style.use / rcParams[...] = / plt.ion()
+            try:
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    mpl.rcdefaults()          # keeps the backend (style-blacklisted keys aren't reset)
+                mpl.interactive(False)
+            except Exception:  # noqa: BLE001
+                pass
         if (skl := sys.modules.get("sklearn")) is not None:   # undo set_config(transform_output=...) and the like
             try:
                 from sklearn._config import _global_config   # the defaults (set_config changes a per-thread copy)

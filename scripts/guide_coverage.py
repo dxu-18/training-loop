@@ -21,11 +21,12 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-SECTIONS = {"numpy": 1, "pandas": 2, "pytorch": 3, "sklearn": 4}
+SECTIONS = {"numpy": 1, "pandas": 2, "pytorch": 3, "sklearn": 4, "matplotlib": 5}
 
 # alias -> prefix kept in the key ("" = the top-level namespace, so torch.cumsum and x.cumsum() match)
 ALIASES = {"np": "", "pd": "", "torch": "", "F": "F.", "nn": "nn.", "tl": "tl.", "triton": "triton.", "dist": "dist.",
-           "dcp": "dcp.", "benchmark": "benchmark.", "S": "lr_scheduler.", "plt": "plt.", "math": "math."}
+           "dcp": "dcp.", "benchmark": "benchmark.", "S": "lr_scheduler.", "plt": "plt.", "math": "math.",
+           "mpl": "mpl.", "mticker": "mticker.", "mdates": "mdates.", "mtransforms": "mtransforms."}
 PY_METHODS = {"append", "extend", "update", "items", "keys", "values", "get", "format", "pop", "add", "copy",
               "setdefault", "remove", "insert", "count", "index", "sort", "split", "join", "strip", "lower", "upper",
               "startswith", "endswith", "replace", "read", "write", "close", "seek", "flush"}
@@ -33,7 +34,8 @@ PY_METHODS_KEEP = {"pandas": {"count", "index", "sort", "split", "join", "strip"
                               "endswith", "replace", "get", "pop", "update", "copy", "add", "values", "keys", "items"},
                    "numpy": {"sort", "copy", "split", "flush", "index", "count"},
                    "pytorch": {"split", "add", "copy", "index", "sort", "count"},
-                   "sklearn": {"split", "copy", "index", "sort", "count", "get", "values", "keys", "items"}}
+                   "sklearn": {"split", "copy", "index", "sort", "count", "get", "values", "keys", "items"},
+                   "matplotlib": {"copy", "index", "sort", "count", "update", "get", "items", "values", "keys"}}
 
 # Guide syntax that cannot be practised in the browser (Pyodide), with the reason.
 EXCLUDED = {
@@ -56,6 +58,8 @@ EXCLUDED = {
         "read_parquet": "loading pyarrow switches pandas' string storage mid-session", ".to_parquet": "see read_parquet",
         ".to_markdown": "tabulate isn't in Pyodide", "kde": "needs SciPy (not loaded on the plotting page)",
     },
+    "matplotlib": {"figure_format": "a Jupyter setting (%config InlineBackend)", "display": "IPython isn't in the browser",
+                   "permute": "a PyTorch tensor method (torch isn't on this page)", "cpu": "PyTorch", "numpy": "PyTorch"},
     "sklearn": {"datasets": "a module (its loaders are practised)", "UMAP": "umap-learn isn't in Pyodide",
                 "fetch_california_housing": "downloads data (no network in the browser)",
                 "fetch_openml": "downloads data", "fetch_20newsgroups": "downloads data"},
@@ -98,17 +102,17 @@ def user_names(code: str) -> set[str]:
 
 
 @lru_cache(maxsize=None)
-def sklearn_vocab() -> frozenset[str]:
-    """Every name the guide's scikit-learn code imports from sklearn (StandardScaler, cross_val_score ...)."""
+def sklearn_vocab(section: str = "sklearn") -> frozenset[str]:
+    """Every name the guide's code for a section imports from its library (StandardScaler, Rectangle ...)."""
     from generator.instructions import sk_imported
-    return frozenset(n for code in guide_blocks("sklearn").values() for n in sk_imported(code)[0].values())
+    return frozenset(n for code in guide_blocks(section).values() for n in sk_imported(code, section)[0].values())
 
 
-def sklearn_bare(code: str) -> set[str]:
-    """sklearn names used bare (StandardScaler()), outside import statements."""
+def sklearn_bare(code: str, section: str = "sklearn") -> set[str]:
+    """Library names used bare (StandardScaler(), Rectangle(...)), outside import statements."""
     from generator.instructions import sk_imported
-    names, spans = sk_imported(code)
-    vocab = set(sklearn_vocab()) | set(names)
+    names, spans = sk_imported(code, section)
+    vocab = set(sklearn_vocab(section)) | set(names)
     body = code
     for a, b in reversed(spans):
         body = body[:a] + " " * (b - a) + body[b:]
@@ -117,8 +121,8 @@ def sklearn_bare(code: str) -> set[str]:
 
 def keys(code: str, section: str, ignore: set[str] = frozenset()) -> tuple[set[str], set[str]]:
     """(API keys, keyword-argument keys) used in code."""
-    bare = sklearn_bare(code) if section == "sklearn" else set()
-    if section == "sklearn":     # import statements name modules, not APIs
+    bare = sklearn_bare(code, section) if section in ("sklearn", "matplotlib") else set()
+    if section in ("sklearn", "matplotlib"):     # import statements name modules, not APIs
         from generator.instructions import IMPORT_STMT
         code = IMPORT_STMT.sub("", code)
     code = re.sub(r"(?m)#.*$", lambda m: m[0] if "·" in m[0] or ":" in m[0] else "", code)  # keep API-list comments

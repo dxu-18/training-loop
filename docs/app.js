@@ -13,7 +13,7 @@ const TOPICS = [
   { id: "pandas", part: 1, mode: "python", packages: ["numpy", "pandas"], extra: { "2.03": ["jinja2"], "2.11": ["tzdata"], "2.18": ["matplotlib", "jinja2"] } },
   { id: "pytorch", part: 1, mode: "python", packages: ["numpy"] },
   { id: "sklearn", part: 1, mode: "python", packages: ["numpy", "pandas", "scikit-learn"], extra: { "4.17": ["matplotlib"] } },
-  { id: "matplotlib", part: 1, mode: "python", packages: ["numpy", "matplotlib"] },
+  { id: "matplotlib", part: 1, mode: "python", packages: ["numpy", "matplotlib"], extra: { "5.15": ["scikit-learn"] } },
   { id: "huggingface", part: 1, mode: "python", packages: ["numpy"] },
   { id: "bash", part: 2, mode: "shell", packages: [], terminal: true },
   { id: "git", part: 2, mode: "shell", packages: [], terminal: true },

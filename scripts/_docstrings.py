@@ -86,6 +86,47 @@ def _sk_index():
 
 
 SK_INDEX = _sk_index()
+
+# Matplotlib modules whose public names a solution imports bare (Rectangle, LogNorm, FuncAnimation ...)
+MPL_MODULES = ("patches", "colors", "collections", "lines", "animation", "ticker", "dates", "transforms", "cm",
+               "gridspec", "text", "image", "legend", "markers", "path", "backends.backend_pdf", "figure", "axes",
+               "colorbar", "style")
+
+
+def _mpl_index():
+    import importlib
+    idx = {}
+    if plt is None:
+        return idx
+    for m in MPL_MODULES:
+        try:
+            mod = importlib.import_module(f"matplotlib.{m}")
+        except Exception:  # noqa: BLE001
+            continue
+        for name in getattr(mod, "__all__", None) or [n for n in dir(mod) if not n.startswith("_")]:
+            obj = getattr(mod, name, None)
+            if obj is None or inspect.ismodule(obj) or not callable(obj):
+                continue
+            home = getattr(obj, "__module__", "") or ""
+            if not home.startswith(f"matplotlib.{m}"):
+                continue
+            idx.setdefault(name, (f"matplotlib.{m}.{name}", obj))
+    try:
+        from mpl_toolkits.mplot3d import Axes3D
+        idx.setdefault("Axes3D", ("mpl_toolkits.mplot3d.Axes3D", Axes3D))
+    except ImportError:
+        pass
+    return idx
+
+
+MPL_INDEX = _mpl_index()
+LIB_INDEX = {"sklearn": SK_INDEX, "matplotlib": MPL_INDEX}
+if plt is not None:
+    import matplotlib as _mpl
+    import matplotlib.dates as _mdates
+    import matplotlib.ticker as _mticker
+    import matplotlib.transforms as _mtransforms
+    ROOTS.update({"mpl": _mpl, "mticker": _mticker, "mdates": _mdates, "mtransforms": _mtransforms})
 if torch is not None:
     ROOTS.update({"torch": torch, "F": F, "nn": torch.nn, "S": torch.optim.lr_scheduler, "dist": torch.distributed})
     try:
@@ -162,6 +203,38 @@ def _method_owners(section):
             mpl.append((Text, "label."))
         return owners + [(np.ndarray, "a."), (pd.DataFrame, "df."), (pd.Series, "s."), (np, "np."), (pd, "pd.")] + \
             mpl + [(sparse.csr_matrix, "Xs.")] + common
+    if section == "matplotlib" and plt is not None:
+        import matplotlib as mpl
+        from matplotlib import animation, collections as mcoll, colorbar, colors, image, legend, lines, patches, text
+        from matplotlib.axis import Axis
+        from matplotlib.spines import Spine
+        owners = [(Axes, "ax."), (Figure, "fig."), (plt, "plt."), (lines.Line2D, "line."),
+                  (mcoll.PathCollection, "sc."), (image.AxesImage, "im."), (colorbar.Colorbar, "cb."),
+                  (legend.Legend, "leg."), (text.Text, "txt."), (text.Annotation, "ann."), (Axis, "ax.xaxis."),
+                  (Spine, "ax.spines['left']."), (patches.Rectangle, "rect."), (patches.Patch, "patch."),
+                  (mcoll.Collection, "coll."), (animation.FuncAnimation, "anim."), (colors.Colormap, "cmap."),
+                  (colors.Normalize, "norm."), (mpl, "mpl."), (mpl.figure.SubFigure, "subfig.")]
+        try:
+            from mpl_toolkits.mplot3d import Axes3D
+            from matplotlib.projections.polar import PolarAxes
+            owners[1:1] = [(Axes3D, "ax3d."), (PolarAxes, "pax.")]
+        except ImportError:
+            pass
+        from matplotlib.backend_bases import FigureCanvasBase
+        from matplotlib.contour import ContourSet
+        from matplotlib.gridspec import SubplotSpec
+        from matplotlib.path import Path
+        from matplotlib.transforms import Transform
+        owners += [(FigureCanvasBase, "fig.canvas."), (ContourSet, "cs."), (SubplotSpec, "ax.get_subplotspec()."),
+                   (Path, "path."), (Transform, "ax.transData.")]
+        try:
+            from matplotlib.backends.backend_agg import FigureCanvasAgg
+            owners.insert(owners.index((FigureCanvasBase, "fig.canvas.")), (FigureCanvasAgg, "fig.canvas."))
+        except ImportError:
+            pass
+        sk = [(SK_INDEX[n][1], p) for n, p in (("KNeighborsClassifier", "clf."), ("PCA", "pca."))
+              if n in SK_INDEX]          # 5.15's page also loads scikit-learn
+        return owners + [(np.ndarray, "a."), (np, "np.")] + sk + common
     if section == "pytorch" and torch is not None:
         extra = [(torch.amp.GradScaler, "scaler."), (torch.nn.parallel.DistributedDataParallel, "ddp."),
                  (torch.profiler.profile, "prof."), (time, "time.")]
@@ -292,8 +365,8 @@ def _fitted_attr(section, name):
 
 
 def lookup(section, key):
-    if section == "sklearn" and "." not in key and key in SK_INDEX:     # StandardScaler, cross_val_score
-        path, obj = SK_INDEX[key]
+    if section in LIB_INDEX and "." not in key and key in LIB_INDEX[section]:   # StandardScaler, Rectangle
+        path, obj = LIB_INDEX[section][key]
         r = describe(obj, path)
         if r:
             return {"n": path, "s": r[0], "d": r[1]}
